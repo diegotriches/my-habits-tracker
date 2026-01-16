@@ -13,6 +13,7 @@ import { useHabitDetails } from '@/hooks/useHabitDetails';
 import { useHabits } from '@/hooks/useHabits';
 import HabitCalendar from '@/components/habits/HabitCalendar';
 import HabitStats from '@/components/habits/HabitStats';
+import { ReminderSetup } from '@/components/habits/ReminderSetup';
 import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
 
 export default function HabitDetailScreen() {
@@ -120,6 +121,9 @@ export default function HabitDetailScreen() {
             color={habit.color}
           />
         </View>
+
+        {/* SEÇÃO DE LEMBRETES */}
+        <ReminderSetup habitId={id as string} habitName={habit.name} />
 
         {/* Calendário */}
         <View style={styles.section}>
