@@ -21,10 +21,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function StatsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { 
     dailyStats, 
     weekdayStats, 
@@ -55,14 +57,24 @@ export default function StatsScreen() {
 
   // Loading inicial com skeleton
   if (loading && !refreshing && !generalStats) {
-    return <StatsSkeleton />;
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Estatísticas</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Acompanhe seu progresso
+          </Text>
+        </View>
+        <StatsSkeleton />
+      </View>
+    );
   }
 
   // Empty state - usuário sem hábitos ainda
   if (!loading && generalStats && generalStats.total_habits === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Estatísticas</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Acompanhe seu progresso
@@ -114,12 +126,13 @@ export default function StatsScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 20 }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
           tintColor={colors.primary}
+          progressViewOffset={insets.top}
         />
       }
     >

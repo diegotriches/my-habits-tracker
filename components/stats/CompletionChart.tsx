@@ -16,7 +16,7 @@ type ChartType = 'daily' | 'weekday';
 export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) => {
   const { colors, theme } = useTheme();
   const [chartType, setChartType] = useState<ChartType>('daily');
-  const screenWidth = Dimensions.get('window').width - 40;
+  const screenWidth = Dimensions.get('window').width - 80; // Reduzido para caber no card (40 padding + 40 margem)
 
   const handleChartTypeChange = (type: ChartType) => {
     if (type === chartType) return;

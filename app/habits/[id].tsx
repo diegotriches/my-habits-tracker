@@ -8,6 +8,7 @@ import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
 import { useHabitDetails } from '@/hooks/useHabitDetails';
 import { useHabits } from '@/hooks/useHabits';
 import { formatSelectedDays } from '@/utils/habitHelpers';
+import { hapticFeedback } from '@/utils/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -19,10 +20,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function HabitDetailsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { deleteHabit } = useHabits();
   const [deleting, setDeleting] = useState(false);
@@ -44,26 +47,35 @@ export default function HabitDetailsScreen() {
   } = useHabitDetails(id as string);
 
   const handleEdit = () => {
+    hapticFeedback.light();
     router.push(`/habits/edit/${id}` as any);
   };
 
   const handleDelete = () => {
+    hapticFeedback.warning();
     Alert.alert(
       'Deletar Hábito',
       `Tem certeza que deseja deletar "${habit?.name}"? Esta ação não pode ser desfeita.`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Cancelar', 
+          style: 'cancel',
+          onPress: () => hapticFeedback.light()
+        },
         {
           text: 'Deletar',
           style: 'destructive',
           onPress: async () => {
+            hapticFeedback.heavy();
             setDeleting(true);
             const { error } = await deleteHabit(id as string);
             setDeleting(false);
 
             if (error) {
+              hapticFeedback.error();
               Alert.alert('Erro', error);
             } else {
+              hapticFeedback.success();
               Alert.alert('Sucesso', 'Hábito deletado com sucesso', [
                 { text: 'OK', onPress: () => router.back() },
               ]);
@@ -72,6 +84,11 @@ export default function HabitDetailsScreen() {
         },
       ]
     );
+  };
+
+  const handleBack = () => {
+    hapticFeedback.light();
+    router.back();
   };
 
   if (loading) {
@@ -94,7 +111,7 @@ export default function HabitDetailsScreen() {
         </Text>
         <TouchableOpacity 
           style={[styles.backButton, { backgroundColor: colors.primary }]} 
-          onPress={() => router.back()}
+          onPress={handleBack}
         >
           <Text style={[styles.backButtonText, { color: colors.textInverse }]}>Voltar</Text>
         </TouchableOpacity>
@@ -107,8 +124,12 @@ export default function HabitDetailsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background, 
+        borderBottomColor: colors.border,
+        paddingTop: insets.top + 16
+      }]}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <Icon name="chevronLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -391,7 +412,8 @@ export default function HabitDetailsScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        {/* Espaçamento SafeArea inferior */}
+        <View style={{ height: Math.max(80, insets.bottom) }} />
       </ScrollView>
     </View>
   );
@@ -407,7 +429,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },

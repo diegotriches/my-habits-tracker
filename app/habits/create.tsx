@@ -158,12 +158,13 @@ export default function CreateHabitScreen() {
 
     const trimmedDescription = description.trim();
 
+    // 🔧 FIX: Usar os estados de frequência corretamente
     const habitData: any = {
       name: name.trim(),
       description: trimmedDescription || undefined,
       type: 'positive' as const,
-      frequency_type: 'daily' as const,
-      frequency_days: undefined,
+      frequency_type: frequencyType,  // ✅ Usar o estado
+      frequency_days: frequencyType === 'weekly' ? frequencyDays : null,  // ✅ Usar o estado
       has_target: hasTarget,
       target_value: hasTarget ? parseFloat(targetValue) : null,
       target_unit: hasTarget ? targetUnit.trim() : null,

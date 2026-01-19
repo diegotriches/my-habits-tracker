@@ -109,9 +109,9 @@ export function useHabitDetails(habitId: string) {
       const today = new Date();
 
       const weekStart = startOfWeek(today, { weekStartsOn: 0 });
-      const monthStart = subDays(today, 30);
-      const semesterStart = subDays(today, 180);
-      const yearStart = subDays(today, 365);
+      const monthStart = subDays(today, 29); // 30 dias (incluindo hoje)
+      const semesterStart = subDays(today, 179); // 180 dias
+      const yearStart = subDays(today, 364); // 365 dias
 
       const [weekStats, monthStats, semesterStats, yearStats] = await Promise.all([
         calculatePeriodStats(habit as any, weekStart, today, completions || []),
@@ -178,11 +178,11 @@ function calculatePeriodStats(
     completions.map((c: any) => c.completed_at.split('T')[0])
   );
 
-  // Contar apenas dias em que o hábito deveria ser feito
+  // 🔧 FIX: Contar apenas dias em que o hábito deveria ser feito
   const allDays = eachDayOfInterval({ start: startDate, end: endDate });
   const dueDays = allDays.filter(day => shouldHabitAppearOnDate(habit, day));
 
-  const total = dueDays.length;
+  const total = dueDays.length; // ✅ Agora conta apenas os dias devidos
   const completed = dueDays.filter(day =>
     completedDates.has(format(day, 'yyyy-MM-dd'))
   ).length;
