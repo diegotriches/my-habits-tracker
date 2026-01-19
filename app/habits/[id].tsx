@@ -120,6 +120,16 @@ export default function HabitDetailsScreen() {
   }
 
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
+  const isNegative = habit.type === 'negative';
+
+  // 🆕 Textos contextuais baseados no tipo
+  const streakLabel = isNegative 
+    ? `${streak?.current_streak || 0} ${(streak?.current_streak || 0) === 1 ? 'dia' : 'dias'} sem`
+    : 'Streak Atual';
+  
+  const bestStreakLabel = isNegative
+    ? 'Melhor Sequência'
+    : 'Melhor Streak';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -144,11 +154,16 @@ export default function HabitDetailsScreen() {
         {/* Card Principal do Hábito */}
         <View style={[styles.habitCard, { 
           backgroundColor: colors.background,
-          borderLeftColor: habit.color,
+          borderLeftColor: isNegative ? colors.warning : habit.color,
           borderColor: colors.border 
         }]}>
           <View style={styles.habitHeader}>
-            <Text style={[styles.habitName, { color: colors.textPrimary }]}>{habit.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              {isNegative && (
+                <Icon name="xCircle" size={20} color={colors.warning} />
+              )}
+              <Text style={[styles.habitName, { color: colors.textPrimary }]}>{habit.name}</Text>
+            </View>
             <View style={[
               styles.difficultyBadge,
               { backgroundColor: difficultyConfig.color + '20' }
@@ -158,6 +173,16 @@ export default function HabitDetailsScreen() {
               </Text>
             </View>
           </View>
+
+          {/* 🆕 Badge do tipo de hábito */}
+          {isNegative && (
+            <View style={[styles.typeBadge, { backgroundColor: colors.warningLight }]}>
+              <Icon name="shield" size={12} color={colors.warning} />
+              <Text style={[styles.typeText, { color: colors.warning }]}>
+                Hábito Negativo
+              </Text>
+            </View>
+          )}
 
           {habit.description && (
             <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
@@ -197,7 +222,9 @@ export default function HabitDetailsScreen() {
           <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon name="star" size={14} color={colors.points} />
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Pontos por conclusão:</Text>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+                {isNegative ? 'Pontos por resistir:' : 'Pontos por conclusão:'}
+              </Text>
             </View>
             <Text style={[styles.infoValue, { color: colors.primary }]}>+{habit.points_base} pts</Text>
           </View>
@@ -207,14 +234,20 @@ export default function HabitDetailsScreen() {
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, { 
             backgroundColor: colors.background,
-            borderColor: colors.streak,
+            borderColor: isNegative ? colors.warning : colors.streak,
             ...styles.currentStreakCard 
           }]}>
-            <Icon name="flame" size={32} color={colors.streak} />
+            <Icon 
+              name={isNegative ? "shield" : "flame"} 
+              size={32} 
+              color={isNegative ? colors.warning : colors.streak} 
+            />
             <Text style={[styles.streakValue, { color: colors.textPrimary }]}>
               {streak?.current_streak || 0}
             </Text>
-            <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>Streak Atual</Text>
+            <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>
+              {streakLabel}
+            </Text>
           </View>
 
           <View style={[styles.streakCard, { 
@@ -226,7 +259,9 @@ export default function HabitDetailsScreen() {
             <Text style={[styles.streakValue, { color: colors.textPrimary }]}>
               {streak?.best_streak || 0}
             </Text>
-            <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>Melhor Streak</Text>
+            <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>
+              {bestStreakLabel}
+            </Text>
           </View>
         </View>
 
@@ -281,7 +316,10 @@ export default function HabitDetailsScreen() {
               Consistência (Últimos 30 dias)
             </Text>
           </View>
-          <ConsistencyChart data={last30DaysData} habitColor={habit.color} />
+          <ConsistencyChart 
+            data={last30DaysData} 
+            habitColor={isNegative ? colors.warning : habit.color} 
+          />
         </View>
 
         {/* Heat Map */}
@@ -293,7 +331,10 @@ export default function HabitDetailsScreen() {
             </Text>
           </View>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Últimos 90 dias</Text>
-          <HabitHeatMap data={last90DaysData} habitColor={habit.color} />
+          <HabitHeatMap 
+            data={last90DaysData} 
+            habitColor={isNegative ? colors.warning : habit.color} 
+          />
         </View>
 
         {/* SEÇÃO DE LEMBRETES */}
@@ -312,7 +353,9 @@ export default function HabitDetailsScreen() {
             </View>
             <View style={[styles.statsCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total de conclusões</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  {isNegative ? 'Vezes que resistiu' : 'Total de conclusões'}
+                </Text>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {overallStats.totalCompletions} vezes
                 </Text>
@@ -368,9 +411,13 @@ export default function HabitDetailsScreen() {
         {completions.length > 0 && (
           <View style={styles.section}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Icon name="checkCircle" size={16} color={colors.success} />
+              <Icon 
+                name={isNegative ? "shield" : "checkCircle"} 
+                size={16} 
+                color={isNegative ? colors.warning : colors.success} 
+              />
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                Últimas Conclusões
+                {isNegative ? 'Últimas Vitórias' : 'Últimas Conclusões'}
               </Text>
             </View>
             <View style={[styles.completionsList, { backgroundColor: colors.background }]}>
@@ -412,7 +459,6 @@ export default function HabitDetailsScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Espaçamento SafeArea inferior */}
         <View style={{ height: Math.max(80, insets.bottom) }} />
       </ScrollView>
     </View>
@@ -451,6 +497,17 @@ const styles = StyleSheet.create({
   habitName: { fontSize: 20, fontWeight: '700', flex: 1 },
   difficultyBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   difficultyText: { fontSize: 12, fontWeight: '600' },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  typeText: { fontSize: 12, fontWeight: '600' },
   habitDescription: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
   habitInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1 },
   infoLabel: { fontSize: 14 },
@@ -470,7 +527,7 @@ const styles = StyleSheet.create({
   currentStreakCard: { borderWidth: 2 },
   bestStreakCard: { borderWidth: 2 },
   streakValue: { fontSize: 32, fontWeight: '700', marginTop: 8, marginBottom: 4 },
-  streakLabel: { fontSize: 12, fontWeight: '600' },
+  streakLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   sectionSubtitle: { fontSize: 12, marginBottom: 12 },

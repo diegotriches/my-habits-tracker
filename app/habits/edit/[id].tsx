@@ -26,6 +26,7 @@ export default function EditHabitScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
 
@@ -44,6 +45,7 @@ export default function EditHabitScreen() {
 
     setName((data as any).name);
     setDescription((data as any).description || '');
+    setHabitType((data as any).type || 'positive');
     setDifficulty((data as any).difficulty);
     setSelectedColor((data as any).color);
     setLoading(false);
@@ -86,6 +88,8 @@ export default function EditHabitScreen() {
     );
   }
 
+  const isNegative = habitType === 'negative';
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -104,6 +108,43 @@ export default function EditHabitScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 🆕 TIPO DE HÁBITO (SOMENTE LEITURA) */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Tipo de Hábito</Text>
+          <View style={[
+            styles.typeIndicator,
+            { 
+              backgroundColor: isNegative ? colors.warningLight : colors.successLight,
+              borderColor: isNegative ? colors.warning : colors.success,
+            }
+          ]}>
+            <Icon 
+              name={isNegative ? "xCircle" : "check"} 
+              size={20} 
+              color={isNegative ? colors.warning : colors.success} 
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[
+                styles.typeLabel,
+                { color: isNegative ? colors.warning : colors.success }
+              ]}>
+                {isNegative ? 'Hábito Negativo' : 'Hábito Positivo'}
+              </Text>
+              <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
+                {isNegative 
+                  ? 'Evitar algo que você quer parar de fazer'
+                  : 'Criar um novo hábito saudável'}
+              </Text>
+            </View>
+            <View style={[styles.lockBadge, { backgroundColor: colors.surface }]}>
+              <Icon name="lock" size={12} color={colors.textTertiary} />
+            </View>
+          </View>
+          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+            O tipo de hábito não pode ser alterado após a criação
+          </Text>
+        </View>
+
         {/* Nome */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>Nome do Hábito *</Text>
@@ -113,7 +154,11 @@ export default function EditHabitScreen() {
               borderColor: colors.border,
               color: colors.textPrimary 
             }]}
-            placeholder="Ex: Meditar, Ler, Exercitar..."
+            placeholder={
+              isNegative 
+                ? "Ex: Não fumar, Evitar doces..." 
+                : "Ex: Meditar, Ler, Exercitar..."
+            }
             placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
@@ -130,7 +175,11 @@ export default function EditHabitScreen() {
               borderColor: colors.border,
               color: colors.textPrimary 
             }]}
-            placeholder="Adicione detalhes sobre seu hábito..."
+            placeholder={
+              isNegative
+                ? "Por que você quer evitar isso?"
+                : "Adicione detalhes sobre seu hábito..."
+            }
             placeholderTextColor={colors.textTertiary}
             value={description}
             onChangeText={setDescription}
@@ -200,7 +249,15 @@ export default function EditHabitScreen() {
         <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
           <Icon name="info" size={16} color={colors.info} />
           <Text style={[styles.infoText, { color: colors.info }]}>
-            Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
+            {isNegative ? (
+              <>
+                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que resistir e evitar este hábito!
+              </>
+            ) : (
+              <>
+                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
+              </>
+            )}
           </Text>
         </View>
       </ScrollView>
@@ -248,6 +305,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  typeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  typeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  typeDescription: {
+    fontSize: 12,
+  },
+  lockBadge: {
+    padding: 6,
+    borderRadius: 6,
   },
   input: {
     borderRadius: 12,

@@ -47,6 +47,7 @@ export default function CreateHabitScreen() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
 
@@ -158,20 +159,19 @@ export default function CreateHabitScreen() {
 
     const trimmedDescription = description.trim();
 
-    // 🔧 FIX: Usar os estados de frequência corretamente
     const habitData: any = {
       name: name.trim(),
       description: trimmedDescription || undefined,
-      type: 'positive' as const,
-      frequency_type: frequencyType,  // ✅ Usar o estado
-      frequency_days: frequencyType === 'weekly' ? frequencyDays : null,  // ✅ Usar o estado
+      type: habitType,
+      frequency_type: frequencyType,
+      frequency_days: frequencyType === 'weekly' ? frequencyDays : null,
       has_target: hasTarget,
       target_value: hasTarget ? parseFloat(targetValue) : null,
       target_unit: hasTarget ? targetUnit.trim() : null,
       difficulty,
       points_base: DIFFICULTY_CONFIG[difficulty].points,
       color: selectedColor,
-      icon: 'star',
+      icon: habitType === 'negative' ? 'xCircle' : 'star',
     };
 
     const { data: habit, error } = await createHabit(habitData);
@@ -279,16 +279,94 @@ export default function CreateHabitScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* TIPO DE HÁBITO */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Tipo de Hábito</Text>
+          <View style={styles.habitTypeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.habitTypeOption,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                habitType === 'positive' && {
+                  borderColor: colors.success,
+                  backgroundColor: colors.successLight,
+                },
+              ]}
+              onPress={() => {
+                hapticFeedback.selection();
+                setHabitType('positive');
+              }}
+            >
+              <Icon 
+                name="check" 
+                size={24} 
+                color={habitType === 'positive' ? colors.success : colors.textSecondary} 
+              />
+              <Text
+                style={[
+                  styles.habitTypeLabel,
+                  { color: colors.textSecondary },
+                  habitType === 'positive' && { color: colors.success, fontWeight: '600' },
+                ]}
+              >
+                Positivo
+              </Text>
+              <Text style={[styles.habitTypeDescription, { color: colors.textTertiary }]}>
+                Criar um novo hábito
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.habitTypeOption,
+                { borderColor: colors.border, backgroundColor: colors.surface },
+                habitType === 'negative' && {
+                  borderColor: colors.warning,
+                  backgroundColor: colors.warningLight,
+                },
+              ]}
+              onPress={() => {
+                hapticFeedback.selection();
+                setHabitType('negative');
+              }}
+            >
+              <Icon 
+                name="xCircle" 
+                size={24} 
+                color={habitType === 'negative' ? colors.warning : colors.textSecondary} 
+              />
+              <Text
+                style={[
+                  styles.habitTypeLabel,
+                  { color: colors.textSecondary },
+                  habitType === 'negative' && { color: colors.warning, fontWeight: '600' },
+                ]}
+              >
+                Negativo
+              </Text>
+              <Text style={[styles.habitTypeDescription, { color: colors.textTertiary }]}>
+                Evitar algo ruim
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Nome */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Nome do Hábito *</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>
+            Nome do Hábito *
+          </Text>
           <TextInput
             style={[styles.input, {
               backgroundColor: colors.surface,
               borderColor: colors.border,
               color: colors.textPrimary
             }]}
-            placeholder="Ex: Meditar, Ler, Exercitar..."
+            placeholder={
+              habitType === 'positive' 
+                ? "Ex: Meditar, Ler, Exercitar..." 
+                : "Ex: Não fumar, Evitar doces, Não procrastinar..."
+            }
             placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
@@ -309,7 +387,11 @@ export default function CreateHabitScreen() {
               borderColor: colors.border,
               color: colors.textPrimary
             }]}
-            placeholder="Adicione detalhes sobre seu hábito..."
+            placeholder={
+              habitType === 'positive'
+                ? "Adicione detalhes sobre seu hábito..."
+                : "Por que você quer evitar isso?"
+            }
             placeholderTextColor={colors.textTertiary}
             value={description}
             onChangeText={setDescription}
@@ -367,7 +449,9 @@ export default function CreateHabitScreen() {
             </Text>
           </View>
           <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-            Quando você quer realizar este hábito?
+            {habitType === 'positive' 
+              ? 'Quando você quer realizar este hábito?'
+              : 'Quando você precisa evitar isso?'}
           </Text>
           <FrequencySelector
             frequencyType={frequencyType}
@@ -560,7 +644,15 @@ export default function CreateHabitScreen() {
         <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
           <Icon name="info" size={16} color={colors.info} />
           <Text style={[styles.infoText, { color: colors.info }]}>
-            Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
+            {habitType === 'positive' ? (
+              <>
+                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
+              </>
+            ) : (
+              <>
+                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que resistir e evitar este hábito!
+              </>
+            )}
             {hasTarget && targetValue && targetUnit && (
               <Text>{'\n'}Meta: {targetValue} {targetUnit} por dia</Text>
             )}
@@ -598,6 +690,18 @@ const styles = StyleSheet.create({
   charCount: { fontSize: 12, textAlign: 'right', marginTop: 4 },
   reminderCount: { fontSize: 12, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  habitTypeContainer: { flexDirection: 'row', gap: 12 },
+  habitTypeOption: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    gap: 6,
+  },
+  habitTypeLabel: { fontSize: 14, fontWeight: '500' },
+  habitTypeDescription: { fontSize: 11, textAlign: 'center' },
   input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, borderWidth: 1 },
   textArea: { height: 80, textAlignVertical: 'top' },
   difficultyContainer: { flexDirection: 'row', gap: 12 },

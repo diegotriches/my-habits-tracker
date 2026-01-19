@@ -57,8 +57,9 @@ export const Colors = {
     pressed: 'rgba(59, 130, 246, 0.16)',
     
     // Special
-    streak: '#F59E0B',
-    points: '#F59E0B',
+    streak: '#F97316',
+    streakLight: '#FED7AA',
+    points: '#EAB308',
     level: '#8B5CF6',
   },
   
@@ -113,9 +114,10 @@ export const Colors = {
     pressed: 'rgba(96, 165, 250, 0.16)',
     
     // Special
-    streak: '#FCD34D',
-    points: '#FCD34D',
-    level: '#A78BFA',
+    streak: '#FB923C',
+    streakLight: '#78350F',
+    points: '#FDE047',
+    level: '#C4B5FD',
   },
 };
 

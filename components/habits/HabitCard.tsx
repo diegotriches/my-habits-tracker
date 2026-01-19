@@ -31,6 +31,7 @@ export default function HabitCard({
   const { colors } = useTheme();
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const hasStreak = (streak?.current_streak || 0) > 0;
+  const isNegative = habit.type === 'negative';
 
   const [showProgressInput, setShowProgressInput] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
@@ -43,7 +44,6 @@ export default function HabitCard({
     
     if (!onComplete) return;
 
-    // Haptic feedback leve ao tocar
     hapticFeedback.light();
 
     if (habit.has_target && habit.target_value && habit.target_unit) {
@@ -53,7 +53,6 @@ export default function HabitCard({
 
     if (isCompleted) return;
 
-    // Haptic feedback de sucesso ao completar
     hapticFeedback.success();
 
     Animated.sequence([
@@ -100,15 +99,11 @@ export default function HabitCard({
 
   const handleProgressConfirm = (achievedValue: number, mode: 'add' | 'replace') => {
     setShowProgressInput(false);
-    
-    // Haptic feedback de sucesso
     hapticFeedback.success();
-    
     onComplete?.(achievedValue, mode);
   };
 
   const handleCardPress = () => {
-    // Haptic feedback leve ao navegar
     hapticFeedback.light();
     onPress?.();
   };
@@ -127,6 +122,10 @@ export default function HabitCard({
     return getProgressPercentage() >= 100;
   };
 
+  // 🆕 Cor do card baseada no tipo
+  const cardColor = isNegative ? colors.warning : habit.color;
+  const successColor = isNegative ? colors.warning : colors.success;
+
   const renderCheckButton = () => {
     if (!habit.has_target) {
       return (
@@ -135,12 +134,16 @@ export default function HabitCard({
             style={[
               styles.checkButton,
               { backgroundColor: colors.surface },
-              isCompleted && { backgroundColor: colors.success },
+              isCompleted && { backgroundColor: successColor },
             ]}
             onPress={handleComplete}
           >
             {isCompleted ? (
-              <Icon name="check" size={24} color={colors.textInverse} />
+              <Icon 
+                name={isNegative ? "shield" : "check"} 
+                size={24} 
+                color={colors.textInverse} 
+              />
             ) : (
               <View style={[styles.checkCircle, { borderColor: colors.border }]} />
             )}
@@ -157,13 +160,17 @@ export default function HabitCard({
         style={[
           styles.checkButton,
           { backgroundColor: colors.surface },
-          fullyCompleted && { backgroundColor: colors.success },
+          fullyCompleted && { backgroundColor: successColor },
           !fullyCompleted && percentage > 0 && { backgroundColor: colors.primaryLight },
         ]}
         onPress={handleComplete}
       >
         {fullyCompleted ? (
-          <Icon name="check" size={24} color={colors.textInverse} />
+          <Icon 
+            name={isNegative ? "shield" : "check"} 
+            size={24} 
+            color={colors.textInverse} 
+          />
         ) : percentage > 0 ? (
           <View style={styles.partialCheckContainer}>
             <Svg width={24} height={24} viewBox="0 0 24 24">
@@ -180,7 +187,7 @@ export default function HabitCard({
                 cy={12}
                 r={10}
                 fill="none"
-                stroke={colors.primary}
+                stroke={cardColor}
                 strokeWidth={2}
                 strokeDasharray={`${(percentage / 100) * 62.83} 62.83`}
                 strokeLinecap="round"
@@ -188,7 +195,7 @@ export default function HabitCard({
                 origin="12, 12"
               />
             </Svg>
-            <Text style={[styles.partialCheckText, { color: colors.primary }]}>
+            <Text style={[styles.partialCheckText, { color: cardColor }]}>
               {percentage.toFixed(0)}
             </Text>
           </View>
@@ -211,15 +218,29 @@ export default function HabitCard({
         ]}
       >
         <View style={styles.content}>
-          <View style={[styles.colorIndicator, { backgroundColor: habit.color }]} />
+          <View style={[styles.colorIndicator, { backgroundColor: cardColor }]} />
 
           <View style={styles.info}>
             <View style={styles.nameRow}>
+              {/* 🆕 Ícone do tipo de hábito */}
+              {isNegative && (
+                <Icon name="xCircle" size={16} color={colors.warning} />
+              )}
               <Text style={[styles.name, { color: colors.textPrimary }]}>{habit.name}</Text>
               {hasStreak && (
-                <View style={[styles.streakBadge, { backgroundColor: colors.warningLight }]}>
-                  <Icon name="flame" size={12} color={colors.warning} />
-                  <Text style={[styles.streakText, { color: colors.warning }]}>
+                <View style={[
+                  styles.streakBadge, 
+                  { backgroundColor: isNegative ? colors.warningLight : colors.streakLight }
+                ]}>
+                  <Icon 
+                    name="flame" 
+                    size={12} 
+                    color={isNegative ? colors.warning : colors.streak} 
+                  />
+                  <Text style={[
+                    styles.streakText, 
+                    { color: isNegative ? colors.warning : colors.streak }
+                  ]}>
                     {streak?.current_streak}
                   </Text>
                 </View>
@@ -250,7 +271,7 @@ export default function HabitCard({
                   <Text style={[
                     styles.targetPercentage,
                     { color: colors.textSecondary },
-                    getProgressPercentage() >= 100 && { color: colors.success },
+                    getProgressPercentage() >= 100 && { color: successColor },
                   ]}>
                     {getProgressPercentage().toFixed(0)}%
                   </Text>
@@ -262,17 +283,20 @@ export default function HabitCard({
                       styles.progressFill,
                       { 
                         width: `${getProgressPercentage()}%`,
-                        backgroundColor: getProgressPercentage() >= 100 ? colors.success : habit.color,
+                        backgroundColor: getProgressPercentage() >= 100 ? successColor : cardColor,
                       }
                     ]}
                   />
                 </View>
 
                 {getProgressPercentage() >= 100 && (
-                  <View style={[styles.achievementBadge, { backgroundColor: colors.successLight }]}>
-                    <Icon name="sparkles" size={11} color={colors.success} />
-                    <Text style={[styles.achievementText, { color: colors.success }]}>
-                      Meta atingida!
+                  <View style={[
+                    styles.achievementBadge, 
+                    { backgroundColor: isNegative ? colors.warningLight : colors.successLight }
+                  ]}>
+                    <Icon name="sparkles" size={11} color={successColor} />
+                    <Text style={[styles.achievementText, { color: successColor }]}>
+                      {isNegative ? 'Manteve-se firme!' : 'Meta atingida!'}
                     </Text>
                   </View>
                 )}
@@ -319,7 +343,7 @@ export default function HabitCard({
               },
             ]}
           >
-            <Text style={[styles.floatingPointsText, { color: colors.success }]}>
+            <Text style={[styles.floatingPointsText, { color: successColor }]}>
               +{habit.points_base} pts
             </Text>
           </Animated.View>
