@@ -1,21 +1,24 @@
+// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#3b82f6',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: colors.background,
           borderTopWidth: 1,
-          borderTopColor: '#f3f4f6',
+          borderTopColor: colors.border,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 8,
           paddingTop: 8,
@@ -30,31 +33,29 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Hábitos',
-          tabBarIcon: ({ color }) => <TabBarIcon name="📋" color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="home" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: 'Estatísticas',
-          tabBarIcon: ({ color }) => <TabBarIcon name="📊" color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="stats" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color }) => <TabBarIcon name="👤" color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="profile" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
-  );
-}
-
-function TabBarIcon({ name, color }: { name: string; color: string }) {
-  return (
-    <Text style={{ fontSize: 24, opacity: color === '#3b82f6' ? 1 : 0.5 }}>
-      {name}
-    </Text>
   );
 }

@@ -1,13 +1,40 @@
+// app/_layout.tsx
 import { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { notificationService } from '@/services/notifications';
+import { ThemeProvider } from './contexts/ThemeContext';
 
-export default function RootLayout() {
+function RootLayoutNav() {
   const { isAuthenticated, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
+  // Configurar listeners de notificações
+  useEffect(() => {
+    // Handler de navegação quando clicar na notificação
+    const handleNavigationToHabit = (habitId: string) => {
+      // Navegar para a tela de detalhes do hábito
+      router.push(`/habits/${habitId}` as any);
+    };
+
+    // Configurar handlers de notificações (deep link + ações)
+    notificationService.setupNotificationHandlers(handleNavigationToHabit);
+
+    // Opcional: Solicitar permissões ao iniciar (se ainda não tiver)
+    (async () => {
+      const hasPermission = await notificationService.hasPermission();
+      if (!hasPermission) {
+        // Você pode pedir permissão aqui ou deixar para quando criar o primeiro hábito
+        // await notificationService.requestPermissions();
+      }
+    })();
+
+    // Cleanup não necessário - listeners são globais
+  }, []);
+
+  // Controle de autenticação e navegação
   useEffect(() => {
     if (loading) return;
 
@@ -31,6 +58,14 @@ export default function RootLayout() {
   }
 
   return <Slot />;
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutNav />
+    </ThemeProvider>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -48,7 +48,7 @@ export const useProfile = () => {
       setProfile(data as Profile);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar perfil');
-      console.error('Error fetching profile:', err);
+      // ✅ FIX: Console.error removido
     } finally {
       setLoading(false);
     }

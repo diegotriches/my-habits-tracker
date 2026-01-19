@@ -1,47 +1,48 @@
-import React from 'react';
+// app/(tabs)/profile.tsx
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
+import { usePenalties } from '@/hooks/usePenalties';
+import { useTheme } from '../contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsCard from '@/components/profile/StatsCard';
+import { PenaltyHistory } from '@/components/penalties/PenaltyHistory';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
+
+type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useProfileStats();
+  const { penaltyHistory, stats: penaltyStats } = usePenalties();
+  const { colors, themeMode, setThemeMode } = useTheme();
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const loading = profileLoading || statsLoading;
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sair',
-      'Tem certeza que deseja sair da sua conta?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/(auth)/login' as any);
-          },
-        },
-      ]
-    );
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    await signOut();
+    setShowLogoutConfirm(false);
+    router.replace('/(auth)/login' as any);
   };
 
   const handleRefresh = async () => {
@@ -61,147 +62,247 @@ export default function ProfileScreen() {
     return 'Novato';
   };
 
+  const handleThemeChange = (mode: ThemeMode) => {
+    setThemeMode(mode);
+  };
+
+  // Loading inicial com skeleton
   if (loading && !profile) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-      </View>
-    );
+    return <ProfileSkeleton />;
   }
 
+  // Erro ao carregar perfil
   if (!profile) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.errorText}>Erro ao carregar perfil</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ErrorState
+          title="Não foi possível carregar o perfil"
+          message="Verifique sua conexão e tente novamente."
+          onRetry={refetchProfile}
+        />
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Perfil</Text>
-      </View>
+    <>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        refreshControl={
+          <RefreshControl 
+            refreshing={loading} 
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Perfil</Text>
+        </View>
 
-      {/* Profile Header com Avatar e Nível */}
-      <ProfileHeader profile={profile} levelTitle={getLevelTitle(profile.level)} />
+        {/* Profile Header com Avatar e Nível */}
+        <ProfileHeader profile={profile} levelTitle={getLevelTitle(profile.level)} />
 
-      {/* Estatísticas Rápidas */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Estatísticas</Text>
-        <StatsCard
-          stats={[
-            {
-              icon: '📅',
-              value: stats.daysActive,
-              label: 'Dias Ativos',
-            },
-            {
-              icon: '✅',
-              value: stats.totalCompletions,
-              label: 'Completados',
-            },
-            {
-              icon: '🔥',
-              value: stats.bestStreak,
-              label: 'Melhor Streak',
-            },
-          ]}
-        />
-      </View>
+        {/* Estatísticas Rápidas */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+            Estatísticas
+          </Text>
+          <StatsCard
+            stats={[
+              {
+                icon: '📅',
+                value: stats.daysActive,
+                label: 'Dias Ativos',
+              },
+              {
+                icon: '✅',
+                value: stats.totalCompletions,
+                label: 'Completados',
+              },
+              {
+                icon: '🔥',
+                value: stats.bestStreak,
+                label: 'Melhor Streak',
+              },
+            ]}
+          />
+        </View>
 
-      {/* Informações da Conta */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Conta</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{user?.email}</Text>
+        {/* Seção de Penalidades */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+            Penalidades
+          </Text>
+
+          {/* Card de Estatísticas de Penalidades */}
+          <View style={[styles.penaltyStatsCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.penaltyStatItem}>
+              <Text style={[styles.penaltyStatValue, { color: colors.textPrimary }]}>
+                {penaltyStats.totalPenalties}
+              </Text>
+              <Text style={[styles.penaltyStatLabel, { color: colors.textSecondary }]}>Total</Text>
+            </View>
+            <View style={[styles.penaltyDivider, { backgroundColor: colors.divider }]} />
+            <View style={styles.penaltyStatItem}>
+              <Text style={[styles.penaltyStatValue, { color: colors.danger }]}>
+                {penaltyStats.totalPointsLost}
+              </Text>
+              <Text style={[styles.penaltyStatLabel, { color: colors.textSecondary }]}>
+                Pontos Perdidos
+              </Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Total de Hábitos</Text>
-            <Text style={styles.infoValue}>{stats.totalHabits}</Text>
+
+          {/* Histórico */}
+          <View style={styles.historyContainer}>
+            <PenaltyHistory penalties={penaltyHistory} />
           </View>
         </View>
-      </View>
 
-      {/* Configurações */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Configurações</Text>
-        
-        <TouchableOpacity style={styles.settingItem} disabled>
-          <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}>🎨</Text>
-            <Text style={styles.settingText}>Tema</Text>
+        {/* Informações da Conta */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+            Conta
+          </Text>
+          <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]} numberOfLines={1}>
+                {user?.email}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total de Hábitos</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{stats.totalHabits}</Text>
+            </View>
           </View>
-          <Text style={styles.settingValue}>Claro</Text>
-        </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity style={styles.settingItem} disabled>
-          <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}>🔔</Text>
-            <Text style={styles.settingText}>Notificações</Text>
+        {/* Configurações */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+            Configurações
+          </Text>
+
+          {/* Tema Section */}
+          <View style={[styles.settingGroup, { backgroundColor: colors.background }]}>
+            <View style={[styles.settingHeader, { borderBottomColor: colors.border }]}>
+              <Icon name="palette" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingHeaderText, { color: colors.textPrimary }]}>
+                Aparência
+              </Text>
+            </View>
+
+            {/* Light Mode */}
+            <TouchableOpacity
+              onPress={() => handleThemeChange('light')}
+              style={[styles.themeOption, { borderBottomColor: colors.border }]}
+            >
+              <View style={styles.themeLeft}>
+                <Icon name="sun" size={20} color={colors.textSecondary} />
+                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Claro</Text>
+              </View>
+              {themeMode === 'light' && (
+                <Icon name="check" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            {/* Dark Mode */}
+            <TouchableOpacity
+              onPress={() => handleThemeChange('dark')}
+              style={[styles.themeOption, { borderBottomColor: colors.border }]}
+            >
+              <View style={styles.themeLeft}>
+                <Icon name="moon" size={20} color={colors.textSecondary} />
+                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Escuro</Text>
+              </View>
+              {themeMode === 'dark' && (
+                <Icon name="check" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            {/* System Mode */}
+            <TouchableOpacity
+              onPress={() => handleThemeChange('system')}
+              style={styles.themeOption}
+            >
+              <View style={styles.themeLeft}>
+                <Icon name="palette" size={20} color={colors.textSecondary} />
+                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Automático</Text>
+              </View>
+              {themeMode === 'system' && (
+                <Icon name="check" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
           </View>
-          <Text style={styles.settingValue}>Em breve</Text>
-        </TouchableOpacity>
 
-        <View style={styles.comingSoonNote}>
-          <Text style={styles.comingSoonText}>
-            💡 Tema escuro e notificações em desenvolvimento
+          {/* Notificações */}
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
+            onPress={() => router.push('/settings/notifications' as any)}
+          >
+            <View style={styles.settingLeft}>
+              <Icon name="bell" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>Notificações</Text>
+            </View>
+            <Icon name="chevronRight" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Ações */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={[styles.logoutButton, { backgroundColor: colors.background, borderColor: colors.danger }]} 
+            onPress={handleLogout}
+          >
+            <Icon name="logout" size={20} color={colors.danger} />
+            <Text style={[styles.logoutButtonText, { color: colors.danger }]}>Sair da Conta</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Versão */}
+        <View style={styles.footer}>
+          <Text style={[styles.versionText, { color: colors.textTertiary }]}>
+            My Habits Tracker v1.1.0
+          </Text>
+          <Text style={[styles.copyrightText, { color: colors.textDisabled }]}>
+            Feito com ❤️ para seu crescimento
           </Text>
         </View>
-      </View>
 
-      {/* Ações */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Sair da Conta</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{ height: 40 }} />
+      </ScrollView>
 
-      {/* Versão */}
-      <View style={styles.footer}>
-        <Text style={styles.versionText}>My Habits Tracker v1.0.0</Text>
-      </View>
-
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      {/* Confirmação de Logout */}
+      <ConfirmDialog
+        visible={showLogoutConfirm}
+        title="Sair da Conta"
+        message="Tem certeza que deseja sair? Você precisará fazer login novamente."
+        confirmText="Sair"
+        cancelText="Cancelar"
+        confirmColor="danger"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6b7280',
   },
   header: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   section: {
     marginTop: 12,
@@ -209,13 +310,43 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#f9fafb',
+  },
+  penaltyStatsCard: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  penaltyStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  penaltyStatValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  penaltyStatLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  penaltyDivider: {
+    width: 1,
+    marginHorizontal: 20,
+  },
+  historyContainer: {
+    marginHorizontal: 20,
   },
   infoCard: {
-    backgroundColor: '#fff',
     paddingVertical: 8,
   },
   infoRow: {
@@ -224,63 +355,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#6b7280',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    maxWidth: '60%',
+  },
+  settingGroup: {
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  settingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  settingHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  themeOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  themeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themeText: {
+    fontSize: 15,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  settingIcon: {
-    fontSize: 20,
-  },
   settingText: {
     fontSize: 16,
-    color: '#1f2937',
-  },
-  settingValue: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  comingSoonNote: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  comingSoonText: {
-    fontSize: 12,
-    color: '#92400e',
-    lineHeight: 18,
   },
   logoutButton: {
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     marginHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ef4444',
   },
   logoutButtonText: {
-    color: '#ef4444',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -290,6 +438,9 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#9ca3af',
+    marginBottom: 4,
+  },
+  copyrightText: {
+    fontSize: 11,
   },
 });

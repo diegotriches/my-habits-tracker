@@ -1,3 +1,4 @@
+// app/(auth)/login.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -11,12 +12,16 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 import { router } from 'expo-router';
 
 export default function LoginScreen() {
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true); // true = login, false = registro
+  const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const { signInWithEmail, signUpWithEmail, loading } = useAuth();
 
   const handleSubmit = async () => {
@@ -32,16 +37,13 @@ export default function LoginScreen() {
 
     try {
       if (isLogin) {
-        // Login
         const { error } = await signInWithEmail(email, password);
         if (error) {
           Alert.alert('Erro no Login', error.message);
         } else {
-          // Redirecionar para a home
           router.replace('/(tabs)');
         }
       } else {
-        // Registro
         const { error } = await signUpWithEmail(email, password);
         if (error) {
           Alert.alert('Erro no Cadastro', error.message);
@@ -62,52 +64,94 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>🎯</Text>
-          <Text style={styles.title}>My Habits Tracker</Text>
-          <Text style={styles.subtitle}>
+          <View style={[styles.logoCircle, { backgroundColor: colors.primaryLight }]}>
+            <Icon name="target" size={48} color={colors.primary} />
+          </View>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            My Habits Tracker
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {isLogin ? 'Entre na sua conta' : 'Crie sua conta'}
           </Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#999"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!loading}
-          />
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputIconContainer}>
+              <Icon name="mail" size={20} color={colors.textTertiary} />
+            </View>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.textPrimary 
+              }]}
+              placeholder="Email"
+              placeholderTextColor={colors.textTertiary}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!loading}
+            />
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            placeholderTextColor="#999"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            editable={!loading}
-          />
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputIconContainer}>
+              <Icon name="lock" size={20} color={colors.textTertiary} />
+            </View>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.textPrimary 
+              }]}
+              placeholder="Senha"
+              placeholderTextColor={colors.textTertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Icon 
+                name={showPassword ? "eye" : "eyeOff"} 
+                size={20} 
+                color={colors.textTertiary} 
+              />
+            </TouchableOpacity>
+          </View>
 
+          {/* Submit Button */}
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={handleSubmit}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.textInverse} />
             ) : (
-              <Text style={styles.buttonText}>
-                {isLogin ? 'Entrar' : 'Cadastrar'}
-              </Text>
+              <>
+                <Icon 
+                  name={isLogin ? "login" : "userPlus"} 
+                  size={20} 
+                  color={colors.textInverse} 
+                />
+                <Text style={[styles.buttonText, { color: colors.textInverse }]}>
+                  {isLogin ? 'Entrar' : 'Cadastrar'}
+                </Text>
+              </>
             )}
           </TouchableOpacity>
 
@@ -117,7 +161,7 @@ export default function LoginScreen() {
             onPress={() => setIsLogin(!isLogin)}
             disabled={loading}
           >
-            <Text style={styles.toggleText}>
+            <Text style={[styles.toggleText, { color: colors.primary }]}>
               {isLogin
                 ? 'Não tem conta? Cadastre-se'
                 : 'Já tem conta? Faça login'}
@@ -127,8 +171,8 @@ export default function LoginScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Versão 1.0.0 • My Habits Tracker
+          <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+            Versão 1.1.0 • My Habits Tracker
           </Text>
         </View>
       </View>
@@ -139,7 +183,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -150,54 +193,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
-  logo: {
-    fontSize: 64,
-    marginBottom: 16,
+  logoCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
   },
   form: {
     width: '100%',
   },
+  inputContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  inputIconContainer: {
+    position: 'absolute',
+    left: 16,
+    top: 14,
+    zIndex: 1,
+  },
   input: {
-    backgroundColor: '#f3f4f6',
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 48,
     paddingVertical: 14,
     fontSize: 16,
-    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+    padding: 4,
   },
   button: {
-    backgroundColor: '#3b82f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: 'center',
     marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   toggleButton: {
     marginTop: 24,
     alignItems: 'center',
+    paddingVertical: 12,
   },
   toggleText: {
-    color: '#3b82f6',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -209,7 +270,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    color: '#9ca3af',
     fontSize: 12,
   },
 });

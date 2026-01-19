@@ -1,3 +1,4 @@
+// app/habits/edit/[id].tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,22 +12,23 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useHabits } from '@/hooks/useHabits';
+import { useTheme } from '../../contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
 
 export default function EditHabitScreen() {
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getHabit, updateHabit } = useHabits();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Estado do formulário
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
 
-  // Carregar dados do hábito
   useEffect(() => {
     loadHabit();
   }, [id]);
@@ -78,25 +80,25 @@ export default function EditHabitScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.cancelButton}>Cancelar</Text>
+          <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancelar</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar Hábito</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Editar Hábito</Text>
         <TouchableOpacity onPress={handleSubmit} disabled={saving}>
           {saving ? (
-            <ActivityIndicator size="small" color="#3b82f6" />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={styles.saveButton}>Salvar</Text>
+            <Text style={[styles.saveButton, { color: colors.primary }]}>Salvar</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -104,10 +106,15 @@ export default function EditHabitScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Nome */}
         <View style={styles.section}>
-          <Text style={styles.label}>Nome do Hábito *</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Nome do Hábito *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.textPrimary 
+            }]}
             placeholder="Ex: Meditar, Ler, Exercitar..."
+            placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
             maxLength={50}
@@ -116,10 +123,15 @@ export default function EditHabitScreen() {
 
         {/* Descrição */}
         <View style={styles.section}>
-          <Text style={styles.label}>Descrição (opcional)</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Descrição (opcional)</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { 
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.textPrimary 
+            }]}
             placeholder="Adicione detalhes sobre seu hábito..."
+            placeholderTextColor={colors.textTertiary}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -130,7 +142,7 @@ export default function EditHabitScreen() {
 
         {/* Dificuldade */}
         <View style={styles.section}>
-          <Text style={styles.label}>Dificuldade</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Dificuldade</Text>
           <View style={styles.difficultyContainer}>
             {(Object.keys(DIFFICULTY_CONFIG) as Array<'easy' | 'medium' | 'hard'>).map((key) => {
               const config = DIFFICULTY_CONFIG[key];
@@ -140,6 +152,7 @@ export default function EditHabitScreen() {
                   key={key}
                   style={[
                     styles.difficultyOption,
+                    { borderColor: colors.border },
                     isSelected && {
                       borderColor: config.color,
                       backgroundColor: config.color + '10',
@@ -150,12 +163,15 @@ export default function EditHabitScreen() {
                   <Text
                     style={[
                       styles.difficultyLabel,
+                      { color: colors.textSecondary },
                       isSelected && { color: config.color },
                     ]}
                   >
                     {config.label}
                   </Text>
-                  <Text style={styles.difficultyPoints}>+{config.points} pts</Text>
+                  <Text style={[styles.difficultyPoints, { color: colors.textTertiary }]}>
+                    +{config.points} pts
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -164,7 +180,7 @@ export default function EditHabitScreen() {
 
         {/* Cor */}
         <View style={styles.section}>
-          <Text style={styles.label}>Cor</Text>
+          <Text style={[styles.label, { color: colors.textPrimary }]}>Cor</Text>
           <View style={styles.colorContainer}>
             {HABIT_COLORS.map((color) => (
               <TouchableOpacity
@@ -181,9 +197,10 @@ export default function EditHabitScreen() {
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
-            💡 Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
+        <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
+          <Icon name="info" size={16} color={colors.info} />
+          <Text style={[styles.infoText, { color: colors.info }]}>
+            Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
           </Text>
         </View>
       </ScrollView>
@@ -194,13 +211,11 @@ export default function EditHabitScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -210,20 +225,16 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
   },
   cancelButton: {
     fontSize: 16,
-    color: '#6b7280',
   },
   saveButton: {
     fontSize: 16,
-    color: '#3b82f6',
     fontWeight: '600',
   },
   content: {
@@ -236,18 +247,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    color: '#1f2937',
   },
   textArea: {
     height: 80,
@@ -263,18 +270,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
     alignItems: 'center',
   },
   difficultyLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
     marginBottom: 4,
   },
   difficultyPoints: {
     fontSize: 12,
-    color: '#9ca3af',
   },
   colorContainer: {
     flexDirection: 'row',
@@ -297,14 +301,15 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   infoCard: {
-    backgroundColor: '#dbeafe',
+    flexDirection: 'row',
+    gap: 8,
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
   },
   infoText: {
+    flex: 1,
     fontSize: 14,
-    color: '#1e40af',
     lineHeight: 20,
   },
   infoBold: {

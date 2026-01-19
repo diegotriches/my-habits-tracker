@@ -1,3 +1,4 @@
+// components/habits/ReminderSetup.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -10,6 +11,8 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useReminders } from '@/hooks/useReminders';
+import { useTheme } from '@/app/contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 
 interface ReminderSetupProps {
   habitId: string;
@@ -17,6 +20,7 @@ interface ReminderSetupProps {
 }
 
 export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
+  const { colors } = useTheme();
   const { reminders, createReminder, deleteReminder, toggleReminder } = useReminders(habitId);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
@@ -29,10 +33,10 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
     const success = await createReminder(habitId, habitName, timeString);
     
     if (success) {
-      Alert.alert('✅ Lembrete criado', `Você será notificado às ${timeString}`);
+      Alert.alert('Lembrete criado', `Você será notificado às ${timeString}`);
       setShowTimePicker(false);
     } else {
-      Alert.alert('❌ Erro', 'Não foi possível criar o lembrete');
+      Alert.alert('Erro', 'Não foi possível criar o lembrete');
     }
   };
 
@@ -48,7 +52,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
           onPress: async () => {
             const success = await deleteReminder(reminder.id);
             if (success) {
-              Alert.alert('✅ Lembrete removido');
+              Alert.alert('Lembrete removido');
             }
           },
         },
@@ -59,7 +63,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   const handleToggleReminder = async (reminder: any) => {
     const success = await toggleReminder(reminder.id, habitName);
     if (!success) {
-      Alert.alert('❌ Erro', 'Não foi possível atualizar o lembrete');
+      Alert.alert('Erro', 'Não foi possível atualizar o lembrete');
     }
   };
 
@@ -76,10 +80,13 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>🔔 Lembretes</Text>
-        <Text style={styles.subtitle}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name="bell" size={16} color={colors.textPrimary} />
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Lembretes</Text>
+        </View>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Receba notificações para não esquecer
         </Text>
       </View>
@@ -87,10 +94,23 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
       {reminders.length > 0 && (
         <ScrollView style={styles.remindersList} nestedScrollEnabled>
           {reminders.map((reminder) => (
-            <View key={reminder.id} style={styles.reminderItem}>
+            <View 
+              key={reminder.id} 
+              style={[styles.reminderItem, { 
+                backgroundColor: colors.surface,
+                borderColor: colors.border 
+              }]}
+            >
               <View style={styles.reminderInfo}>
-                <Text style={styles.reminderTime}>⏰ {reminder.time}</Text>
-                <Text style={styles.reminderStatus}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Icon name="clock" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>
+                    {reminder.time}
+                  </Text>
+                </View>
+                <Text style={[styles.reminderStatus, { 
+                  color: reminder.is_active ? colors.success : colors.textTertiary 
+                }]}>
                   {reminder.is_active ? 'Ativo' : 'Desativado'}
                 </Text>
               </View>
@@ -100,19 +120,22 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
                   onPress={() => handleToggleReminder(reminder)}
                   style={[
                     styles.toggleButton,
-                    reminder.is_active && styles.toggleButtonActive,
+                    { backgroundColor: colors.border },
+                    reminder.is_active && { backgroundColor: colors.success },
                   ]}
                 >
-                  <Text style={styles.toggleButtonText}>
-                    {reminder.is_active ? '✓' : '○'}
-                  </Text>
+                  {reminder.is_active ? (
+                    <Icon name="check" size={16} color={colors.textInverse} />
+                  ) : (
+                    <View style={[styles.inactiveCircle, { borderColor: colors.textInverse }]} />
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => handleDeleteReminder(reminder)}
                   style={styles.deleteButton}
                 >
-                  <Text style={styles.deleteButtonText}>🗑️</Text>
+                  <Icon name="trash" size={18} color={colors.danger} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -122,21 +145,28 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
 
       {reminders.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
+          <Icon name="bellOff" size={32} color={colors.textTertiary} />
+          <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
             Nenhum lembrete configurado
           </Text>
         </View>
       )}
 
       <TouchableOpacity
-        style={styles.addButton}
+        style={[styles.addButton, { backgroundColor: colors.primary }]}
         onPress={() => setShowTimePicker(true)}
       >
-        <Text style={styles.addButtonText}>+ Adicionar Lembrete</Text>
+        <Icon name="add" size={16} color={colors.textInverse} />
+        <Text style={[styles.addButtonText, { color: colors.textInverse }]}>
+          Adicionar Lembrete
+        </Text>
       </TouchableOpacity>
 
       {showTimePicker && (
-        <View style={styles.pickerContainer}>
+        <View style={[styles.pickerContainer, { 
+          backgroundColor: colors.surface,
+          borderColor: colors.border 
+        }]}>
           <DateTimePicker
             value={selectedTime}
             mode="time"
@@ -149,16 +179,20 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
             <View style={styles.pickerButtons}>
               <TouchableOpacity
                 onPress={() => setShowTimePicker(false)}
-                style={styles.pickerCancelButton}
+                style={[styles.pickerCancelButton, { backgroundColor: colors.border }]}
               >
-                <Text style={styles.pickerCancelText}>Cancelar</Text>
+                <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>
+                  Cancelar
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleAddReminder}
-                style={styles.pickerConfirmButton}
+                style={[styles.pickerConfirmButton, { backgroundColor: colors.success }]}
               >
-                <Text style={styles.pickerConfirmText}>Confirmar</Text>
+                <Text style={[styles.pickerConfirmText, { color: colors.textInverse }]}>
+                  Confirmar
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -169,71 +203,36 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  remindersList: {
-    maxHeight: 200,
-    paddingHorizontal: 20,
-  },
+  container: { marginBottom: 12 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  title: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  subtitle: { fontSize: 13 },
+  remindersList: { maxHeight: 200, paddingHorizontal: 20 },
   reminderItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f9fafb',
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 1,
   },
-  reminderInfo: {
-    flex: 1,
-  },
-  reminderTime: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  reminderStatus: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  reminderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  reminderInfo: { flex: 1 },
+  reminderTime: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  reminderStatus: { fontSize: 12 },
+  reminderActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toggleButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleButtonActive: {
-    backgroundColor: '#10b981',
-  },
-  toggleButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
+  inactiveCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
   },
   deleteButton: {
     width: 32,
@@ -241,67 +240,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteButtonText: {
-    fontSize: 18,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#9ca3af',
-  },
+  emptyState: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 20, gap: 8 },
+  emptyText: { fontSize: 13 },
   addButton: {
-    backgroundColor: '#3b82f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     marginHorizontal: 20,
     marginBottom: 16,
     padding: 14,
     borderRadius: 8,
-    alignItems: 'center',
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  addButtonText: { fontSize: 15, fontWeight: '600' },
   pickerContainer: {
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#f9fafb',
     borderRadius: 8,
     padding: 16,
+    borderWidth: 1,
   },
-  pickerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  pickerCancelButton: {
-    flex: 1,
-    padding: 12,
-    marginRight: 8,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  pickerCancelText: {
-    color: '#6b7280',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  pickerConfirmButton: {
-    flex: 1,
-    padding: 12,
-    marginLeft: 8,
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  pickerConfirmText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  pickerButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  pickerCancelButton: { flex: 1, padding: 12, marginRight: 8, borderRadius: 8, alignItems: 'center' },
+  pickerCancelText: { fontSize: 15, fontWeight: '600' },
+  pickerConfirmButton: { flex: 1, padding: 12, marginLeft: 8, borderRadius: 8, alignItems: 'center' },
+  pickerConfirmText: { fontSize: 15, fontWeight: '600' },
 });

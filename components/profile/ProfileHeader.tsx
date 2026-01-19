@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Profile } from '@/types/database';
 import { calculateLevelProgress, calculatePointsToNextLevel } from '@/utils/points';
+import { useTheme } from '@/app/contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -9,69 +11,89 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ profile, levelTitle }: ProfileHeaderProps) {
+  const { colors } = useTheme();
   const progress = calculateLevelProgress(profile.total_points, profile.level);
   const { pointsNeeded, nextLevelPoints } = calculatePointsToNextLevel(
     profile.total_points,
     profile.level
   );
 
-  const getLevelEmoji = (level: number) => {
-    if (level >= 10) return '✨';
-    if (level >= 8) return '💎';
-    if (level >= 7) return '⭐';
-    if (level >= 6) return '👑';
-    if (level >= 5) return '🏆';
-    if (level >= 4) return '🌳';
-    if (level >= 3) return '🍀';
-    if (level >= 2) return '🌿';
-    return '🌱';
+  const getLevelIcon = (level: number): { name: any; color: string } => {
+    if (level >= 10) return { name: 'sparkles', color: colors.warning };
+    if (level >= 8) return { name: 'crown', color: '#A855F7' };
+    if (level >= 7) return { name: 'star', color: colors.warning };
+    if (level >= 6) return { name: 'crown', color: colors.warning };
+    if (level >= 5) return { name: 'trophy', color: colors.warning };
+    if (level >= 4) return { name: 'zap', color: colors.success };
+    if (level >= 3) return { name: 'target', color: colors.success };
+    if (level >= 2) return { name: 'trendingUp', color: colors.primary };
+    return { name: 'rocket', color: colors.primary };
   };
 
+  const levelIcon = getLevelIcon(profile.level);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       {/* Avatar */}
       <View style={styles.avatarContainer}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.avatarText}>
             {profile.display_name?.charAt(0).toUpperCase() || 'U'}
           </Text>
         </View>
-        <View style={styles.levelBadge}>
+        <View style={[styles.levelBadge, { 
+          backgroundColor: colors.success,
+          borderColor: colors.surface 
+        }]}>
           <Text style={styles.levelBadgeText}>{profile.level}</Text>
         </View>
       </View>
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.name}>{profile.display_name || 'Usuário'}</Text>
+        <Text style={[styles.name, { color: colors.textPrimary }]}>
+          {profile.display_name || 'Usuário'}
+        </Text>
         <View style={styles.levelInfo}>
-          <Text style={styles.levelEmoji}>{getLevelEmoji(profile.level)}</Text>
-          <Text style={styles.levelTitle}>{levelTitle || `Nível ${profile.level}`}</Text>
+          <Icon name={levelIcon.name} size={16} color={levelIcon.color} />
+          <Text style={[styles.levelTitle, { color: colors.textSecondary }]}>
+            {levelTitle || `Nível ${profile.level}`}
+          </Text>
         </View>
-        <Text style={styles.points}>{profile.total_points} pontos</Text>
+        <Text style={[styles.points, { color: colors.primary }]}>
+          {profile.total_points} pontos
+        </Text>
       </View>
 
       {/* Progresso para próximo nível */}
       {profile.level < 10 && (
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Próximo nível</Text>
-            <Text style={styles.progressPoints}>
+            <Text style={[styles.progressLabel, { color: colors.textPrimary }]}>
+              Próximo nível
+            </Text>
+            <Text style={[styles.progressPoints, { color: colors.primary }]}>
               {pointsNeeded} pts restantes
             </Text>
           </View>
-          <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+          <View style={[styles.progressBarContainer, { backgroundColor: colors.surfaceElevated }]}>
+            <View style={[styles.progressBarFill, { 
+              width: `${progress}%`,
+              backgroundColor: colors.primary 
+            }]} />
           </View>
-          <Text style={styles.progressSubtext}>
+          <Text style={[styles.progressSubtext, { color: colors.textTertiary }]}>
             {profile.total_points} / {nextLevelPoints} pontos
           </Text>
         </View>
       )}
 
       {profile.level >= 10 && (
-        <View style={styles.maxLevelBadge}>
-          <Text style={styles.maxLevelText}>✨ Nível Máximo Alcançado!</Text>
+        <View style={[styles.maxLevelBadge, { backgroundColor: colors.warningLight }]}>
+          <Icon name="sparkles" size={16} color={colors.warning} />
+          <Text style={[styles.maxLevelText, { color: colors.warning }]}>
+            Nível Máximo Alcançado!
+          </Text>
         </View>
       )}
     </View>
@@ -80,7 +102,6 @@ export default function ProfileHeader({ profile, levelTitle }: ProfileHeaderProp
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     padding: 24,
     alignItems: 'center',
   },
@@ -92,32 +113,29 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#3b82f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   levelBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#10b981',
     width: 28,
     height: 28,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
   },
   levelBadgeText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   info: {
     alignItems: 'center',
@@ -126,7 +144,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 8,
   },
   levelInfo: {
@@ -135,17 +152,12 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
-  levelEmoji: {
-    fontSize: 16,
-  },
   levelTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
   },
   points: {
     fontSize: 14,
-    color: '#3b82f6',
     fontWeight: '600',
   },
   progressSection: {
@@ -159,32 +171,29 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
   },
   progressPoints: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3b82f6',
   },
   progressBarContainer: {
     height: 8,
-    backgroundColor: '#f3f4f6',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 6,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#3b82f6',
     borderRadius: 4,
   },
   progressSubtext: {
     fontSize: 12,
-    color: '#9ca3af',
     textAlign: 'center',
   },
   maxLevelBadge: {
-    backgroundColor: '#fef3c7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -192,6 +201,5 @@ const styles = StyleSheet.create({
   maxLevelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#f59e0b',
   },
 });

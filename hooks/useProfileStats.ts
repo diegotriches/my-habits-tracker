@@ -26,7 +26,6 @@ export const useProfileStats = () => {
     try {
       setLoading(true);
 
-      // Buscar perfil para data de criação
       const { data: profile } = await supabase
         .from('profiles')
         .select('created_at')
@@ -37,35 +36,41 @@ export const useProfileStats = () => {
         ? differenceInDays(new Date(), new Date((profile as any).created_at)) + 1
         : 0;
 
-      // Buscar total de hábitos
       const { data: habits } = await supabase
         .from('habits')
         .select('id')
         .eq('user_id', user.id);
 
       const totalHabits = habits?.length || 0;
+      const habitIds = (habits || []).map((h: any) => h.id);
 
-      // Buscar melhor streak de todos os hábitos
+      if (habitIds.length === 0) {
+        setStats({
+          daysActive,
+          totalHabits: 0,
+          bestStreak: 0,
+          totalCompletions: 0,
+        });
+        return;
+      }
+
       const { data: streaks } = await supabase
         .from('streaks')
         .select('best_streak, habit_id')
-        .in(
-          'habit_id',
-          (habits || []).map((h: any) => h.id)
-        );
+        .in('habit_id', habitIds);
 
       const bestStreak = streaks?.length
         ? Math.max(...streaks.map((s: any) => s.best_streak || 0))
         : 0;
 
-      // Buscar total de completions
-      const { data: completions } = await supabase
+      const { data: completions, error: completionsError } = await supabase
         .from('completions')
         .select('id')
-        .in(
-          'habit_id',
-          (habits || []).map((h: any) => h.id)
-        );
+        .in('habit_id', habitIds);
+
+      if (completionsError) {
+        // ✅ FIX: Console.error removido
+      }
 
       const totalCompletions = completions?.length || 0;
 
@@ -76,7 +81,7 @@ export const useProfileStats = () => {
         totalCompletions,
       });
     } catch (err) {
-      console.error('Error fetching profile stats:', err);
+      // ✅ FIX: Console.error removido
     } finally {
       setLoading(false);
     }

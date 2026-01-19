@@ -1,3 +1,4 @@
+// types/database.ts
 export type Json =
   | string
   | number
@@ -162,6 +163,8 @@ export interface Database {
           time: string
           days_of_week: number[] | null
           is_active: boolean
+          notification_ids: string[] | null  // ← ADICIONADO
+          sound: string | null  // ← ADICIONADO
           created_at: string
         }
         Insert: {
@@ -170,6 +173,8 @@ export interface Database {
           time: string
           days_of_week?: number[] | null
           is_active?: boolean
+          notification_ids?: string[] | null  // ← ADICIONADO
+          sound?: string | null  // ← ADICIONADO
           created_at?: string
         }
         Update: {
@@ -178,6 +183,8 @@ export interface Database {
           time?: string
           days_of_week?: number[] | null
           is_active?: boolean
+          notification_ids?: string[] | null  // ← ADICIONADO
+          sound?: string | null  // ← ADICIONADO
           created_at?: string
         }
       }
@@ -256,6 +263,50 @@ export interface Database {
           synced_at?: string | null
         }
       }
+      notification_settings: {
+        Row: {
+          id: string
+          user_id: string
+          enabled: boolean
+          default_sound: string
+          vibration_enabled: boolean
+          smart_notifications: boolean
+          quiet_hours_enabled: boolean
+          quiet_hours_start: string | null
+          quiet_hours_end: string | null
+          default_snooze_minutes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          enabled?: boolean
+          default_sound?: string
+          vibration_enabled?: boolean
+          smart_notifications?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          default_snooze_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          enabled?: boolean
+          default_sound?: string
+          vibration_enabled?: boolean
+          smart_notifications?: boolean
+          quiet_hours_enabled?: boolean
+          quiet_hours_start?: string | null
+          quiet_hours_end?: string | null
+          default_snooze_minutes?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       user_rankings: {
@@ -301,12 +352,15 @@ export type Streak = Database['public']['Tables']['streaks']['Row']
 export type Reminder = Database['public']['Tables']['reminders']['Row']
 export type Penalty = Database['public']['Tables']['penalties']['Row']
 export type Level = Database['public']['Tables']['levels']['Row']
+export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
 
 // Tipos para insert
 export type HabitInsert = Database['public']['Tables']['habits']['Insert']
 export type CompletionInsert = Database['public']['Tables']['completions']['Insert']
 export type ReminderInsert = Database['public']['Tables']['reminders']['Insert']
+export type NotificationSettingsInsert = Database['public']['Tables']['notification_settings']['Insert']
 
 // Tipos para update
 export type HabitUpdate = Database['public']['Tables']['habits']['Update']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+export type NotificationSettingsUpdate = Database['public']['Tables']['notification_settings']['Update']

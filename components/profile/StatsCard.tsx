@@ -1,10 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/app/contexts/ThemeContext';
+import { Icon } from '@/components/ui/Icon';
+import { IconName } from '@/constants/Icons';
 
 interface StatItem {
   label: string;
   value: string | number;
-  icon?: string;
+  icon?: string; // Emoji (legacy support)
+  iconName?: IconName; // Lucide icon (novo)
+  iconColor?: string;
 }
 
 interface StatsCardProps {
@@ -12,19 +17,37 @@ interface StatsCardProps {
 }
 
 export default function StatsCard({ stats }: StatsCardProps) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       {stats.map((stat, index) => (
         <View
           key={index}
           style={[
             styles.statItem,
-            index < stats.length - 1 && styles.statItemBorder,
+            index < stats.length - 1 && [styles.statItemBorder, { borderRightColor: colors.border }],
           ]}
         >
-          {stat.icon && <Text style={styles.icon}>{stat.icon}</Text>}
-          <Text style={styles.value}>{stat.value}</Text>
-          <Text style={styles.label}>{stat.label}</Text>
+          {/* Ícone: Prioriza Lucide, fallback para emoji */}
+          {stat.iconName ? (
+            <View style={styles.iconContainer}>
+              <Icon 
+                name={stat.iconName} 
+                size={24} 
+                color={stat.iconColor || colors.primary} 
+              />
+            </View>
+          ) : stat.icon ? (
+            <Text style={styles.iconEmoji}>{stat.icon}</Text>
+          ) : null}
+
+          <Text style={[styles.value, { color: colors.textPrimary }]}>
+            {stat.value}
+          </Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>
+            {stat.label}
+          </Text>
         </View>
       ))}
     </View>
@@ -33,7 +56,6 @@ export default function StatsCard({ stats }: StatsCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -44,21 +66,21 @@ const styles = StyleSheet.create({
   },
   statItemBorder: {
     borderRightWidth: 1,
-    borderRightColor: '#e5e7eb',
   },
-  icon: {
+  iconContainer: {
+    marginBottom: 8,
+  },
+  iconEmoji: {
     fontSize: 24,
     marginBottom: 8,
   },
   value: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   label: {
     fontSize: 12,
-    color: '#6b7280',
     textAlign: 'center',
   },
 });

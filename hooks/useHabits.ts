@@ -1,24 +1,31 @@
+// hooks/useHabits.ts
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
-import { Habit, HabitInsert, HabitUpdate } from '@/types/database';
 import { useAuth } from './useAuth';
+import { Habit, HabitInsert } from '@/types/database';
+
+const habitsTable = () => supabase.from('habits') as any;
 
 export const useHabits = () => {
+  const { user } = useAuth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
-  // Buscar hábitos do usuário
+  useEffect(() => {
+    if (user) {
+      fetchHabits();
+    }
+  }, [user]);
+
   const fetchHabits = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('habits')
+      const { data, error: fetchError } = await habitsTable()
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
@@ -26,127 +33,196 @@ export const useHabits = () => {
 
       if (fetchError) throw fetchError;
 
-      setHabits(data || []);
+      setHabits(data as Habit[] || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
-      console.error('Error fetching habits:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Criar novo hábito
-  const createHabit = async (habitData: Omit<HabitInsert, 'user_id'>) => {
+  const getHabit = async (habitId: string) => {
     try {
-      if (!user) throw new Error('Usuário não autenticado');
+      const { data, error: fetchError } = await habitsTable()
+        .select('*')
+        .eq('id', habitId)
+        .single();
 
-      const newHabit = {
-        ...habitData,
+      if (fetchError) {
+        return { data: null, error: fetchError.message };
+      }
+
+      return { data, error: null };
+    } catch (err) {
+      return { 
+        data: null, 
+        error: err instanceof Error ? err.message : 'Erro ao buscar hábito' 
+      };
+    }
+  };
+
+  // 🔧 FIX: Aceitar TODOS os campos do hábito
+  const createHabit = async (habitData: {
+    name: string;
+    description?: string;
+    type?: 'positive' | 'negative';
+    frequency_type?: 'daily' | 'weekly' | 'custom';
+    frequency_days?: number[];
+    has_target?: boolean; // 🆕 Campo de meta
+    target_value?: number | null; // 🆕 Valor da meta
+    target_unit?: string | null; // 🆕 Unidade da meta
+    difficulty: 'easy' | 'medium' | 'hard';
+    color: string;
+    points_base: number;
+    icon?: string;
+  }) => {
+    if (!user?.id) {
+      return { data: null, error: 'Usuário não autenticado' };
+    }
+
+    try {
+      // 🔧 FIX: Incluir TODOS os campos, inclusive metas
+      const dataToInsert: Partial<HabitInsert> = {
         user_id: user.id,
+        name: habitData.name,
+        description: habitData.description || null,
+        type: habitData.type || 'positive',
+        frequency_type: habitData.frequency_type || 'daily',
+        frequency_days: habitData.frequency_days || null,
+        // 🆕 Campos de meta numérica
+        has_target: habitData.has_target || false,
+        target_value: habitData.target_value || null,
+        target_unit: habitData.target_unit || null,
+        difficulty: habitData.difficulty,
+        color: habitData.color,
+        points_base: habitData.points_base,
+        icon: habitData.icon || 'star',
+        is_active: true,
       };
 
-      const { data, error: createError } = await (supabase
-        .from('habits')
-        .insert(newHabit as any) as any)
+      // 🔧 DEBUG
+      console.log('📤 Enviando para Supabase:', dataToInsert);
+
+      const { data, error: insertError } = await habitsTable()
+        .insert(dataToInsert)
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (insertError) {
+        console.error('❌ Erro do Supabase:', insertError);
+        return { data: null, error: insertError.message };
+      }
+
+      console.log('✅ Hábito criado no banco:', data);
 
       // Adicionar à lista local
-      if (data) {
-        setHabits(prev => [data, ...prev]);
-      }
-      
+      setHabits([data as Habit, ...habits]);
+
       return { data, error: null };
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao criar hábito';
-      setError(errorMsg);
-      return { data: null, error: errorMsg };
+      console.error('❌ Erro catch:', err);
+      return { 
+        data: null, 
+        error: err instanceof Error ? err.message : 'Erro ao criar hábito' 
+      };
     }
   };
 
-  // Atualizar hábito
-  const updateHabit = async (id: string, updates: HabitUpdate) => {
+  const updateHabit = async (
+    habitId: string, 
+    updates: {
+      name?: string;
+      description?: string | null;
+      difficulty?: 'easy' | 'medium' | 'hard';
+      color?: string;
+      points_base?: number;
+      has_target?: boolean; // 🆕
+      target_value?: number | null; // 🆕
+      target_unit?: string | null; // 🆕
+    }
+  ) => {
     try {
-      const { data, error: updateError } = await (supabase
-        .from('habits') as any)
+      const { data, error: updateError } = await habitsTable()
         .update(updates)
-        .eq('id', id)
+        .eq('id', habitId)
         .select()
         .single();
 
-      if (updateError) throw updateError;
-
-      // Atualizar na lista local
-      if (data) {
-        setHabits(prev =>
-          prev.map(habit => (habit.id === id ? data : habit))
-        );
+      if (updateError) {
+        return { data: null, error: updateError.message };
       }
+
+      setHabits(habits.map(h => h.id === habitId ? data as Habit : h));
 
       return { data, error: null };
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao atualizar hábito';
-      setError(errorMsg);
-      return { data: null, error: errorMsg };
+      return { 
+        data: null, 
+        error: err instanceof Error ? err.message : 'Erro ao atualizar hábito' 
+      };
     }
   };
 
-  // Deletar hábito (soft delete)
-  const deleteHabit = async (id: string) => {
+  const deleteHabit = async (habitId: string) => {
     try {
-      const { error: deleteError } = await (supabase
-        .from('habits') as any)
+      const { error: deleteError } = await habitsTable()
         .update({ is_active: false })
-        .eq('id', id);
+        .eq('id', habitId);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        return { error: deleteError.message };
+      }
 
-      // Remover da lista local
-      setHabits(prev => prev.filter(habit => habit.id !== id));
+      setHabits(habits.filter(h => h.id !== habitId));
 
       return { error: null };
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao deletar hábito';
-      setError(errorMsg);
-      return { error: errorMsg };
+      return { 
+        error: err instanceof Error ? err.message : 'Erro ao deletar hábito' 
+      };
     }
   };
 
-  // Buscar um hábito específico
-  const getHabit = async (id: string) => {
+  const toggleHabitActive = async (habitId: string, isActive: boolean) => {
     try {
-      const { data, error: fetchError } = await supabase
-        .from('habits')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { error: updateError } = await habitsTable()
+        .update({ is_active: isActive })
+        .eq('id', habitId);
 
-      if (fetchError) throw fetchError;
+      if (updateError) {
+        return { error: updateError.message };
+      }
 
-      return { data, error: null };
+      if (isActive) {
+        const { data } = await getHabit(habitId);
+        if (data) {
+          setHabits([data as Habit, ...habits]);
+        }
+      } else {
+        setHabits(habits.filter(h => h.id !== habitId));
+      }
+
+      return { error: null };
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao buscar hábito';
-      return { data: null, error: errorMsg };
+      return { 
+        error: err instanceof Error ? err.message : 'Erro ao atualizar status' 
+      };
     }
   };
 
-  // Carregar hábitos quando o usuário estiver disponível
-  useEffect(() => {
-    if (user) {
-      fetchHabits();
-    }
-  }, [user]);
+  const refresh = async () => {
+    await fetchHabits();
+  };
 
   return {
     habits,
     loading,
     error,
+    getHabit,
     createHabit,
     updateHabit,
     deleteHabit,
-    getHabit,
-    refetch: fetchHabits,
+    toggleHabitActive,
+    refresh,
   };
 };

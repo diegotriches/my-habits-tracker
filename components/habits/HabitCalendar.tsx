@@ -1,45 +1,42 @@
+// components/habits/HabitCalendar.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTheme } from '@/app/contexts/ThemeContext';
 
 interface HabitCalendarProps {
-  completionDates: string[]; // Array de datas ISO string
+  completionDates: string[];
   color?: string;
 }
 
-export default function HabitCalendar({ completionDates, color = '#3b82f6' }: HabitCalendarProps) {
+export default function HabitCalendar({ completionDates, color }: HabitCalendarProps) {
+  const { colors } = useTheme();
+  const habitColor = color || colors.primary;
+
   const today = new Date();
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
   
-  // Pegar também o mês anterior
   const prevMonthStart = startOfMonth(subMonths(today, 1));
-  
-  // Todos os dias dos últimos 2 meses
   const allDays = eachDayOfInterval({ start: prevMonthStart, end: monthEnd });
   
-  // Converter datas de completion para Date objects
   const completionDateObjects = completionDates.map(dateStr => new Date(dateStr));
   
-  // Verificar se um dia foi completado
   const isCompleted = (day: Date) => {
     return completionDateObjects.some(completionDate => 
       isSameDay(day, completionDate)
     );
   };
 
-  // Pegar nome do mês
   const monthName = format(monthStart, 'MMMM yyyy', { locale: ptBR });
 
-  // Organizar dias em semanas
   const weeks: Date[][] = [];
   let currentWeek: Date[] = [];
   
   allDays.forEach((day, index) => {
     const dayOfWeek = day.getDay();
     
-    // Se é domingo e não é o primeiro dia, começar nova semana
     if (dayOfWeek === 0 && currentWeek.length > 0) {
       weeks.push(currentWeek);
       currentWeek = [];
@@ -47,23 +44,23 @@ export default function HabitCalendar({ completionDates, color = '#3b82f6' }: Ha
     
     currentWeek.push(day);
     
-    // Se é o último dia, adicionar a semana
     if (index === allDays.length - 1) {
       weeks.push(currentWeek);
     }
   });
 
-  // Mostrar apenas últimas 5 semanas (aproximadamente um mês)
   const displayWeeks = weeks.slice(-5);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.monthTitle}>{monthName}</Text>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+      <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
+        {monthName}
+      </Text>
       
       {/* Header dos dias da semana */}
       <View style={styles.weekDaysHeader}>
         {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => (
-          <Text key={index} style={styles.weekDayText}>
+          <Text key={index} style={[styles.weekDayText, { color: colors.textSecondary }]}>
             {day}
           </Text>
         ))}
@@ -83,16 +80,18 @@ export default function HabitCalendar({ completionDates, color = '#3b82f6' }: Ha
                   key={dayIndex}
                   style={[
                     styles.day,
-                    completed && { backgroundColor: color },
-                    isToday && styles.today,
-                    !isCurrentMonth && styles.otherMonth,
+                    { backgroundColor: colors.borderLight },
+                    completed && { backgroundColor: habitColor },
+                    isToday && { borderWidth: 2, borderColor: colors.primary },
+                    !isCurrentMonth && { opacity: 0.3 },
                   ]}
                 >
                   <Text
                     style={[
                       styles.dayText,
-                      completed && styles.dayTextCompleted,
-                      !isCurrentMonth && styles.dayTextOtherMonth,
+                      { color: colors.textSecondary },
+                      completed && { color: colors.textInverse, fontWeight: '600' },
+                      !isCurrentMonth && { color: colors.textDisabled },
                     ]}
                   >
                     {format(day, 'd')}
@@ -107,12 +106,16 @@ export default function HabitCalendar({ completionDates, color = '#3b82f6' }: Ha
       {/* Legenda */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#f3f4f6' }]} />
-          <Text style={styles.legendText}>Não completado</Text>
+          <View style={[styles.legendBox, { backgroundColor: colors.borderLight }]} />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+            Não completado
+          </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: color }]} />
-          <Text style={styles.legendText}>Completado</Text>
+          <View style={[styles.legendBox, { backgroundColor: habitColor }]} />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+            Completado
+          </Text>
         </View>
       </View>
     </View>
@@ -121,14 +124,12 @@ export default function HabitCalendar({ completionDates, color = '#3b82f6' }: Ha
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
   },
   monthTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 12,
     textTransform: 'capitalize',
   },
@@ -140,7 +141,6 @@ const styles = StyleSheet.create({
   weekDayText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6b7280',
     width: 32,
     textAlign: 'center',
   },
@@ -156,28 +156,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  today: {
-    borderWidth: 2,
-    borderColor: '#3b82f6',
-  },
-  otherMonth: {
-    opacity: 0.3,
-  },
   dayText: {
     fontSize: 12,
-    color: '#6b7280',
     fontWeight: '500',
-  },
-  dayTextCompleted: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  dayTextOtherMonth: {
-    color: '#9ca3af',
   },
   legend: {
     flexDirection: 'row',
@@ -197,6 +181,5 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6b7280',
   },
 });
