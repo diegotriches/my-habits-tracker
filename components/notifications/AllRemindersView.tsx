@@ -1,19 +1,19 @@
 // components/notifications/AllRemindersView.tsx
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { supabase } from '@/services/supabase';
+import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notifications';
-import { useTheme } from '@/app/contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
+import { supabase } from '@/services/supabase';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface ReminderWithHabit {
   id: string;

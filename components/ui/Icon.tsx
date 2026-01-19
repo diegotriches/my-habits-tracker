@@ -1,7 +1,7 @@
 // components/ui/Icon.tsx
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { Icons, IconName } from '../../constants/Icons';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { IconName, Icons } from '../../constants/Icons';
 
 interface IconProps {
   name: IconName;

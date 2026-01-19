@@ -1,14 +1,15 @@
+import { useTheme } from '@/contexts/ThemeContext';
+import { hapticFeedback } from '@/utils/haptics';
 import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
   Animated,
   Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 
 interface ConfirmDialogProps {
   visible: boolean;
@@ -39,6 +40,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   useEffect(() => {
     if (visible) {
+      // Haptic feedback ao abrir dialog
+      hapticFeedback.warning();
+      
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -59,10 +63,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   }, [visible]);
 
   const handleConfirm = () => {
+    // Haptic diferente baseado no tipo
+    if (confirmColor === 'danger') {
+      hapticFeedback.heavy();
+    } else {
+      hapticFeedback.medium();
+    }
     onConfirm();
   };
 
   const handleCancel = () => {
+    hapticFeedback.light();
     onCancel();
   };
 

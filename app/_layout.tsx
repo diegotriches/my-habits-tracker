@@ -1,10 +1,10 @@
 // app/_layout.tsx
-import { useEffect } from 'react';
-import { Slot, useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { notificationService } from '@/services/notifications';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ThemeProvider } from '../contexts/ThemeContext';
 
 function RootLayoutNav() {
   const { isAuthenticated, loading } = useAuth();

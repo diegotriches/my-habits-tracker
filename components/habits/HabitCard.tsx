@@ -1,13 +1,15 @@
 // components/habits/HabitCard.tsx
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { Habit, Streak, Completion } from '@/types/database';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { AnimatedPressableComponent } from '@/components/ui/AnimatedPressable';
 import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
-import { HabitProgressInput } from './HabitProgressInput';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Completion, Habit, Streak } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
+import { hapticFeedback } from '@/utils/haptics';
+import React, { useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { HabitProgressInput } from './HabitProgressInput';
 
 interface HabitCardProps {
   habit: Habit;
@@ -32,31 +34,17 @@ export default function HabitCard({
 
   const [showProgressInput, setShowProgressInput] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
   const checkScale = useRef(new Animated.Value(0)).current;
   const pointsAnim = useRef(new Animated.Value(0)).current;
   const pointsOpacity = useRef(new Animated.Value(0)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 3,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  };
 
   const handleComplete = (e: any) => {
     e.stopPropagation();
     
     if (!onComplete) return;
+
+    // Haptic feedback leve ao tocar
+    hapticFeedback.light();
 
     if (habit.has_target && habit.target_value && habit.target_unit) {
       setShowProgressInput(true);
@@ -64,6 +52,9 @@ export default function HabitCard({
     }
 
     if (isCompleted) return;
+
+    // Haptic feedback de sucesso ao completar
+    hapticFeedback.success();
 
     Animated.sequence([
       Animated.timing(checkScale, {
@@ -109,7 +100,17 @@ export default function HabitCard({
 
   const handleProgressConfirm = (achievedValue: number, mode: 'add' | 'replace') => {
     setShowProgressInput(false);
+    
+    // Haptic feedback de sucesso
+    hapticFeedback.success();
+    
     onComplete?.(achievedValue, mode);
+  };
+
+  const handleCardPress = () => {
+    // Haptic feedback leve ao navegar
+    hapticFeedback.light();
+    onPress?.();
   };
 
   const getProgressPercentage = () => {
@@ -200,134 +201,130 @@ export default function HabitCard({
 
   return (
     <>
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <TouchableOpacity
-          style={[
-            styles.card,
-            { backgroundColor: colors.background, borderColor: colors.border },
-            isFullyCompleted() && { opacity: 0.7 },
-          ]}
-          onPress={onPress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={0.9}
-        >
-          <View style={styles.content}>
-            <View style={[styles.colorIndicator, { backgroundColor: habit.color }]} />
+      <AnimatedPressableComponent
+        scale={0.97}
+        onPress={handleCardPress}
+        style={[
+          styles.card,
+          { backgroundColor: colors.background, borderColor: colors.border },
+          isFullyCompleted() && { opacity: 0.7 },
+        ]}
+      >
+        <View style={styles.content}>
+          <View style={[styles.colorIndicator, { backgroundColor: habit.color }]} />
 
-            <View style={styles.info}>
-              <View style={styles.nameRow}>
-                <Text style={[styles.name, { color: colors.textPrimary }]}>{habit.name}</Text>
-                {hasStreak && (
-                  <View style={[styles.streakBadge, { backgroundColor: colors.warningLight }]}>
-                    <Icon name="flame" size={12} color={colors.warning} />
-                    <Text style={[styles.streakText, { color: colors.warning }]}>
-                      {streak?.current_streak}
+          <View style={styles.info}>
+            <View style={styles.nameRow}>
+              <Text style={[styles.name, { color: colors.textPrimary }]}>{habit.name}</Text>
+              {hasStreak && (
+                <View style={[styles.streakBadge, { backgroundColor: colors.warningLight }]}>
+                  <Icon name="flame" size={12} color={colors.warning} />
+                  <Text style={[styles.streakText, { color: colors.warning }]}>
+                    {streak?.current_streak}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            {habit.frequency_type === 'weekly' && habit.frequency_days && (
+              <View style={[styles.frequencyBadge, { backgroundColor: colors.infoLight }]}>
+                <Icon name="calendar" size={11} color={colors.info} />
+                <Text style={[styles.frequencyText, { color: colors.info }]}>
+                  {formatSelectedDays(habit.frequency_days)}
+                </Text>
+              </View>
+            )}
+            
+            {habit.description && (
+              <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
+                {habit.description}
+              </Text>
+            )}
+
+            {habit.has_target && completion && habit.target_value && habit.target_unit && (
+              <View style={styles.targetProgress}>
+                <View style={styles.targetHeader}>
+                  <Text style={[styles.targetLabel, { color: colors.textPrimary }]}>
+                    {completion.value_achieved || 0} / {habit.target_value} {habit.target_unit}
+                  </Text>
+                  <Text style={[
+                    styles.targetPercentage,
+                    { color: colors.textSecondary },
+                    getProgressPercentage() >= 100 && { color: colors.success },
+                  ]}>
+                    {getProgressPercentage().toFixed(0)}%
+                  </Text>
+                </View>
+                
+                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                  <View 
+                    style={[
+                      styles.progressFill,
+                      { 
+                        width: `${getProgressPercentage()}%`,
+                        backgroundColor: getProgressPercentage() >= 100 ? colors.success : habit.color,
+                      }
+                    ]}
+                  />
+                </View>
+
+                {getProgressPercentage() >= 100 && (
+                  <View style={[styles.achievementBadge, { backgroundColor: colors.successLight }]}>
+                    <Icon name="sparkles" size={11} color={colors.success} />
+                    <Text style={[styles.achievementText, { color: colors.success }]}>
+                      Meta atingida!
                     </Text>
                   </View>
                 )}
               </View>
-              
-              {habit.frequency_type === 'weekly' && habit.frequency_days && (
-                <View style={[styles.frequencyBadge, { backgroundColor: colors.infoLight }]}>
-                  <Icon name="calendar" size={11} color={colors.info} />
-                  <Text style={[styles.frequencyText, { color: colors.info }]}>
-                    {formatSelectedDays(habit.frequency_days)}
-                  </Text>
-                </View>
-              )}
-              
-              {habit.description && (
-                <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {habit.description}
+            )}
+
+            {habit.has_target && !completion && (
+              <View style={[styles.targetHint, { 
+                backgroundColor: colors.infoLight,
+                borderLeftColor: colors.info 
+              }]}>
+                <Text style={[styles.targetHintText, { color: colors.info }]}>
+                  Toque para registrar progresso
                 </Text>
-              )}
+              </View>
+            )}
 
-              {habit.has_target && completion && habit.target_value && habit.target_unit && (
-                <View style={styles.targetProgress}>
-                  <View style={styles.targetHeader}>
-                    <Text style={[styles.targetLabel, { color: colors.textPrimary }]}>
-                      {completion.value_achieved || 0} / {habit.target_value} {habit.target_unit}
-                    </Text>
-                    <Text style={[
-                      styles.targetPercentage,
-                      { color: colors.textSecondary },
-                      getProgressPercentage() >= 100 && { color: colors.success },
-                    ]}>
-                      {getProgressPercentage().toFixed(0)}%
-                    </Text>
-                  </View>
-                  
-                  <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-                    <View 
-                      style={[
-                        styles.progressFill,
-                        { 
-                          width: `${getProgressPercentage()}%`,
-                          backgroundColor: getProgressPercentage() >= 100 ? colors.success : habit.color,
-                        }
-                      ]}
-                    />
-                  </View>
+            <View style={styles.footer}>
+              <View style={[styles.badge, { backgroundColor: difficultyConfig.color + '20' }]}>
+                <Text style={[styles.badgeText, { color: difficultyConfig.color }]}>
+                  {difficultyConfig.label}
+                </Text>
+              </View>
 
-                  {getProgressPercentage() >= 100 && (
-                    <View style={[styles.achievementBadge, { backgroundColor: colors.successLight }]}>
-                      <Icon name="sparkles" size={11} color={colors.success} />
-                      <Text style={[styles.achievementText, { color: colors.success }]}>
-                        Meta atingida!
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {habit.has_target && !completion && (
-                <View style={[styles.targetHint, { 
-                  backgroundColor: colors.infoLight,
-                  borderLeftColor: colors.info 
-                }]}>
-                  <Text style={[styles.targetHintText, { color: colors.info }]}>
-                    Toque para registrar progresso
-                  </Text>
-                </View>
-              )}
-
-              <View style={styles.footer}>
-                <View style={[styles.badge, { backgroundColor: difficultyConfig.color + '20' }]}>
-                  <Text style={[styles.badgeText, { color: difficultyConfig.color }]}>
-                    {difficultyConfig.label}
-                  </Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Icon name="star" size={12} color={colors.primary} />
-                  <Text style={[styles.points, { color: colors.primary }]}>
-                    +{habit.points_base} pts
-                  </Text>
-                </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Icon name="star" size={12} color={colors.primary} />
+                <Text style={[styles.points, { color: colors.primary }]}>
+                  +{habit.points_base} pts
+                </Text>
               </View>
             </View>
-
-            {renderCheckButton()}
           </View>
 
-          {showAnimation && (
-            <Animated.View
-              style={[
-                styles.floatingPoints,
-                {
-                  transform: [{ translateY: pointsAnim }],
-                  opacity: pointsOpacity,
-                },
-              ]}
-            >
-              <Text style={[styles.floatingPointsText, { color: colors.success }]}>
-                +{habit.points_base} pts
-              </Text>
-            </Animated.View>
-          )}
-        </TouchableOpacity>
-      </Animated.View>
+          {renderCheckButton()}
+        </View>
+
+        {showAnimation && (
+          <Animated.View
+            style={[
+              styles.floatingPoints,
+              {
+                transform: [{ translateY: pointsAnim }],
+                opacity: pointsOpacity,
+              },
+            ]}
+          >
+            <Text style={[styles.floatingPointsText, { color: colors.success }]}>
+              +{habit.points_base} pts
+            </Text>
+          </Animated.View>
+        )}
+      </AnimatedPressableComponent>
 
       {habit.has_target && habit.target_value && habit.target_unit && (
         <HabitProgressInput

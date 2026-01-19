@@ -1,28 +1,29 @@
 // app/habits/create.tsx
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  Switch,
-} from 'react-native';
-import { router } from 'expo-router';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useHabits } from '@/hooks/useHabits';
-import { useTheme } from '../contexts/ThemeContext';
+import { FrequencySelector } from '@/components/habits/FrequencySelector';
+import { TargetInput } from '@/components/habits/TargetInput';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Icon } from '@/components/ui/Icon';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
+import { SuccessToast } from '@/components/ui/SuccessToast';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
+import { useHabits } from '@/hooks/useHabits';
 import { notificationService } from '@/services/notifications';
 import { supabase } from '@/services/supabase';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { SuccessToast } from '@/components/ui/SuccessToast';
-import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
-import { TargetInput } from '@/components/habits/TargetInput';
-import { FrequencySelector } from '@/components/habits/FrequencySelector';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { hapticFeedback } from '@/utils/haptics';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const remindersTable = () => (supabase.from('reminders') as any);
 
@@ -78,7 +79,7 @@ export default function CreateHabitScreen() {
   const requestNotificationPermission = async () => {
     const granted = await notificationService.requestPermissions();
     setHasPermission(granted);
-    
+
     if (!granted) {
       setErrorMessage('Permissão de notificações negada. Ative nas configurações do dispositivo.');
       setShowErrorToast(true);
@@ -110,6 +111,7 @@ export default function CreateHabitScreen() {
 
   const handleAddReminder = () => {
     if (reminders.length >= MAX_REMINDERS) {
+      hapticFeedback.error();
       setErrorMessage(`Você pode ter no máximo ${MAX_REMINDERS} lembretes por hábito`);
       setShowErrorToast(true);
       return;
@@ -118,11 +120,13 @@ export default function CreateHabitScreen() {
     const timeString = formatTime(currentTime);
     const exists = reminders.some(r => formatTime(r.time) === timeString);
     if (exists) {
+      hapticFeedback.warning();
       setErrorMessage('Já existe um lembrete neste horário');
       setShowErrorToast(true);
       return;
     }
 
+    hapticFeedback.success();
     const newReminder = { id: Math.random().toString(), time: currentTime };
     setReminders([...reminders, newReminder]);
     setShowTimePicker(false);
@@ -130,6 +134,7 @@ export default function CreateHabitScreen() {
   };
 
   const handleRemoveReminder = (id: string) => {
+    hapticFeedback.medium();
     setReminders(reminders.filter(r => r.id !== id));
   };
 
@@ -142,15 +147,17 @@ export default function CreateHabitScreen() {
   const handleSubmit = async () => {
     const validationError = validateForm();
     if (validationError) {
+      hapticFeedback.error();
       setErrorMessage(validationError);
       setShowErrorToast(true);
       return;
     }
 
+    hapticFeedback.medium();
     setLoading(true);
 
     const trimmedDescription = description.trim();
-    
+
     const habitData: any = {
       name: name.trim(),
       description: trimmedDescription || undefined,
@@ -171,7 +178,7 @@ export default function CreateHabitScreen() {
     if (habit && reminders.length > 0 && !error) {
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
-        
+
         try {
           const notificationId = await notificationService.scheduleDailyReminder(
             habit.id,
@@ -196,9 +203,11 @@ export default function CreateHabitScreen() {
     setLoading(false);
 
     if (error) {
+      hapticFeedback.error();
       setErrorMessage('Não foi possível criar o hábito. Tente novamente.');
       setShowErrorToast(true);
     } else {
+      hapticFeedback.success();
       setShowSuccessToast(true);
       setTimeout(() => router.back(), 1500);
     }
@@ -217,6 +226,7 @@ export default function CreateHabitScreen() {
   };
 
   const handleCancel = () => {
+    hapticFeedback.light();
     if (name.trim() || description.trim() || reminders.length > 0) {
       setShowCancelConfirm(true);
     } else {
@@ -272,10 +282,10 @@ export default function CreateHabitScreen() {
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>Nome do Hábito *</Text>
           <TextInput
-            style={[styles.input, { 
-              backgroundColor: colors.surface, 
+            style={[styles.input, {
+              backgroundColor: colors.surface,
               borderColor: colors.border,
-              color: colors.textPrimary 
+              color: colors.textPrimary
             }]}
             placeholder="Ex: Meditar, Ler, Exercitar..."
             placeholderTextColor={colors.textTertiary}
@@ -293,10 +303,10 @@ export default function CreateHabitScreen() {
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textPrimary }]}>Descrição (opcional)</Text>
           <TextInput
-            style={[styles.input, styles.textArea, { 
+            style={[styles.input, styles.textArea, {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              color: colors.textPrimary 
+              color: colors.textPrimary
             }]}
             placeholder="Adicione detalhes sobre seu hábito..."
             placeholderTextColor={colors.textTertiary}
@@ -327,7 +337,10 @@ export default function CreateHabitScreen() {
             </View>
             <Switch
               value={hasTarget}
-              onValueChange={setHasTarget}
+              onValueChange={(value) => {
+                hapticFeedback.selection();
+                setHasTarget(value);
+              }}
               trackColor={{ false: colors.border, true: colors.primaryLight }}
               thumbColor={hasTarget ? colors.primary : colors.surface}
             />
@@ -381,7 +394,10 @@ export default function CreateHabitScreen() {
                       backgroundColor: config.color + '10',
                     },
                   ]}
-                  onPress={() => setDifficulty(key)}
+                  onPress={() => {
+                    hapticFeedback.selection();
+                    setDifficulty(key);
+                  }}
                 >
                   <Text
                     style={[
@@ -413,7 +429,10 @@ export default function CreateHabitScreen() {
                   { backgroundColor: color },
                   selectedColor === color && styles.colorOptionSelected,
                 ]}
-                onPress={() => setSelectedColor(color)}
+                onPress={() => {
+                  hapticFeedback.selection();
+                  setSelectedColor(color);
+                }}
               />
             ))}
           </View>
@@ -434,11 +453,14 @@ export default function CreateHabitScreen() {
               </Text>
             )}
           </View>
-          
+
           {!hasPermission && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.permissionButton, { backgroundColor: colors.primary }]}
-              onPress={requestNotificationPermission}
+              onPress={async () => {
+                hapticFeedback.light();
+                await requestNotificationPermission();
+              }}
             >
               <Icon name="unlock" size={16} color={colors.textInverse} />
               <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>
@@ -452,9 +474,9 @@ export default function CreateHabitScreen() {
               {reminders.length > 0 && (
                 <View style={styles.remindersList}>
                   {reminders.map((reminder) => (
-                    <View key={reminder.id} style={[styles.reminderItem, { 
+                    <View key={reminder.id} style={[styles.reminderItem, {
                       backgroundColor: colors.surface,
-                      borderColor: colors.border 
+                      borderColor: colors.border
                     }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Icon name="clock" size={16} color={colors.textSecondary} />
@@ -472,11 +494,14 @@ export default function CreateHabitScreen() {
 
               {reminders.length < MAX_REMINDERS && (
                 <TouchableOpacity
-                  style={[styles.addReminderButton, { 
+                  style={[styles.addReminderButton, {
                     backgroundColor: colors.surface,
-                    borderColor: colors.border 
+                    borderColor: colors.border
                   }]}
-                  onPress={() => setShowTimePicker(true)}
+                  onPress={() => {
+                    hapticFeedback.light();
+                    setShowTimePicker(true);
+                  }}
                 >
                   <Icon name="add" size={16} color={colors.textSecondary} />
                   <Text style={[styles.addReminderText, { color: colors.textSecondary }]}>

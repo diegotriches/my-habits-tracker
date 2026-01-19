@@ -1,8 +1,8 @@
 // components/habits/FrequencySelector.tsx
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type FrequencyType = 'daily' | 'weekly' | 'custom';
 

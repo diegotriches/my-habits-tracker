@@ -1,22 +1,22 @@
 // app/(tabs)/stats.tsx
-import React from 'react';
-import { 
-  View, 
-  ScrollView, 
-  StyleSheet, 
-  RefreshControl, 
-  Text,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useStats } from '@/hooks/useStats';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
-import { LevelProgressCard } from '@/components/stats/LevelProgressCard';
+import { StatsSkeleton } from '@/components/skeletons/StatsSkeleton';
 import { CompletionChart } from '@/components/stats/CompletionChart';
+import { LevelProgressCard } from '@/components/stats/LevelProgressCard';
 import { StreaksList } from '@/components/stats/StreaksList';
 import { SummaryCards } from '@/components/stats/SummaryCards';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { StatsSkeleton } from '@/components/skeletons/StatsSkeleton';
+import { Icon } from '@/components/ui/Icon';
+import { useStats } from '@/hooks/useStats';
+import { router } from 'expo-router';
+import React from 'react';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function StatsScreen() {
   const { colors } = useTheme();

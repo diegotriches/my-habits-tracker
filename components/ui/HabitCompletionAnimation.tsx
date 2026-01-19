@@ -1,8 +1,8 @@
 // components/ui/HabitCompletionAnimation.tsx
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import React, { useEffect } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 
 interface HabitCompletionAnimationProps {
   points: number;

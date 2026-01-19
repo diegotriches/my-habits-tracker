@@ -1,6 +1,6 @@
 // app/habits/_layout.tsx
 import { Stack } from 'expo-router';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function HabitsLayout() {
   const { colors } = useTheme();

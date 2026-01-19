@@ -1,8 +1,8 @@
+import { useTheme } from '@/contexts/ThemeContext';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { LineChart, BarChart } from 'react-native-chart-kit';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 import { DailyStats, WeekdayStats } from '../../hooks/useStats';
-import { useTheme } from '@/app/contexts/ThemeContext';
 
 interface Props {
   dailyStats: DailyStats[];

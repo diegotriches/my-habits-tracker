@@ -1,26 +1,26 @@
 // app/(tabs)/profile.tsx
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useAuth } from '@/hooks/useAuth';
-import { useProfile } from '@/hooks/useProfile';
-import { useProfileStats } from '@/hooks/useProfileStats';
-import { usePenalties } from '@/hooks/usePenalties';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
+import { PenaltyHistory } from '@/components/penalties/PenaltyHistory';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsCard from '@/components/profile/StatsCard';
-import { PenaltyHistory } from '@/components/penalties/PenaltyHistory';
+import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
+import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/hooks/useAuth';
+import { usePenalties } from '@/hooks/usePenalties';
+import { useProfile } from '@/hooks/useProfile';
+import { useProfileStats } from '@/hooks/useProfileStats';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -112,17 +112,20 @@ export default function ProfileScreen() {
           <StatsCard
             stats={[
               {
-                icon: '📅',
+                iconName: 'calendar',
+                iconColor: colors.primary,
                 value: stats.daysActive,
                 label: 'Dias Ativos',
               },
               {
-                icon: '✅',
+                iconName: 'checkCircle',
+                iconColor: colors.success,
                 value: stats.totalCompletions,
                 label: 'Completados',
               },
               {
-                icon: '🔥',
+                iconName: 'flame',
+                iconColor: colors.streak,
                 value: stats.bestStreak,
                 label: 'Melhor Streak',
               },
@@ -137,15 +140,17 @@ export default function ProfileScreen() {
           </Text>
 
           {/* Card de Estatísticas de Penalidades */}
-          <View style={[styles.penaltyStatsCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={[styles.penaltyStatsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.penaltyStatItem}>
+              <Icon name="alert" size={24} color={colors.warning} />
               <Text style={[styles.penaltyStatValue, { color: colors.textPrimary }]}>
                 {penaltyStats.totalPenalties}
               </Text>
               <Text style={[styles.penaltyStatLabel, { color: colors.textSecondary }]}>Total</Text>
             </View>
-            <View style={[styles.penaltyDivider, { backgroundColor: colors.divider }]} />
+            <View style={[styles.penaltyDivider, { backgroundColor: colors.border }]} />
             <View style={styles.penaltyStatItem}>
+              <Icon name="alert" size={24} color={colors.danger} />
               <Text style={[styles.penaltyStatValue, { color: colors.danger }]}>
                 {penaltyStats.totalPointsLost}
               </Text>
@@ -166,15 +171,21 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
             Conta
           </Text>
-          <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
+          <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email</Text>
+              <View style={styles.infoLeft}>
+                <Icon name="mail" size={16} color={colors.textSecondary} />
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email</Text>
+              </View>
               <Text style={[styles.infoValue, { color: colors.textPrimary }]} numberOfLines={1}>
                 {user?.email}
               </Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total de Hábitos</Text>
+              <View style={styles.infoLeft}>
+                <Icon name="target" size={16} color={colors.textSecondary} />
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total de Hábitos</Text>
+              </View>
               <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{stats.totalHabits}</Text>
             </View>
           </View>
@@ -187,7 +198,7 @@ export default function ProfileScreen() {
           </Text>
 
           {/* Tema Section */}
-          <View style={[styles.settingGroup, { backgroundColor: colors.background }]}>
+          <View style={[styles.settingGroup, { backgroundColor: colors.surface }]}>
             <View style={[styles.settingHeader, { borderBottomColor: colors.border }]}>
               <Icon name="palette" size={20} color={colors.textSecondary} />
               <Text style={[styles.settingHeaderText, { color: colors.textPrimary }]}>
@@ -240,7 +251,7 @@ export default function ProfileScreen() {
 
           {/* Notificações */}
           <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
             onPress={() => router.push('/settings/notifications' as any)}
           >
             <View style={styles.settingLeft}>
@@ -254,7 +265,7 @@ export default function ProfileScreen() {
         {/* Ações */}
         <View style={styles.section}>
           <TouchableOpacity 
-            style={[styles.logoutButton, { backgroundColor: colors.background, borderColor: colors.danger }]} 
+            style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.danger }]} 
             onPress={handleLogout}
           >
             <Icon name="logout" size={20} color={colors.danger} />
@@ -265,9 +276,9 @@ export default function ProfileScreen() {
         {/* Versão */}
         <View style={styles.footer}>
           <Text style={[styles.versionText, { color: colors.textTertiary }]}>
-            My Habits Tracker v1.1.0
+            My Habits Tracker v1.2.0
           </Text>
-          <Text style={[styles.copyrightText, { color: colors.textDisabled }]}>
+          <Text style={[styles.copyrightText, { color: colors.textTertiary }]}>
             Feito com ❤️ para seu crescimento
           </Text>
         </View>
@@ -329,11 +340,11 @@ const styles = StyleSheet.create({
   penaltyStatItem: {
     flex: 1,
     alignItems: 'center',
+    gap: 8,
   },
   penaltyStatValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 4,
   },
   penaltyStatLabel: {
     fontSize: 12,
@@ -347,15 +358,22 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   infoCard: {
-    paddingVertical: 8,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    overflow: 'hidden',
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
+  },
+  infoLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   infoLabel: {
     fontSize: 14,
@@ -405,7 +423,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
     marginHorizontal: 20,
     borderRadius: 12,
     marginBottom: 12,

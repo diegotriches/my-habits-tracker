@@ -1,8 +1,8 @@
 // components/habits/CompletionHistory.tsx
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import React from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 interface Completion {
   id: string;

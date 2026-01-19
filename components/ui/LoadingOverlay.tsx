@@ -1,6 +1,6 @@
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Modal } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 
 interface LoadingOverlayProps {
   visible: boolean;

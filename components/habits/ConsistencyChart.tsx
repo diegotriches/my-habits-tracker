@@ -1,9 +1,9 @@
 // components/habits/ConsistencyChart.tsx
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import React from 'react';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
 interface DayData {
   date: string;

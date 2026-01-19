@@ -1,20 +1,20 @@
 // app/habits/edit/[id].tsx
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useHabits } from '@/hooks/useHabits';
-import { useTheme } from '../../contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
+import { useHabits } from '@/hooks/useHabits';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 export default function EditHabitScreen() {
   const { colors } = useTheme();

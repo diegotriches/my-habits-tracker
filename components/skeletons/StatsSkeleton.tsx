@@ -1,6 +1,6 @@
+import { useTheme } from '@/contexts/ThemeContext';
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, ScrollView } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 
 export const StatsSkeleton: React.FC = () => {
   const { colors } = useTheme();

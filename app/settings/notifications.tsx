@@ -1,23 +1,23 @@
 // app/settings/notifications.tsx
+import { AllRemindersView } from '@/components/notifications/AllRemindersView';
+import { Icon } from '@/components/ui/Icon';
+import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { notificationService, NotificationSound } from '@/services/notifications';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
+  ActivityIndicator,
   Alert,
   Platform,
-  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useNotificationSettings } from '@/hooks/useNotificationSettings';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
-import { notificationService, NotificationSound } from '@/services/notifications';
-import { AllRemindersView } from '@/components/notifications/AllRemindersView';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const SOUND_OPTIONS: { value: NotificationSound; label: string; icon: string }[] = [
   { value: 'default', label: 'Padrão', icon: 'sound' },

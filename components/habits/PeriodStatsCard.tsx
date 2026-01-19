@@ -1,8 +1,8 @@
 // components/habits/PeriodStatsCard.tsx
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { useTheme } from '@/app/contexts/ThemeContext';
 
 interface PeriodStatsCardProps {
   label: string;

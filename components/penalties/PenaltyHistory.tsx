@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { Icon } from '@/components/ui/Icon';
 import { PENALTY_MESSAGES } from '@/constants/PenaltyConfig';
+import { useTheme } from '@/contexts/ThemeContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useTheme } from '@/app/contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
+import React from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 interface Penalty {
   id: string;

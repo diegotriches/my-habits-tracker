@@ -1,17 +1,17 @@
 // components/habits/HabitProgressInput.tsx
-import React, { useState, useEffect } from 'react';
+import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Animated,
+  Modal,
+  Pressable,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  Modal,
   TouchableOpacity,
-  Animated,
-  Pressable,
+  View,
 } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
 
 interface HabitProgressInputProps {
   visible: boolean;

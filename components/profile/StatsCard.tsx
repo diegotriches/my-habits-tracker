@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
 import { IconName } from '@/constants/Icons';
+import { useTheme } from '@/contexts/ThemeContext';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface StatItem {
   label: string;

@@ -1,9 +1,8 @@
 // components/habits/HabitHeatMap.tsx
+import { useTheme } from '@/contexts/ThemeContext';
+import { startOfWeek } from 'date-fns';
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { format, startOfWeek, addDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 interface DayData {
   date: string;

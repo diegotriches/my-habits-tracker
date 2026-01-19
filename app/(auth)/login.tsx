@@ -1,20 +1,20 @@
 // app/(auth)/login.tsx
+import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/hooks/useAuth';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
+  View,
 } from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
-import { router } from 'expo-router';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function LoginScreen() {
   const { colors } = useTheme();

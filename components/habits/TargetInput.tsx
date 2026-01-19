@@ -1,17 +1,17 @@
 // components/habits/TargetInput.tsx
+import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
 import React, { useState } from 'react';
 import {
-  View,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
-  Modal,
-  ScrollView,
-  Pressable,
+  View,
 } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
 
 interface TargetInputProps {
   value: string;

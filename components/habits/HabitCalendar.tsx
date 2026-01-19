@@ -1,9 +1,9 @@
 // components/habits/HabitCalendar.tsx
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay, subMonths } from 'date-fns';
+import { useTheme } from '@/contexts/ThemeContext';
+import { eachDayOfInterval, endOfMonth, format, isSameDay, startOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface HabitCalendarProps {
   completionDates: string[];

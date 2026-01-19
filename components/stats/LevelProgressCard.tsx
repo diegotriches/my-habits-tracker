@@ -1,9 +1,9 @@
+import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useProfile } from '../../hooks/useProfile';
 import { calculateLevel } from '../../utils/points';
-import { useTheme } from '@/app/contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
 
 export const LevelProgressCard: React.FC = () => {
   const { colors } = useTheme();

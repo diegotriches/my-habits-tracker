@@ -1,28 +1,30 @@
 // app/(tabs)/index.tsx
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useHabits } from '@/hooks/useHabits';
-import { useCompletions } from '@/hooks/useCompletions';
-import { useStreaks } from '@/hooks/useStreaks';
-import { useProfile } from '@/hooks/useProfile';
-import { usePenalties } from '@/hooks/usePenalties';
-import { useTheme } from '../contexts/ThemeContext';
 import HabitCard from '@/components/habits/HabitCard';
 import { PenaltyNotification } from '@/components/penalties/PenaltyNotification';
-import { SuccessToast } from '@/components/ui/SuccessToast';
+import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
+import { CelebrationModal } from '@/components/ui/CelebrationModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { Icon } from '@/components/ui/Icon';
+import { SuccessToast } from '@/components/ui/SuccessToast';
+import { useCompletions } from '@/hooks/useCompletions';
+import { useHabits } from '@/hooks/useHabits';
+import { usePenalties } from '@/hooks/usePenalties';
+import { useProfile } from '@/hooks/useProfile';
+import { useStreaks } from '@/hooks/useStreaks';
+import { useCelebration } from '@/hooks/useCelebration';
 import { isHabitDueToday } from '@/utils/habitHelpers';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -40,6 +42,14 @@ export default function HomeScreen() {
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
   const { checkPenalties } = usePenalties();
+  const { 
+    celebrationData, 
+    isVisible: showCelebration, 
+    checkStreakMilestone,
+    checkTargetAchievement,
+    checkPointsMilestone,
+    closeCelebration 
+  } = useCelebration();
   
   const [pendingPenalties, setPendingPenalties] = useState<any[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -130,11 +140,11 @@ export default function HomeScreen() {
 
         setShowSuccessToast(true);
 
+        // 🎉 Verificar celebração de meta atingida
         if (percentage >= 100 && 'pointsDifference' in data && data.pointsDifference && data.pointsDifference > 0) {
           setTimeout(() => {
-            setSuccessMessage(`Meta atingida! +${data.pointsDifference} pts de bônus!`);
-            setShowSuccessToast(true);
-          }, 2000);
+            checkTargetAchievement(habit.name, data.pointsDifference);
+          }, 1000);
         }
 
         refetchProfile();
@@ -160,6 +170,11 @@ export default function HomeScreen() {
           const percentage = (achievedValue / habit.target_value) * 100;
           if (percentage >= 100) {
             setSuccessMessage(`Meta atingida! +${data.pointsEarned} pts (${achievedValue} ${habit.target_unit})`);
+            
+            // 🎉 Celebração de meta atingida
+            setTimeout(() => {
+              checkTargetAchievement(habit.name, data.pointsEarned);
+            }, 1000);
           } else {
             setSuccessMessage(`Progresso registrado: ${achievedValue} ${habit.target_unit} (+${data.pointsEarned} pts)`);
           }
@@ -171,7 +186,33 @@ export default function HomeScreen() {
         }
         
         setShowSuccessToast(true);
-        refetchProfile();
+
+        // 🎉 Verificar milestone de streak
+        if (updatedStreak?.current_streak) {
+          const hasMilestone = checkStreakMilestone(
+            updatedStreak.current_streak,
+            data.pointsEarned
+          );
+          
+          // Se não mostrou celebration de streak, atualizar perfil
+          if (!hasMilestone) {
+            refetchProfile();
+          } else {
+            // Aguardar celebração terminar para atualizar
+            setTimeout(() => {
+              refetchProfile();
+            }, 3000);
+          }
+        } else {
+          refetchProfile();
+        }
+
+        // 🎉 Verificar milestone de pontos totais
+        if (data.totalPoints) {
+          setTimeout(() => {
+            checkPointsMilestone(data.totalPoints);
+          }, 500);
+        }
       }
     }
   };
@@ -225,6 +266,19 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* 🎉 Celebration Modal */}
+      {celebrationData && (
+        <CelebrationModal
+          visible={showCelebration}
+          onClose={closeCelebration}
+          title={celebrationData.title}
+          message={celebrationData.message}
+          icon={celebrationData.icon}
+          streak={celebrationData.streak}
+          points={celebrationData.points}
+        />
+      )}
+
       <SuccessToast
         visible={showSuccessToast}
         message={successMessage}

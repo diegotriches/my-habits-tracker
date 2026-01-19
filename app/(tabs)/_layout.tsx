@@ -1,9 +1,9 @@
 // app/(tabs)/_layout.tsx
+import { Icon } from '@/components/ui/Icon';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();

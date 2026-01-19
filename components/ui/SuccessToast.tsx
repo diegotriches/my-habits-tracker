@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text } from 'react-native';
 
 interface SuccessToastProps {
   visible: boolean;

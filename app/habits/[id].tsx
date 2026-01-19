@@ -1,25 +1,25 @@
 // app/habits/[id].tsx
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useHabitDetails } from '@/hooks/useHabitDetails';
-import { useHabits } from '@/hooks/useHabits';
-import { useTheme } from '../contexts/ThemeContext';
-import { Icon } from '@/components/ui/Icon';
-import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
-import { formatSelectedDays } from '@/utils/habitHelpers';
-import { PeriodStatsCard } from '@/components/habits/PeriodStatsCard';
 import { ConsistencyChart } from '@/components/habits/ConsistencyChart';
 import { HabitHeatMap } from '@/components/habits/HabitHeatMap';
+import { PeriodStatsCard } from '@/components/habits/PeriodStatsCard';
 import { ReminderSetup } from '@/components/habits/ReminderSetup';
+import { Icon } from '@/components/ui/Icon';
+import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
+import { useHabitDetails } from '@/hooks/useHabitDetails';
+import { useHabits } from '@/hooks/useHabits';
+import { formatSelectedDays } from '@/utils/habitHelpers';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function HabitDetailsScreen() {
   const { colors } = useTheme();

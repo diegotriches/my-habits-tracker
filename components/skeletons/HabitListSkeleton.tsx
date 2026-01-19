@@ -1,6 +1,6 @@
+import { useTheme } from '@/contexts/ThemeContext';
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { useTheme } from '@/app/contexts/ThemeContext';
+import { Animated, StyleSheet, View } from 'react-native';
 
 interface HabitListSkeletonProps {
   count?: number;

@@ -1,9 +1,9 @@
 // components/habits/HabitStats.tsx
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Streak } from '@/types/database';
-import { useTheme } from '@/app/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Streak } from '@/types/database';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface HabitStatsProps {
   totalCompletions: number;
