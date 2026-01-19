@@ -1,4 +1,6 @@
+import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticFeedback } from '@/utils/haptics';
 import React, { useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart, LineChart } from 'react-native-chart-kit';
@@ -15,6 +17,12 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
   const { colors, theme } = useTheme();
   const [chartType, setChartType] = useState<ChartType>('daily');
   const screenWidth = Dimensions.get('window').width - 40;
+
+  const handleChartTypeChange = (type: ChartType) => {
+    if (type === chartType) return;
+    hapticFeedback.selection();
+    setChartType(type);
+  };
 
   // Preparar dados para gráfico diário (últimos 7 dias)
   const last7Days = dailyStats.slice(-7);
@@ -67,7 +75,7 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
               styles.toggleButton,
               chartType === 'daily' && [styles.toggleButtonActive, { backgroundColor: colors.surface }],
             ]}
-            onPress={() => setChartType('daily')}
+            onPress={() => handleChartTypeChange('daily')}
           >
             <Text style={[
               styles.toggleText,
@@ -82,7 +90,7 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
               styles.toggleButton,
               chartType === 'weekday' && [styles.toggleButtonActive, { backgroundColor: colors.surface }],
             ]}
-            onPress={() => setChartType('weekday')}
+            onPress={() => handleChartTypeChange('weekday')}
           >
             <Text style={[
               styles.toggleText,

@@ -1,12 +1,17 @@
 // app/(tabs)/stats.tsx
 import { StatsSkeleton } from '@/components/skeletons/StatsSkeleton';
+import { ComparisonCard } from '@/components/stats/ComparisonCard';
 import { CompletionChart } from '@/components/stats/CompletionChart';
+import { InsightsCard } from '@/components/stats/InsightsCard';
 import { LevelProgressCard } from '@/components/stats/LevelProgressCard';
+import { RecordsCard } from '@/components/stats/RecordsCard';
 import { StreaksList } from '@/components/stats/StreaksList';
 import { SummaryCards } from '@/components/stats/SummaryCards';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
+import { useAdvancedStats } from '@/hooks/useAdvancedStats';
 import { useStats } from '@/hooks/useStats';
+import { hapticFeedback } from '@/utils/haptics';
 import { router } from 'expo-router';
 import React from 'react';
 import {
@@ -29,12 +34,23 @@ export default function StatsScreen() {
     refresh 
   } = useStats();
 
+  // Hook de estatísticas avançadas
+  const {
+    insights,
+    weekComparison,
+    monthComparison,
+    records,
+    loading: advancedLoading,
+  } = useAdvancedStats(dailyStats, generalStats);
+
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = async () => {
+    hapticFeedback.light();
     setRefreshing(true);
     await refresh();
     setRefreshing(false);
+    hapticFeedback.success();
   };
 
   // Loading inicial com skeleton
@@ -58,7 +74,10 @@ export default function StatsScreen() {
           title="Sem estatísticas ainda"
           subtitle="Comece criando hábitos e completando-os para ver suas estatísticas incríveis!"
           buttonText="Criar Primeiro Hábito"
-          onButtonPress={() => router.push('/habits/create' as any)}
+          onButtonPress={() => {
+            hapticFeedback.light();
+            router.push('/habits/create' as any);
+          }}
         />
       </View>
     );
@@ -114,11 +133,25 @@ export default function StatsScreen() {
       {/* Card de Nível */}
       <LevelProgressCard />
 
+      {/* 🎯 NOVO: Insights Personalizados */}
+      {insights.length > 0 && <InsightsCard insights={insights} />}
+
+      {/* 🎯 NOVO: Comparação de Períodos */}
+      {dailyStats.length > 7 && (
+        <ComparisonCard
+          weekComparison={weekComparison}
+          monthComparison={monthComparison}
+        />
+      )}
+
       {/* Gráfico de Progresso */}
       <CompletionChart dailyStats={dailyStats} weekdayStats={weekdayStats} />
 
       {/* Cards de Resumo */}
       <SummaryCards stats={generalStats} />
+
+      {/* 🎯 NOVO: Recordes Pessoais */}
+      {records.length > 0 && <RecordsCard records={records} />}
 
       {/* Lista de Melhores Streaks */}
       <StreaksList streaks={topStreaks} />
