@@ -1,5 +1,6 @@
 // app/(auth)/login.tsx
 import { Icon } from '@/components/ui/Icon';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -22,9 +23,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const { signInWithEmail, signUpWithEmail, loading } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, loading } = useAuth();
 
-  const handleSubmit = async () => {
+  const handleEmailAuth = async () => {
     if (!email || !password) {
       Alert.alert('Erro', 'Preencha todos os campos');
       return;
@@ -49,14 +50,31 @@ export default function LoginScreen() {
           Alert.alert('Erro no Cadastro', error.message);
         } else {
           Alert.alert(
-            'Sucesso!',
-            'Conta criada com sucesso! Verifique seu email para confirmação.',
-            [{ text: 'OK', onPress: () => setIsLogin(true) }]
+            'Sucesso! 🎉',
+            'Conta criada com sucesso! Você já pode começar a usar o app.',
+            [{ text: 'Começar', onPress: () => router.replace('/(tabs)') }]
           );
         }
       }
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro inesperado');
+      console.error(error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        if (error.message !== 'Login cancelado') {
+          Alert.alert('Erro no Login com Google', error.message);
+        }
+      } else {
+        // Usuário será redirecionado automaticamente pelo onAuthStateChange
+        router.replace('/(tabs)');
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Ocorreu um erro ao fazer login com Google');
       console.error(error);
     }
   };
@@ -82,6 +100,20 @@ export default function LoginScreen() {
 
         {/* Form */}
         <View style={styles.form}>
+          {/* Google Sign In Button */}
+          <GoogleSignInButton
+            onPress={handleGoogleSignIn}
+            loading={loading}
+            disabled={loading}
+          />
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>ou</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <View style={styles.inputIconContainer}>
@@ -136,7 +168,7 @@ export default function LoginScreen() {
           {/* Submit Button */}
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
-            onPress={handleSubmit}
+            onPress={handleEmailAuth}
             disabled={loading}
           >
             {loading ? (
@@ -211,6 +243,20 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '500',
   },
   inputContainer: {
     position: 'relative',
