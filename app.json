@@ -87,7 +87,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withGoogleServices"
     ],
     "experiments": {
       "typedRoutes": true
