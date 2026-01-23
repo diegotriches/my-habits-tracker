@@ -1,22 +1,19 @@
 // utils/habitHelpers.ts
-import { Habit } from '@/types/database';
+import { Habit, Completion } from '@/types/database';
 
 /**
  * Verifica se um hábito deve ser realizado em uma data específica
  */
 export function shouldHabitAppearOnDate(habit: Habit, date: Date = new Date()): boolean {
-  // Se é diário, sempre aparece
   if (habit.frequency_type === 'daily') {
     return true;
   }
 
-  // Se é semanal, verifica se o dia da semana está nos dias selecionados
   if (habit.frequency_type === 'weekly' && habit.frequency_days) {
-    const dayOfWeek = date.getDay(); // 0=Dom, 1=Seg, 2=Ter, etc
+    const dayOfWeek = date.getDay();
     return habit.frequency_days.includes(dayOfWeek);
   }
 
-  // Custom ou outros tipos: por enquanto retorna true
   return true;
 }
 
@@ -58,7 +55,8 @@ export function formatSelectedDays(days: number[]): string {
 }
 
 /**
- * Verifica se hoje é um dia em que o hábito deve ser feito
+ * Verifica se hoje é um dia em que o hábito DEVERIA ser feito
+ * (usado apenas para destacar visualmente)
  */
 export function isHabitDueToday(habit: Habit): boolean {
   return shouldHabitAppearOnDate(habit, new Date());
@@ -76,7 +74,55 @@ export function getDaysPerWeek(habit: Habit): number {
 }
 
 /**
- * Retorna a próxima data em que o hábito deve ser feito
+ * 🆕 Calcula o progresso semanal do hábito
+ * Retorna quantas vezes foi completado nos últimos 7 dias vs quantas deveria
+ */
+export function getWeeklyProgress(
+  habit: Habit,
+  completions: Completion[]
+): { completed: number; expected: number; percentage: number } {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  // Filtra conclusões dos últimos 7 dias
+  const recentCompletions = completions.filter(c => {
+    const completionDate = new Date(c.completed_at);
+    return completionDate >= sevenDaysAgo;
+  });
+
+  const completed = recentCompletions.length;
+  const expected = getDaysPerWeek(habit);
+  const percentage = expected > 0 ? (completed / expected) * 100 : 0;
+
+  return { completed, expected, percentage };
+}
+
+/**
+ * 🆕 Verifica se o hábito atingiu a meta semanal
+ */
+export function hasMetWeeklyGoal(
+  habit: Habit,
+  completions: Completion[]
+): boolean {
+  const { completed, expected } = getWeeklyProgress(habit, completions);
+  return completed >= expected;
+}
+
+/**
+ * 🆕 Calcula quantos dias faltam para atingir a meta semanal
+ */
+export function getDaysRemainingForWeeklyGoal(
+  habit: Habit,
+  completions: Completion[]
+): number {
+  const { completed, expected } = getWeeklyProgress(habit, completions);
+  return Math.max(0, expected - completed);
+}
+
+/**
+ * Retorna a próxima data em que o hábito DEVERIA ser feito
+ * (usado apenas para notificações/lembretes)
  */
 export function getNextDueDate(habit: Habit, fromDate: Date = new Date()): Date | null {
   if (habit.frequency_type === 'daily') {
@@ -87,7 +133,6 @@ export function getNextDueDate(habit: Habit, fromDate: Date = new Date()): Date 
     const currentDay = fromDate.getDay();
     const sortedDays = [...habit.frequency_days].sort((a, b) => a - b);
     
-    // Procura próximo dia a partir de hoje
     for (const day of sortedDays) {
       if (day > currentDay) {
         const daysUntil = day - currentDay;
@@ -97,7 +142,6 @@ export function getNextDueDate(habit: Habit, fromDate: Date = new Date()): Date 
       }
     }
     
-    // Se não achou, retorna o primeiro dia da próxima semana
     const firstDay = sortedDays[0];
     const daysUntil = (7 - currentDay) + firstDay;
     const nextDate = new Date(fromDate);
@@ -106,4 +150,25 @@ export function getNextDueDate(habit: Habit, fromDate: Date = new Date()): Date 
   }
 
   return null;
+}
+
+/**
+ * 🆕 Retorna um texto amigável sobre o progresso semanal
+ */
+export function getWeeklyProgressMessage(
+  habit: Habit,
+  completions: Completion[]
+): string {
+  const { completed, expected, percentage } = getWeeklyProgress(habit, completions);
+  
+  if (completed >= expected) {
+    return `Meta atingida! ${completed}/${expected} vezes esta semana 🎉`;
+  }
+  
+  const remaining = expected - completed;
+  if (remaining === 1) {
+    return `Falta ${remaining} vez para atingir a meta semanal`;
+  }
+  
+  return `Faltam ${remaining} vezes para atingir a meta semanal`;
 }

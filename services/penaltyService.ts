@@ -1,14 +1,14 @@
 import { supabase } from '@/services/supabase';
 import { PENALTY_CONFIG, PENALTY_REASONS, GRACE_PERIOD } from '@/constants/PenaltyConfig';
-import { differenceInHours, startOfDay } from 'date-fns';
+import { differenceInHours, startOfDay, subDays, startOfWeek, endOfWeek } from 'date-fns';
 
-// ✅ FIX: Interface corrigida - reflete estrutura real das tabelas
 interface HabitData {
   id: string;
   user_id: string;
   difficulty: 'easy' | 'medium' | 'hard';
   name: string;
-  // Dados de streak virão da tabela 'streaks'
+  frequency_type: 'daily' | 'weekly' | 'custom';
+  frequency_days: number[] | null;
 }
 
 interface StreakData {
@@ -22,15 +22,62 @@ interface PenaltyResult {
   pointsLost: number;
   reason: string | null;
   message: string;
+  habitName?: string;
 }
 
 const penaltiesTable = () => supabase.from('penalties') as any;
 const habitsTable = () => supabase.from('habits') as any;
 const profilesTable = () => supabase.from('profiles') as any;
 const streaksTable = () => supabase.from('streaks') as any;
+const completionsTable = () => supabase.from('completions') as any;
+
+/**
+ * 🆕 Calcula quantos dias o hábito deveria ser feito por semana
+ */
+function getExpectedDaysPerWeek(habit: HabitData): number {
+  if (habit.frequency_type === 'daily') return 7;
+  if (habit.frequency_type === 'weekly' && habit.frequency_days) {
+    return habit.frequency_days.length;
+  }
+  return 7;
+}
+
+/**
+ * 🆕 Verifica se o hábito atingiu a meta semanal
+ */
+async function checkWeeklyGoal(habitId: string): Promise<{
+  completed: number;
+  expected: number;
+  metGoal: boolean;
+}> {
+  const now = new Date();
+  const weekStart = startOfWeek(now, { weekStartsOn: 0 }); // Domingo
+  const weekEnd = endOfWeek(now, { weekStartsOn: 0 }); // Sábado
+
+  // Buscar conclusões desta semana
+  const { data: completions } = await completionsTable()
+    .select('id')
+    .eq('habit_id', habitId)
+    .gte('completed_at', weekStart.toISOString())
+    .lte('completed_at', weekEnd.toISOString());
+
+  // Buscar dados do hábito
+  const { data: habit } = await habitsTable()
+    .select('frequency_type, frequency_days')
+    .eq('id', habitId)
+    .single();
+
+  const completed = completions?.length || 0;
+  const expected = habit ? getExpectedDaysPerWeek(habit) : 7;
+  const metGoal = completed >= expected;
+
+  return { completed, expected, metGoal };
+}
 
 export const penaltyService = {
-  // ✅ FIX: Corrigido - busca dados de habits E streaks
+  /**
+   * 🔄 NOVA LÓGICA: Verifica penalidades baseado em META SEMANAL
+   */
   async checkMissedDay(habitId: string): Promise<PenaltyResult> {
     try {
       // Buscar dados do hábito
@@ -48,13 +95,13 @@ export const penaltyService = {
         };
       }
 
-      // ✅ FIX: Buscar streak da tabela correta
+      // Buscar streak
       const { data: streak } = await streaksTable()
         .select('*')
         .eq('habit_id', habitId)
         .single();
 
-      // Se não tem streak, significa que nunca foi completado
+      // Se nunca foi completado, não aplica penalidade ainda
       if (!streak || !streak.last_completion_date) {
         return {
           penaltyApplied: false,
@@ -68,77 +115,141 @@ export const penaltyService = {
       const now = new Date();
       const hoursSinceLastCompletion = differenceInHours(now, lastCompleted);
 
-      // Se completou nas últimas 24h, está ok
-      if (hoursSinceLastCompletion < 24) {
+      // 🆕 LÓGICA PARA HÁBITOS DIÁRIOS
+      if (habit.frequency_type === 'daily') {
+        // Se completou nas últimas 24h, está ok
+        if (hoursSinceLastCompletion < 24) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Hábito em dia! ✅',
+          };
+        }
+
+        // Verificar se já aplicou penalidade hoje
+        const today = startOfDay(now).toISOString();
+        const { data: existingPenalty } = await penaltiesTable()
+          .select('id')
+          .eq('habit_id', habitId)
+          .gte('penalty_date', today)
+          .maybeSingle();
+
+        if (existingPenalty) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Penalidade já aplicada hoje',
+          };
+        }
+
+        // Grace period (48h)
+        if (GRACE_PERIOD.enabled && hoursSinceLastCompletion < 48) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: '💙 Período de graça! Você tem até amanhã.',
+          };
+        }
+
+        // Aplicar penalidade para hábito diário
+        let reason: string;
+        let pointsLost: number;
+        const difficulty = habit.difficulty as 'easy' | 'medium' | 'hard';
+
+        if (hoursSinceLastCompletion >= 72) {
+          reason = PENALTY_REASONS.CONSECUTIVE_MISS;
+          pointsLost = PENALTY_CONFIG[difficulty].consecutiveMiss;
+        } else if (streak.current_streak > 0) {
+          reason = PENALTY_REASONS.STREAK_BROKEN;
+          pointsLost = PENALTY_CONFIG[difficulty].streakBroken;
+        } else {
+          reason = PENALTY_REASONS.MISSED_DAY;
+          pointsLost = PENALTY_CONFIG[difficulty].missedDay;
+        }
+
+        await this.applyPenalty(habit.user_id, habitId, pointsLost, reason);
+
         return {
-          penaltyApplied: false,
-          pointsLost: 0,
-          reason: null,
-          message: 'Hábito em dia! ✅',
+          penaltyApplied: true,
+          pointsLost,
+          reason,
+          message: `Penalidade aplicada: -${pointsLost} pontos`,
+          habitName: habit.name,
         };
       }
 
-      // Verificar se já tem penalidade aplicada hoje
-      const today = startOfDay(now).toISOString();
-      const { data: existingPenalty } = await penaltiesTable()
-        .select('id')
-        .eq('habit_id', habitId)
-        .gte('penalty_date', today)
-        .maybeSingle();
+      // 🆕 LÓGICA PARA HÁBITOS SEMANAIS
+      if (habit.frequency_type === 'weekly') {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
 
-      if (existingPenalty) {
+        // Só verifica penalidades aos DOMINGOS (fim da semana)
+        // Isso dá tempo da pessoa completar a meta durante a semana
+        if (dayOfWeek !== 0) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Penalidades semanais verificadas aos domingos',
+          };
+        }
+
+        // Verificar se já aplicou penalidade esta semana
+        const weekStart = startOfWeek(now, { weekStartsOn: 0 });
+        const { data: existingPenalty } = await penaltiesTable()
+          .select('id')
+          .eq('habit_id', habitId)
+          .gte('penalty_date', weekStart.toISOString())
+          .maybeSingle();
+
+        if (existingPenalty) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Penalidade semanal já aplicada',
+          };
+        }
+
+        // Verificar meta semanal
+        const { completed, expected, metGoal } = await checkWeeklyGoal(habitId);
+
+        if (metGoal) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: `Meta semanal atingida! ${completed}/${expected} ✅`,
+          };
+        }
+
+        // Não atingiu a meta → aplicar penalidade
+        const difficulty = habit.difficulty as 'easy' | 'medium' | 'hard';
+        const reason = 'weekly_goal_not_met';
+        const pointsLost = PENALTY_CONFIG[difficulty].missedDay * (expected - completed);
+
+        await this.applyPenalty(habit.user_id, habitId, pointsLost, reason);
+
         return {
-          penaltyApplied: false,
-          pointsLost: 0,
-          reason: null,
-          message: 'Penalidade já aplicada hoje',
+          penaltyApplied: true,
+          pointsLost,
+          reason,
+          message: `Meta semanal não atingida: ${completed}/${expected}. -${pointsLost} pontos`,
+          habitName: habit.name,
         };
       }
 
-      // ✅ FIX: Sistema de grace period simplificado
-      // Verifica se há uma completion recente (últimas 48h)
-      // Se sim, não aplica penalidade ainda
-      if (GRACE_PERIOD.enabled && hoursSinceLastCompletion < 48) {
-        return {
-          penaltyApplied: false,
-          pointsLost: 0,
-          reason: null,
-          message: '💙 Período de graça! Você tem até amanhã.',
-        };
-      }
-
-      // Determinar tipo de penalidade
-      let reason: string;
-      let pointsLost: number;
-
-      // ✅ FIX: Cast explícito para evitar erro de tipagem
-      const difficulty = habit.difficulty as 'easy' | 'medium' | 'hard';
-
-      if (hoursSinceLastCompletion >= 72) {
-        // 3+ dias perdidos = penalidade maior
-        reason = PENALTY_REASONS.CONSECUTIVE_MISS;
-        pointsLost = PENALTY_CONFIG[difficulty].consecutiveMiss;
-      } else if (streak.current_streak > 0) {
-        // Quebrou uma streak
-        reason = PENALTY_REASONS.STREAK_BROKEN;
-        pointsLost = PENALTY_CONFIG[difficulty].streakBroken;
-      } else {
-        // Apenas perdeu um dia
-        reason = PENALTY_REASONS.MISSED_DAY;
-        pointsLost = PENALTY_CONFIG[difficulty].missedDay;
-      }
-
-      // Aplicar penalidade
-      await this.applyPenalty(habit.user_id, habitId, pointsLost, reason);
-
+      // Frequência custom: sem penalidades por enquanto
       return {
-        penaltyApplied: true,
-        pointsLost,
-        reason,
-        message: `Penalidade aplicada: -${pointsLost} pontos`,
+        penaltyApplied: false,
+        pointsLost: 0,
+        reason: null,
+        message: 'Hábitos customizados não têm penalidades',
       };
     } catch (error) {
-      // ✅ FIX: Console.error removido
       return {
         penaltyApplied: false,
         pointsLost: 0,
@@ -148,7 +259,6 @@ export const penaltyService = {
     }
   },
 
-  // ✅ FIX: Corrigido - atualiza streak na tabela correta
   async applyPenalty(
     userId: string,
     habitId: string,
@@ -178,17 +288,15 @@ export const penaltyService = {
           .eq('id', userId);
       }
 
-      // ✅ FIX: Resetar streak na tabela correta
+      // Resetar streak
       await streaksTable()
         .update({ current_streak: 0 })
         .eq('habit_id', habitId);
     } catch (error) {
-      // ✅ FIX: Console.error removido
       throw error;
     }
   },
 
-  // ✅ FIX: Corrigido - busca hábitos ativos
   async checkAllHabits(userId: string): Promise<PenaltyResult[]> {
     try {
       const { data: habits } = await habitsTable()
@@ -210,7 +318,6 @@ export const penaltyService = {
 
       return results;
     } catch (error) {
-      // ✅ FIX: Console.error removido
       return [];
     }
   },
@@ -234,7 +341,6 @@ export const penaltyService = {
 
       return { data, error: null };
     } catch (error) {
-      // ✅ FIX: Console.error removido
       return { data: null, error };
     }
   },
@@ -270,12 +376,18 @@ export const penaltyService = {
         byReason,
       };
     } catch (error) {
-      // ✅ FIX: Console.error removido
       return {
         totalPenalties: 0,
         totalPointsLost: 0,
         byReason: {},
       };
     }
+  },
+
+  /**
+   * 🆕 Helper para verificar progresso semanal de um hábito
+   */
+  async getWeeklyProgress(habitId: string) {
+    return await checkWeeklyGoal(habitId);
   },
 };

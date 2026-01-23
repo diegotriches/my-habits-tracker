@@ -18,6 +18,7 @@ interface HabitCardProps {
   isCompleted?: boolean;
   streak?: Streak;
   completion?: Completion;
+  isDueToday?: boolean; // 🆕 Prop para saber se é "devido hoje"
 }
 
 export default function HabitCard({
@@ -27,6 +28,7 @@ export default function HabitCard({
   isCompleted = false,
   streak,
   completion,
+  isDueToday = true, // 🆕 Default true para retrocompatibilidade
 }: HabitCardProps) {
   const { colors } = useTheme();
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
@@ -122,7 +124,6 @@ export default function HabitCard({
     return getProgressPercentage() >= 100;
   };
 
-  // 🆕 Cor do card baseada no tipo
   const cardColor = isNegative ? colors.warning : habit.color;
   const successColor = isNegative ? colors.warning : colors.success;
 
@@ -215,6 +216,8 @@ export default function HabitCard({
           styles.card,
           { backgroundColor: colors.background, borderColor: colors.border },
           isFullyCompleted() && { opacity: 0.7 },
+          // 🆕 Opacidade reduzida se não for devido hoje
+          !isDueToday && !isCompleted && { opacity: 0.6 },
         ]}
       >
         <View style={styles.content}>
@@ -222,7 +225,6 @@ export default function HabitCard({
 
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              {/* 🆕 Ícone do tipo de hábito */}
               {isNegative && (
                 <Icon name="xCircle" size={16} color={colors.warning} />
               )}
@@ -246,8 +248,18 @@ export default function HabitCard({
                 </View>
               )}
             </View>
+
+            {/* 🆕 Badge "Fora do dia programado" */}
+            {!isDueToday && !isCompleted && (
+              <View style={[styles.offDayBadge, { backgroundColor: colors.infoLight }]}>
+                <Icon name="info" size={11} color={colors.info} />
+                <Text style={[styles.offDayText, { color: colors.info }]}>
+                  Fora do dia programado
+                </Text>
+              </View>
+            )}
             
-            {habit.frequency_type === 'weekly' && habit.frequency_days && (
+            {habit.frequency_type === 'weekly' && habit.frequency_days && isDueToday && (
               <View style={[styles.frequencyBadge, { backgroundColor: colors.infoLight }]}>
                 <Icon name="calendar" size={11} color={colors.info} />
                 <Text style={[styles.frequencyText, { color: colors.info }]}>
@@ -398,6 +410,18 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   streakText: { fontSize: 12, fontWeight: '600' },
+  // 🆕 Badge "Fora do dia"
+  offDayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginBottom: 6,
+    alignSelf: 'flex-start',
+  },
+  offDayText: { fontSize: 11, fontWeight: '500', fontStyle: 'italic' },
   frequencyBadge: {
     flexDirection: 'row',
     alignItems: 'center',

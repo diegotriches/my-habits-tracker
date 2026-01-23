@@ -61,16 +61,15 @@ export const useHabits = () => {
     }
   };
 
-  // 🔧 FIX: Aceitar TODOS os campos do hábito
   const createHabit = async (habitData: {
     name: string;
     description?: string;
     type?: 'positive' | 'negative';
     frequency_type?: 'daily' | 'weekly' | 'custom';
     frequency_days?: number[];
-    has_target?: boolean; // 🆕 Campo de meta
-    target_value?: number | null; // 🆕 Valor da meta
-    target_unit?: string | null; // 🆕 Unidade da meta
+    has_target?: boolean;
+    target_value?: number | null;
+    target_unit?: string | null;
     difficulty: 'easy' | 'medium' | 'hard';
     color: string;
     points_base: number;
@@ -81,7 +80,6 @@ export const useHabits = () => {
     }
 
     try {
-      // 🔧 FIX: Incluir TODOS os campos, inclusive metas
       const dataToInsert: Partial<HabitInsert> = {
         user_id: user.id,
         name: habitData.name,
@@ -89,7 +87,6 @@ export const useHabits = () => {
         type: habitData.type || 'positive',
         frequency_type: habitData.frequency_type || 'daily',
         frequency_days: habitData.frequency_days || null,
-        // 🆕 Campos de meta numérica
         has_target: habitData.has_target || false,
         target_value: habitData.target_value || null,
         target_unit: habitData.target_unit || null,
@@ -100,7 +97,6 @@ export const useHabits = () => {
         is_active: true,
       };
 
-      // 🔧 DEBUG
       console.log('📤 Enviando para Supabase:', dataToInsert);
 
       const { data, error: insertError } = await habitsTable()
@@ -115,8 +111,8 @@ export const useHabits = () => {
 
       console.log('✅ Hábito criado no banco:', data);
 
-      // Adicionar à lista local
-      setHabits([data as Habit, ...habits]);
+      // 🔧 FIX: Usar forma funcional para atualizar o estado
+      setHabits(prevHabits => [data as Habit, ...prevHabits]);
 
       return { data, error: null };
     } catch (err) {
@@ -136,9 +132,9 @@ export const useHabits = () => {
       difficulty?: 'easy' | 'medium' | 'hard';
       color?: string;
       points_base?: number;
-      has_target?: boolean; // 🆕
-      target_value?: number | null; // 🆕
-      target_unit?: string | null; // 🆕
+      has_target?: boolean;
+      target_value?: number | null;
+      target_unit?: string | null;
     }
   ) => {
     try {
@@ -152,7 +148,10 @@ export const useHabits = () => {
         return { data: null, error: updateError.message };
       }
 
-      setHabits(habits.map(h => h.id === habitId ? data as Habit : h));
+      // 🔧 FIX: Usar forma funcional
+      setHabits(prevHabits => 
+        prevHabits.map(h => h.id === habitId ? data as Habit : h)
+      );
 
       return { data, error: null };
     } catch (err) {
@@ -173,7 +172,8 @@ export const useHabits = () => {
         return { error: deleteError.message };
       }
 
-      setHabits(habits.filter(h => h.id !== habitId));
+      // 🔧 FIX: Usar forma funcional
+      setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
 
       return { error: null };
     } catch (err) {
@@ -196,10 +196,12 @@ export const useHabits = () => {
       if (isActive) {
         const { data } = await getHabit(habitId);
         if (data) {
-          setHabits([data as Habit, ...habits]);
+          // 🔧 FIX: Usar forma funcional
+          setHabits(prevHabits => [data as Habit, ...prevHabits]);
         }
       } else {
-        setHabits(habits.filter(h => h.id !== habitId));
+        // 🔧 FIX: Usar forma funcional
+        setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
       }
 
       return { error: null };

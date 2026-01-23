@@ -76,6 +76,7 @@ import {
   Crown,
   Sparkles,
   Rocket,
+  List, // 🆕 Adicionado
   type LucideIcon,
 } from 'lucide-react-native';
 
@@ -86,6 +87,7 @@ export const Icons = {
   stats: BarChart3,
   profile: User,
   settings: Settings,
+  list: List, // 🆕 Adicionado
   
   // Notifications
   bell: Bell,
