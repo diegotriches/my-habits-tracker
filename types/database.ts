@@ -163,8 +163,8 @@ export interface Database {
           time: string
           days_of_week: number[] | null
           is_active: boolean
-          notification_ids: string[] | null  // ← ADICIONADO
-          sound: string | null  // ← ADICIONADO
+          notification_ids: string[] | null
+          sound: string | null
           created_at: string
         }
         Insert: {
@@ -173,8 +173,8 @@ export interface Database {
           time: string
           days_of_week?: number[] | null
           is_active?: boolean
-          notification_ids?: string[] | null  // ← ADICIONADO
-          sound?: string | null  // ← ADICIONADO
+          notification_ids?: string[] | null
+          sound?: string | null
           created_at?: string
         }
         Update: {
@@ -183,8 +183,8 @@ export interface Database {
           time?: string
           days_of_week?: number[] | null
           is_active?: boolean
-          notification_ids?: string[] | null  // ← ADICIONADO
-          sound?: string | null  // ← ADICIONADO
+          notification_ids?: string[] | null
+          sound?: string | null
           created_at?: string
         }
       }
@@ -307,6 +307,66 @@ export interface Database {
           updated_at?: string
         }
       }
+      // 🆕 TABELA DE NOTIFICAÇÕES DE PROGRESSO
+      habit_progress_notifications: {
+        Row: {
+          id: string
+          habit_id: string
+          user_id: string
+          enabled: boolean
+          morning_enabled: boolean
+          morning_time: string
+          afternoon_enabled: boolean
+          afternoon_time: string
+          evening_enabled: boolean
+          evening_time: string
+          morning_notification_id: string | null
+          afternoon_notification_id: string | null
+          evening_notification_id: string | null
+          max_notifications_per_day: number
+          min_interval_hours: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          habit_id: string
+          user_id: string
+          enabled?: boolean
+          morning_enabled?: boolean
+          morning_time?: string
+          afternoon_enabled?: boolean
+          afternoon_time?: string
+          evening_enabled?: boolean
+          evening_time?: string
+          morning_notification_id?: string | null
+          afternoon_notification_id?: string | null
+          evening_notification_id?: string | null
+          max_notifications_per_day?: number
+          min_interval_hours?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          habit_id?: string
+          user_id?: string
+          enabled?: boolean
+          morning_enabled?: boolean
+          morning_time?: string
+          afternoon_enabled?: boolean
+          afternoon_time?: string
+          evening_enabled?: boolean
+          evening_time?: string
+          morning_notification_id?: string | null
+          afternoon_notification_id?: string | null
+          evening_notification_id?: string | null
+          max_notifications_per_day?: number
+          min_interval_hours?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       user_rankings: {
@@ -354,6 +414,11 @@ export type Penalty = Database['public']['Tables']['penalties']['Row']
 export type Level = Database['public']['Tables']['levels']['Row']
 export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
 
+// 🆕 TIPOS PARA NOTIFICAÇÕES DE PROGRESSO
+export type ProgressNotification = Database['public']['Tables']['habit_progress_notifications']['Row']
+export type ProgressNotificationInsert = Database['public']['Tables']['habit_progress_notifications']['Insert']
+export type ProgressNotificationUpdate = Database['public']['Tables']['habit_progress_notifications']['Update']
+
 // Tipos para insert
 export type HabitInsert = Database['public']['Tables']['habits']['Insert']
 export type CompletionInsert = Database['public']['Tables']['completions']['Insert']
@@ -364,3 +429,52 @@ export type NotificationSettingsInsert = Database['public']['Tables']['notificat
 export type HabitUpdate = Database['public']['Tables']['habits']['Update']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type NotificationSettingsUpdate = Database['public']['Tables']['notification_settings']['Update']
+
+// 🆕 TIPOS AUXILIARES PARA NOTIFICAÇÕES DE PROGRESSO
+
+/**
+ * Período do dia para notificação
+ */
+export type NotificationPeriod = 'morning' | 'afternoon' | 'evening'
+
+/**
+ * Configuração de notificação por período
+ */
+export interface PeriodNotificationConfig {
+  enabled: boolean
+  time: string
+  notificationId: string | null
+}
+
+/**
+ * Status do progresso do hábito
+ */
+export interface ProgressStatus {
+  habitId: string
+  habitName: string
+  targetValue: number | null
+  targetUnit: string | null
+  currentValue: number
+  percentage: number
+  isCompleted: boolean
+}
+
+/**
+ * Tipo de mensagem de notificação baseado no progresso
+ */
+export type ProgressMessageType = 
+  | 'no_progress'      // 0%
+  | 'low_progress'     // 1-29%
+  | 'moderate_progress' // 30-69%
+  | 'high_progress'    // 70-99%
+  | 'completed'        // 100%+
+
+/**
+ * Template de mensagem de notificação
+ */
+export interface NotificationMessage {
+  title: string
+  body: string
+  type: ProgressMessageType
+  urgency: 'low' | 'medium' | 'high'
+}

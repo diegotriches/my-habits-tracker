@@ -47,6 +47,35 @@ export const useCompletions = () => {
     return completions.some(c => c.habit_id === habitId);
   };
 
+  // 🆕 Calcular percentual de progresso
+  const calculateProgressPercentage = (currentValue: number, targetValue: number | null): number => {
+    if (!targetValue || targetValue === 0) return 0;
+    return (currentValue / targetValue) * 100;
+  };
+
+  // 🆕 Verificar se deve pontuar (≥ 100% da meta)
+  const shouldEarnPoints = (habit: Habit, achievedValue: number): boolean => {
+    if (!habit.has_target || !habit.target_value) {
+      return true; // Hábitos binários sempre pontuam
+    }
+    
+    const percentage = calculateProgressPercentage(achievedValue, habit.target_value);
+    return percentage >= 100;
+  };
+
+  // 🆕 Verificar tratamento de streak baseado no progresso
+  const getStreakAction = (habit: Habit, achievedValue: number): 'increment' | 'freeze' | 'reset' => {
+    if (!habit.has_target || !habit.target_value) {
+      return 'increment'; // Hábitos binários sempre incrementam
+    }
+
+    const percentage = calculateProgressPercentage(achievedValue, habit.target_value);
+    
+    if (percentage >= 100) return 'increment'; // Meta completa
+    if (percentage >= 50) return 'freeze';     // Progresso parcial bom
+    return 'reset';                            // Progresso muito baixo
+  };
+
   // Completar ou atualizar hábito
   const completeHabit = async (
     habit: Habit, 
@@ -96,16 +125,25 @@ export const useCompletions = () => {
         return { data: null, error: 'Hábito já completado hoje' };
       }
 
-      // Calcular pontos
-      const currentStreak = streak?.current_streak || 0;
-      let pointsEarned = calculateCompletionPoints(habit, currentStreak);
+      // 🆕 Determinar se deve pontuar
+      const finalValue = achievedValue || 0;
+      const earnPoints = shouldEarnPoints(habit, finalValue);
+      const streakAction = getStreakAction(habit, finalValue);
 
-      // Bônus adicional se atingiu 100% da meta
-      if (habit.has_target && achievedValue && habit.target_value) {
-        const percentage = (achievedValue / habit.target_value) * 100;
-        if (percentage >= 100) {
-          const bonus = Math.floor(pointsEarned * 0.2);
-          pointsEarned += bonus;
+      // Calcular pontos (0 se não completou meta)
+      let pointsEarned = 0;
+      
+      if (earnPoints) {
+        const currentStreak = streak?.current_streak || 0;
+        pointsEarned = calculateCompletionPoints(habit, currentStreak);
+
+        // Bônus adicional se atingiu 100% da meta
+        if (habit.has_target && habit.target_value) {
+          const percentage = calculateProgressPercentage(finalValue, habit.target_value);
+          if (percentage >= 100) {
+            const bonus = Math.floor(pointsEarned * 0.2);
+            pointsEarned += bonus;
+          }
         }
       }
 
@@ -118,7 +156,6 @@ export const useCompletions = () => {
         was_synced: true,
       };
 
-      // 🔧 FIX: Usar (supabase.from() as any)
       const { data: completionResponse, error: completionError } = await (supabase.from('completions') as any)
         .insert(completionData)
         .select()
@@ -128,39 +165,71 @@ export const useCompletions = () => {
 
       const completion = completionResponse as Completion;
 
-      // 🔧 FIX: Atualizar streak considerando frequência
-      // Não atualiza mais aqui diretamente, será feito externamente com updateStreakWithFrequency
+      // 🆕 Atualizar pontos do perfil (apenas se ganhou pontos)
+      let newTotalPoints = 0;
+      if (earnPoints && pointsEarned > 0) {
+        const { data: profileData, error: profileFetchError } = await supabase
+          .from('profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
 
-      // Atualizar pontos do perfil
-      const { data: profileData, error: profileFetchError } = await supabase
-        .from('profiles')
-        .select('total_points')
-        .eq('id', user.id)
-        .single();
+        if (profileFetchError) throw profileFetchError;
 
-      if (profileFetchError) throw profileFetchError;
+        const profile = profileData as { total_points: number };
+        const currentPoints = profile.total_points || 0;
+        newTotalPoints = currentPoints + pointsEarned;
 
-      const profile = profileData as { total_points: number };
-      const currentPoints = profile.total_points || 0;
-      const newTotalPoints = currentPoints + pointsEarned;
+        const { error: profileError } = await (supabase.from('profiles') as any)
+          .update({ total_points: newTotalPoints })
+          .eq('id', user.id);
 
-      // 🔧 FIX: Usar (supabase.from() as any)
-      const { error: profileError } = await (supabase.from('profiles') as any)
-        .update({ total_points: newTotalPoints })
-        .eq('id', user.id);
+        if (profileError) throw profileError;
+      }
 
-      if (profileError) throw profileError;
+      // 🆕 Gerenciar streak baseado na ação
+      let newStreak = streak?.current_streak || 0;
+      
+      if (streakAction === 'increment') {
+        newStreak = (streak?.current_streak || 0) + 1;
+        
+        const { error: streakError } = await (supabase.from('streaks') as any)
+          .update({ 
+            current_streak: newStreak,
+            best_streak: Math.max(newStreak, streak?.best_streak || 0),
+            last_completion_date: startOfDay(new Date()).toISOString()
+          })
+          .eq('habit_id', habit.id);
+
+        if (streakError) throw streakError;
+      } else if (streakAction === 'reset') {
+        newStreak = 0;
+        
+        const { error: streakError } = await (supabase.from('streaks') as any)
+          .update({ 
+            current_streak: 0,
+            last_completion_date: startOfDay(new Date()).toISOString()
+          })
+          .eq('habit_id', habit.id);
+
+        if (streakError) throw streakError;
+      }
+      // streakAction === 'freeze': não faz nada com o streak
 
       // Adicionar à lista local
       setCompletions(prev => [...prev, completion]);
 
+      // 🆕 Retornar informações detalhadas
       return { 
         data: { 
           completion, 
           pointsEarned, 
-          newStreak: currentStreak, // Retorna streak atual, será atualizado externamente
+          newStreak,
           totalPoints: newTotalPoints,
-          achievedValue,
+          achievedValue: finalValue,
+          percentage: habit.target_value ? calculateProgressPercentage(finalValue, habit.target_value) : 100,
+          earnedPoints: earnPoints,
+          streakAction,
         }, 
         error: null 
       };
@@ -186,16 +255,24 @@ export const useCompletions = () => {
       // Calcular valor final baseado no modo
       const finalValue = mode === 'add' ? currentValue + newValue : newValue;
 
-      // Recalcular pontos com o novo valor
-      const currentStreak = streak?.current_streak || 0;
-      let pointsEarned = calculateCompletionPoints(habit, currentStreak);
+      // 🆕 Determinar se deve pontuar
+      const earnPoints = shouldEarnPoints(habit, finalValue);
+      const streakAction = getStreakAction(habit, finalValue);
 
-      // Bônus se atingiu meta
-      if (habit.target_value) {
-        const percentage = (finalValue / habit.target_value) * 100;
-        if (percentage >= 100) {
-          const bonus = Math.floor(pointsEarned * 0.2);
-          pointsEarned += bonus;
+      // Recalcular pontos com o novo valor (0 se não completou meta)
+      let pointsEarned = 0;
+      
+      if (earnPoints) {
+        const currentStreak = streak?.current_streak || 0;
+        pointsEarned = calculateCompletionPoints(habit, currentStreak);
+
+        // Bônus se atingiu meta
+        if (habit.target_value) {
+          const percentage = calculateProgressPercentage(finalValue, habit.target_value);
+          if (percentage >= 100) {
+            const bonus = Math.floor(pointsEarned * 0.2);
+            pointsEarned += bonus;
+          }
         }
       }
 
@@ -217,7 +294,6 @@ export const useCompletions = () => {
         points_earned: pointsEarned,
       };
 
-      // 🔧 FIX: Usar (supabase.from() as any)
       const { data: updatedCompletionData, error: updateError } = await (supabase.from('completions') as any)
         .update(completionUpdate)
         .eq('id', completionId)
@@ -228,25 +304,61 @@ export const useCompletions = () => {
 
       const updatedCompletion = updatedCompletionData as Completion;
 
-      // Atualizar pontos do perfil
-      const { data: profileData, error: profileFetchError } = await supabase
-        .from('profiles')
-        .select('total_points')
-        .eq('id', user.id)
-        .single();
+      // 🆕 Atualizar pontos do perfil (apenas se mudou)
+      let newTotalPoints = 0;
+      if (pointsDifference !== 0) {
+        const { data: profileData, error: profileFetchError } = await supabase
+          .from('profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
 
-      if (profileFetchError) throw profileFetchError;
+        if (profileFetchError) throw profileFetchError;
 
-      const profile = profileData as { total_points: number };
-      const currentTotalPoints = profile.total_points || 0;
-      const newTotalPoints = currentTotalPoints + pointsDifference;
+        const profile = profileData as { total_points: number };
+        const currentTotalPoints = profile.total_points || 0;
+        newTotalPoints = Math.max(0, currentTotalPoints + pointsDifference);
 
-      // 🔧 FIX: Usar (supabase.from() as any)
-      const { error: profileError } = await (supabase.from('profiles') as any)
-        .update({ total_points: newTotalPoints })
-        .eq('id', user.id);
+        const { error: profileError } = await (supabase.from('profiles') as any)
+          .update({ total_points: newTotalPoints })
+          .eq('id', user.id);
 
-      if (profileError) throw profileError;
+        if (profileError) throw profileError;
+      }
+
+      // 🆕 Gerenciar streak baseado na nova ação
+      let newStreak = streak?.current_streak || 0;
+      
+      if (streakAction === 'increment') {
+        // Se antes não pontuava e agora pontua, incrementa
+        if (!shouldEarnPoints(habit, currentValue) && earnPoints) {
+          newStreak = (streak?.current_streak || 0) + 1;
+          
+          const { error: streakError } = await (supabase.from('streaks') as any)
+            .update({ 
+              current_streak: newStreak,
+              best_streak: Math.max(newStreak, streak?.best_streak || 0),
+              last_completion_date: startOfDay(new Date()).toISOString()
+            })
+            .eq('habit_id', habit.id);
+
+          if (streakError) throw streakError;
+        }
+      } else if (streakAction === 'reset') {
+        // Se antes pontuava e agora caiu abaixo de 50%, reseta
+        if (shouldEarnPoints(habit, currentValue) || calculateProgressPercentage(currentValue, habit.target_value || 1) >= 50) {
+          newStreak = 0;
+          
+          const { error: streakError } = await (supabase.from('streaks') as any)
+            .update({ 
+              current_streak: 0,
+              last_completion_date: startOfDay(new Date()).toISOString()
+            })
+            .eq('habit_id', habit.id);
+
+          if (streakError) throw streakError;
+        }
+      }
 
       // Atualizar lista local
       setCompletions(prev => 
@@ -258,9 +370,12 @@ export const useCompletions = () => {
           completion: updatedCompletion,
           pointsEarned,
           pointsDifference,
-          newStreak: currentStreak,
+          newStreak,
           totalPoints: newTotalPoints,
           achievedValue: finalValue,
+          percentage: habit.target_value ? calculateProgressPercentage(finalValue, habit.target_value) : 100,
+          earnedPoints: earnPoints,
+          streakAction,
           wasUpdate: true,
         },
         error: null,
@@ -304,46 +419,48 @@ export const useCompletions = () => {
 
       if (deleteError) throw deleteError;
 
-      // Reverter pontos do perfil
-      const { data: profileData, error: profileFetchError } = await supabase
-        .from('profiles')
-        .select('total_points')
-        .eq('id', user.id)
-        .single();
+      // Reverter pontos do perfil (apenas se tinha pontos)
+      if (pointsToDeduct > 0) {
+        const { data: profileData, error: profileFetchError } = await supabase
+          .from('profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
 
-      if (profileFetchError) throw profileFetchError;
+        if (profileFetchError) throw profileFetchError;
 
-      const profile = profileData as { total_points: number };
-      const currentPoints = profile.total_points || 0;
-      const newTotalPoints = Math.max(0, currentPoints - pointsToDeduct);
+        const profile = profileData as { total_points: number };
+        const currentPoints = profile.total_points || 0;
+        const newTotalPoints = Math.max(0, currentPoints - pointsToDeduct);
 
-      // 🔧 FIX: Usar (supabase.from() as any)
-      const { error: profileError } = await (supabase.from('profiles') as any)
-        .update({ total_points: newTotalPoints })
-        .eq('id', user.id);
+        const { error: profileError } = await (supabase.from('profiles') as any)
+          .update({ total_points: newTotalPoints })
+          .eq('id', user.id);
 
-      if (profileError) throw profileError;
+        if (profileError) throw profileError;
+      }
 
-      // Atualizar streak
-      const { data: streakData, error: streakFetchError } = await supabase
-        .from('streaks')
-        .select('*')
-        .eq('habit_id', habitId)
-        .maybeSingle();
+      // Atualizar streak (apenas se tinha pontos, ou seja, completou 100%)
+      if (pointsToDeduct > 0) {
+        const { data: streakData, error: streakFetchError } = await supabase
+          .from('streaks')
+          .select('*')
+          .eq('habit_id', habitId)
+          .maybeSingle();
 
-      if (streakFetchError) throw streakFetchError;
+        if (streakFetchError) throw streakFetchError;
 
-      if (streakData) {
-        const streak = streakData as Streak;
-        const currentStreak = streak.current_streak || 0;
-        const newStreak = Math.max(0, currentStreak - 1);
-        
-        // 🔧 FIX: Usar (supabase.from() as any)
-        const { error: streakError } = await (supabase.from('streaks') as any)
-          .update({ current_streak: newStreak })
-          .eq('habit_id', habitId);
+        if (streakData) {
+          const streak = streakData as Streak;
+          const currentStreak = streak.current_streak || 0;
+          const newStreak = Math.max(0, currentStreak - 1);
+          
+          const { error: streakError } = await (supabase.from('streaks') as any)
+            .update({ current_streak: newStreak })
+            .eq('habit_id', habitId);
 
-        if (streakError) throw streakError;
+          if (streakError) throw streakError;
+        }
       }
 
       // Remover da lista local
@@ -367,6 +484,35 @@ export const useCompletions = () => {
     return completions.reduce((total, c) => total + c.points_earned, 0);
   };
 
+  // 🆕 Obter status de progresso de um hábito
+  const getProgressStatus = (habit: Habit): {
+    hasProgress: boolean;
+    percentage: number;
+    earnedPoints: boolean;
+    streakAction: 'increment' | 'freeze' | 'reset';
+  } => {
+    const completion = getCompletion(habit.id);
+    
+    if (!completion || !habit.has_target || !habit.target_value) {
+      return {
+        hasProgress: !!completion,
+        percentage: completion ? 100 : 0,
+        earnedPoints: !!completion,
+        streakAction: 'increment',
+      };
+    }
+
+    const currentValue = completion.value_achieved || 0;
+    const percentage = calculateProgressPercentage(currentValue, habit.target_value);
+    
+    return {
+      hasProgress: true,
+      percentage,
+      earnedPoints: shouldEarnPoints(habit, currentValue),
+      streakAction: getStreakAction(habit, currentValue),
+    };
+  };
+
   // Carregar completions quando o usuário estiver disponível
   useEffect(() => {
     if (user) {
@@ -383,6 +529,7 @@ export const useCompletions = () => {
     isCompletedToday,
     getCompletion,
     getTodayPoints,
+    getProgressStatus, // 🆕 Novo método
     refetch: fetchTodayCompletions,
   };
 };

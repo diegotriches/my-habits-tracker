@@ -28,6 +28,7 @@ import {
   Info,
   Moon,
   Sun,
+  Sunrise,
   Volume2,
   VolumeX,
   Repeat,
@@ -76,8 +77,9 @@ import {
   Crown,
   Sparkles,
   Rocket,
-  List, // 🆕 Adicionado
+  List,
   type LucideIcon,
+  AlertTriangle,
 } from 'lucide-react-native';
 
 export const Icons = {
@@ -87,7 +89,7 @@ export const Icons = {
   stats: BarChart3,
   profile: User,
   settings: Settings,
-  list: List, // 🆕 Adicionado
+  list: List,
   
   // Notifications
   bell: Bell,
@@ -145,10 +147,13 @@ export const Icons = {
   close: X,
   info: Info,
   alert: AlertCircle,
+  alertCircle: AlertCircle,
+  alertTriangle: AlertTriangle,
   
   // Theme
   moon: Moon,
   sun: Sun,
+  sunrise: Sunrise,
   palette: Palette,
   
   // Media

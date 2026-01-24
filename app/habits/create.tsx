@@ -1,6 +1,9 @@
 // app/habits/create.tsx
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
+import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
+import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
+import { HabitPreviewCard } from '@/components/habits/HabitPreviewCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
@@ -8,22 +11,15 @@ import { SuccessToast } from '@/components/ui/SuccessToast';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
 import { useHabits } from '@/hooks/useHabits';
 import { notificationService } from '@/services/notifications';
+import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { supabase } from '@/services/supabase';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { hapticFeedback } from '@/utils/haptics';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const remindersTable = () => (supabase.from('reminders') as any);
 
@@ -42,27 +38,34 @@ const TARGET_UNITS = {
 
 export default function CreateHabitScreen() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { createHabit } = useHabits();
-  const [loading, setLoading] = useState(false);
 
+  const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
-
   const [hasTarget, setHasTarget] = useState(false);
   const [targetValue, setTargetValue] = useState('');
   const [targetUnit, setTargetUnit] = useState('');
-
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
   const [frequencyDays, setFrequencyDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
-
   const [hasPermission, setHasPermission] = useState(false);
   const [reminders, setReminders] = useState<Array<{ id: string; time: Date }>>([]);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-
+  const [showReminders, setShowReminders] = useState(false);
+  const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
+    enabled: false,
+    morningEnabled: true,
+    morningTime: '08:00:00',
+    afternoonEnabled: true,
+    afternoonTime: '15:00:00',
+    eveningEnabled: true,
+    eveningTime: '21:00:00',
+  });
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showErrorToast, setShowErrorToast] = useState(false);
@@ -80,7 +83,6 @@ export default function CreateHabitScreen() {
   const requestNotificationPermission = async () => {
     const granted = await notificationService.requestPermissions();
     setHasPermission(granted);
-
     if (!granted) {
       setErrorMessage('Permissão de notificações negada. Ative nas configurações do dispositivo.');
       setShowErrorToast(true);
@@ -89,7 +91,6 @@ export default function CreateHabitScreen() {
 
   const validateForm = (): string | null => {
     const trimmedName = name.trim();
-
     if (!trimmedName) return 'Digite um nome para o hábito';
     if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
     if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
@@ -108,6 +109,12 @@ export default function CreateHabitScreen() {
     }
 
     return null;
+  };
+
+  const formatTime = (date: Date) => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const handleAddReminder = () => {
@@ -139,12 +146,6 @@ export default function CreateHabitScreen() {
     setReminders(reminders.filter(r => r.id !== id));
   };
 
-  const formatTime = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
-
   const handleSubmit = async () => {
     const validationError = validateForm();
     if (validationError) {
@@ -154,14 +155,18 @@ export default function CreateHabitScreen() {
       return;
     }
 
+    if (!user?.id) {
+      setErrorMessage('Usuário não autenticado');
+      setShowErrorToast(true);
+      return;
+    }
+
     hapticFeedback.medium();
     setLoading(true);
 
-    const trimmedDescription = description.trim();
-
     const habitData: any = {
       name: name.trim(),
-      description: trimmedDescription || undefined,
+      description: description.trim() || undefined,
       type: habitType,
       frequency_type: frequencyType,
       frequency_days: frequencyType === 'weekly' ? frequencyDays : null,
@@ -176,10 +181,17 @@ export default function CreateHabitScreen() {
 
     const { data: habit, error } = await createHabit(habitData);
 
-    if (habit && reminders.length > 0 && !error) {
+    if (error || !habit) {
+      setLoading(false);
+      hapticFeedback.error();
+      setErrorMessage('Não foi possível criar o hábito. Tente novamente.');
+      setShowErrorToast(true);
+      return;
+    }
+
+    if (reminders.length > 0) {
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
-
         try {
           const notificationId = await notificationService.scheduleDailyReminder(
             habit.id,
@@ -187,7 +199,6 @@ export default function CreateHabitScreen() {
             timeString,
             reminder.id
           );
-
           await remindersTable().insert({
             habit_id: habit.id,
             time: timeString,
@@ -201,17 +212,35 @@ export default function CreateHabitScreen() {
       }
     }
 
-    setLoading(false);
-
-    if (error) {
-      hapticFeedback.error();
-      setErrorMessage('Não foi possível criar o hábito. Tente novamente.');
-      setShowErrorToast(true);
-    } else {
-      hapticFeedback.success();
-      setShowSuccessToast(true);
-      setTimeout(() => router.back(), 1500);
+    if (hasTarget && progressNotificationConfig.enabled) {
+      try {
+        await (supabase.from('habit_progress_notifications') as any).insert({
+          habit_id: habit.id,
+          user_id: user.id,
+          enabled: true,
+          morning_enabled: progressNotificationConfig.morningEnabled,
+          morning_time: progressNotificationConfig.morningTime,
+          afternoon_enabled: progressNotificationConfig.afternoonEnabled,
+          afternoon_time: progressNotificationConfig.afternoonTime,
+          evening_enabled: progressNotificationConfig.eveningEnabled,
+          evening_time: progressNotificationConfig.eveningTime,
+        });
+        await progressNotificationScheduler.scheduleProgressNotifications(habit.id, user.id);
+      } catch (progressError) {
+        console.warn('Erro ao criar notificações de progresso:', progressError);
+      }
+    } else if (hasTarget) {
+      try {
+        await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
+      } catch (defaultError) {
+        console.warn('Erro ao criar configuração padrão:', defaultError);
+      }
     }
+
+    setLoading(false);
+    hapticFeedback.success();
+    setShowSuccessToast(true);
+    setTimeout(() => router.back(), 1500);
   };
 
   const onTimeChange = (_event: DateTimePickerEvent, date?: Date) => {
@@ -235,23 +264,15 @@ export default function CreateHabitScreen() {
     }
   };
 
-  const getAllUnits = () => {
-    return Object.values(TARGET_UNITS).flat();
-  };
+  const getAllUnits = () => Object.values(TARGET_UNITS).flat();
+
+  const styles = createStyles(colors);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <LoadingOverlay visible={loading} message="Criando hábito..." />
-      <SuccessToast
-        visible={showSuccessToast}
-        message="Hábito criado com sucesso!"
-        onHide={() => setShowSuccessToast(false)}
-      />
-      <SuccessToast
-        visible={showErrorToast}
-        message={errorMessage}
-        onHide={() => setShowErrorToast(false)}
-      />
+      <SuccessToast visible={showSuccessToast} message="Hábito criado com sucesso!" onHide={() => setShowSuccessToast(false)} />
+      <SuccessToast visible={showErrorToast} message={errorMessage} onHide={() => setShowErrorToast(false)} />
       <ConfirmDialog
         visible={showCancelConfirm}
         title="Descartar Hábito?"
@@ -266,156 +287,152 @@ export default function CreateHabitScreen() {
         onCancel={() => setShowCancelConfirm(false)}
       />
 
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      {/* HEADER */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancelar</Text>
+          <Text style={styles.cancelButton}>Cancelar</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Novo Hábito</Text>
+        <Text style={styles.headerTitle}>Novo Hábito</Text>
         <TouchableOpacity onPress={handleSubmit} disabled={loading}>
-          <Text style={[styles.saveButton, { color: loading ? colors.textDisabled : colors.primary }]}>
-            Salvar
-          </Text>
+          <Text style={[styles.saveButton, loading && styles.saveButtonDisabled]}>Salvar</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* PREVIEW */}
+        {name.trim() && (
+          <HabitPreviewCard
+            name={name}
+            color={selectedColor}
+            difficulty={difficulty}
+            hasTarget={hasTarget}
+            targetValue={targetValue}
+            targetUnit={targetUnit}
+            habitType={habitType}
+          />
+        )}
+
         {/* TIPO DE HÁBITO */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Tipo de Hábito</Text>
+          <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
           <View style={styles.habitTypeContainer}>
             <TouchableOpacity
               style={[
                 styles.habitTypeOption,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                habitType === 'positive' && {
-                  borderColor: colors.success,
-                  backgroundColor: colors.successLight,
-                },
+                habitType === 'positive' && styles.habitTypeOptionPositive
               ]}
               onPress={() => {
                 hapticFeedback.selection();
                 setHabitType('positive');
               }}
             >
-              <Icon 
-                name="check" 
-                size={24} 
-                color={habitType === 'positive' ? colors.success : colors.textSecondary} 
-              />
-              <Text
-                style={[
-                  styles.habitTypeLabel,
-                  { color: colors.textSecondary },
-                  habitType === 'positive' && { color: colors.success, fontWeight: '600' },
-                ]}
-              >
-                Positivo
-              </Text>
-              <Text style={[styles.habitTypeDescription, { color: colors.textTertiary }]}>
-                Criar um novo hábito
-              </Text>
+              <Icon name="check" size={20} color={habitType === 'positive' ? colors.success : colors.textSecondary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.habitTypeLabel, habitType === 'positive' && styles.habitTypeLabelPositive]}>
+                  Positivo
+                </Text>
+                <Text style={styles.habitTypeDescription}>Criar novo hábito</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[
                 styles.habitTypeOption,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-                habitType === 'negative' && {
-                  borderColor: colors.warning,
-                  backgroundColor: colors.warningLight,
-                },
+                habitType === 'negative' && styles.habitTypeOptionNegative
               ]}
               onPress={() => {
                 hapticFeedback.selection();
                 setHabitType('negative');
               }}
             >
-              <Icon 
-                name="xCircle" 
-                size={24} 
-                color={habitType === 'negative' ? colors.warning : colors.textSecondary} 
-              />
-              <Text
-                style={[
-                  styles.habitTypeLabel,
-                  { color: colors.textSecondary },
-                  habitType === 'negative' && { color: colors.warning, fontWeight: '600' },
-                ]}
-              >
-                Negativo
-              </Text>
-              <Text style={[styles.habitTypeDescription, { color: colors.textTertiary }]}>
-                Evitar algo ruim
-              </Text>
+              <Icon name="xCircle" size={20} color={habitType === 'negative' ? colors.warning : colors.textSecondary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.habitTypeLabel, habitType === 'negative' && styles.habitTypeLabelNegative]}>
+                  Negativo
+                </Text>
+                <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Nome */}
+        {/* NOME */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
-            Nome do Hábito *
-          </Text>
+          <Text style={styles.label}>Nome *</Text>
           <TextInput
-            style={[styles.input, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              color: colors.textPrimary
-            }]}
-            placeholder={
-              habitType === 'positive' 
-                ? "Ex: Meditar, Ler, Exercitar..." 
-                : "Ex: Não fumar, Evitar doces, Não procrastinar..."
-            }
+            style={styles.input}
+            placeholder={habitType === 'positive' ? "Ex: Meditar, Ler..." : "Ex: Não fumar..."}
             placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
             maxLength={MAX_NAME_LENGTH}
-            autoFocus
           />
-          <Text style={[styles.charCount, { color: colors.textTertiary }]}>
-            {name.length}/{MAX_NAME_LENGTH}
-          </Text>
         </View>
 
-        {/* Descrição */}
+        {/* DESCRIÇÃO */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Descrição (opcional)</Text>
+          <Text style={styles.label}>Descrição (opcional)</Text>
           <TextInput
-            style={[styles.input, styles.textArea, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              color: colors.textPrimary
-            }]}
-            placeholder={
-              habitType === 'positive'
-                ? "Adicione detalhes sobre seu hábito..."
-                : "Por que você quer evitar isso?"
-            }
+            style={[styles.input, styles.textArea]}
+            placeholder="Adicione detalhes..."
             placeholderTextColor={colors.textTertiary}
             value={description}
             onChangeText={setDescription}
             multiline
-            numberOfLines={3}
+            numberOfLines={2}
             maxLength={MAX_DESCRIPTION_LENGTH}
           />
-          <Text style={[styles.charCount, { color: colors.textTertiary }]}>
-            {description.length}/{MAX_DESCRIPTION_LENGTH}
-          </Text>
+        </View>
+
+        {/* DIFICULDADE E COR */}
+        <View style={styles.section}>
+          <Text style={styles.label}>Dificuldade</Text>
+          <View style={styles.difficultyContainer}>
+            {(Object.keys(DIFFICULTY_CONFIG) as Array<'easy' | 'medium' | 'hard'>).map((key) => {
+              const config = DIFFICULTY_CONFIG[key];
+              const isSelected = difficulty === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.difficultyOption,
+                    isSelected && { borderColor: config.color, backgroundColor: config.color + '15' },
+                  ]}
+                  onPress={() => {
+                    hapticFeedback.selection();
+                    setDifficulty(key);
+                  }}
+                >
+                  <Text style={[styles.difficultyLabel, isSelected && { color: config.color }]}>
+                    {config.label}
+                  </Text>
+                  <Text style={[styles.difficultyPoints, isSelected && { color: config.color }]}>
+                    +{config.points}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* COR COMPACTA */}
+        <View style={styles.section}>
+          <CompactColorSelector
+            selectedColor={selectedColor}
+            onColorSelect={(color) => {
+              hapticFeedback.selection();
+              setSelectedColor(color);
+            }}
+          />
         </View>
 
         {/* META NUMÉRICA */}
         <View style={styles.section}>
           <View style={styles.toggleRow}>
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Icon name="target" size={16} color={colors.textPrimary} />
-                <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 0 }]}>
-                  Meta Numérica
-                </Text>
-              </View>
-              <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-                {hasTarget ? 'Registre valores ao completar' : 'Apenas marcar como completo'}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Meta Numérica</Text>
+              <Text style={styles.helperText}>
+                {hasTarget ? 'Registre valores' : 'Apenas check/uncheck'}
               </Text>
             </View>
             <Switch
@@ -428,7 +445,6 @@ export default function CreateHabitScreen() {
               thumbColor={hasTarget ? colors.primary : colors.surface}
             />
           </View>
-
           {hasTarget && (
             <TargetInput
               value={targetValue}
@@ -442,17 +458,7 @@ export default function CreateHabitScreen() {
 
         {/* FREQUÊNCIA */}
         <View style={styles.section}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Icon name="calendar" size={16} color={colors.textPrimary} />
-            <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 0 }]}>
-              Frequência
-            </Text>
-          </View>
-          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-            {habitType === 'positive' 
-              ? 'Quando você quer realizar este hábito?'
-              : 'Quando você precisa evitar isso?'}
-          </Text>
+          <Text style={styles.label}>Frequência</Text>
           <FrequencySelector
             frequencyType={frequencyType}
             selectedDays={frequencyDays}
@@ -461,206 +467,126 @@ export default function CreateHabitScreen() {
           />
         </View>
 
-        {/* Dificuldade */}
+        {/* LEMBRETES COLAPSÁVEIS */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Dificuldade</Text>
-          <View style={styles.difficultyContainer}>
-            {(Object.keys(DIFFICULTY_CONFIG) as Array<'easy' | 'medium' | 'hard'>).map((key) => {
-              const config = DIFFICULTY_CONFIG[key];
-              const isSelected = difficulty === key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.difficultyOption,
-                    { borderColor: colors.border },
-                    isSelected && {
-                      borderColor: config.color,
-                      backgroundColor: config.color + '10',
-                    },
-                  ]}
-                  onPress={() => {
-                    hapticFeedback.selection();
-                    setDifficulty(key);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.difficultyLabel,
-                      { color: colors.textSecondary },
-                      isSelected && { color: config.color },
-                    ]}
-                  >
-                    {config.label}
-                  </Text>
-                  <Text style={[styles.difficultyPoints, { color: colors.textTertiary }]}>
-                    +{config.points} pts
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Cor */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Cor</Text>
-          <View style={styles.colorContainer}>
-            {HABIT_COLORS.map((color) => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.colorOptionSelected,
-                ]}
-                onPress={() => {
-                  hapticFeedback.selection();
-                  setSelectedColor(color);
-                }}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* LEMBRETES */}
-        <View style={styles.section}>
-          <View style={styles.labelRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.collapsibleHeader}
+            onPress={() => setShowReminders(!showReminders)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
               <Icon name="bell" size={16} color={colors.textPrimary} />
-              <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 0 }]}>
-                Lembretes
-              </Text>
-            </View>
-            {reminders.length > 0 && (
-              <Text style={[styles.reminderCount, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
-                {reminders.length}/{MAX_REMINDERS}
-              </Text>
-            )}
-          </View>
-
-          {!hasPermission && (
-            <TouchableOpacity
-              style={[styles.permissionButton, { backgroundColor: colors.primary }]}
-              onPress={async () => {
-                hapticFeedback.light();
-                await requestNotificationPermission();
-              }}
-            >
-              <Icon name="unlock" size={16} color={colors.textInverse} />
-              <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>
-                Permitir Notificações
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {hasPermission && (
-            <>
+              <Text style={styles.label}>Lembretes</Text>
               {reminders.length > 0 && (
-                <View style={styles.remindersList}>
-                  {reminders.map((reminder) => (
-                    <View key={reminder.id} style={[styles.reminderItem, {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border
-                    }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Icon name="clock" size={16} color={colors.textSecondary} />
-                        <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>
-                          {formatTime(reminder.time)}
-                        </Text>
-                      </View>
-                      <TouchableOpacity onPress={() => handleRemoveReminder(reminder.id)}>
-                        <Icon name="trash" size={18} color={colors.danger} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                <View style={[styles.reminderBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.reminderBadgeText, { color: colors.primary }]}>
+                    {reminders.length}
+                  </Text>
                 </View>
               )}
+            </View>
+            <Icon 
+              name={showReminders ? "chevronUp" : "chevronDown"} 
+              size={16} 
+              color={colors.textSecondary} 
+            />
+          </TouchableOpacity>
 
-              {reminders.length < MAX_REMINDERS && (
+          {showReminders && (
+            <>
+              {!hasPermission && (
                 <TouchableOpacity
-                  style={[styles.addReminderButton, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border
-                  }]}
-                  onPress={() => {
+                  style={styles.permissionButton}
+                  onPress={async () => {
                     hapticFeedback.light();
-                    setShowTimePicker(true);
+                    await requestNotificationPermission();
                   }}
                 >
-                  <Icon name="add" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.addReminderText, { color: colors.textSecondary }]}>
-                    Adicionar Lembrete
-                  </Text>
+                  <Icon name="unlock" size={16} color={colors.textInverse} />
+                  <Text style={styles.permissionButtonText}>Permitir Notificações</Text>
                 </TouchableOpacity>
               )}
 
-              {showTimePicker && (
-                <View style={[styles.pickerContainer, { backgroundColor: colors.surface }]}>
-                  <DateTimePicker
-                    value={currentTime}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                  />
-
-                  {Platform.OS === 'ios' && (
-                    <>
-                      <View style={[styles.pickerPreview, { backgroundColor: colors.infoLight }]}>
-                        <Text style={[styles.pickerPreviewText, { color: colors.info }]}>
-                          Horário: {formatTime(currentTime)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.pickerButtons}>
-                        <TouchableOpacity
-                          onPress={() => setShowTimePicker(false)}
-                          style={[styles.pickerCancelButton, { backgroundColor: colors.border }]}
-                        >
-                          <Text style={[styles.pickerCancelText, { color: colors.textSecondary }]}>
-                            Cancelar
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={handleAddReminder}
-                          style={[styles.pickerConfirmButton, { backgroundColor: colors.success }]}
-                        >
-                          <Text style={[styles.pickerConfirmText, { color: colors.textInverse }]}>
-                            Confirmar
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
+              {hasPermission && (
+                <>
+                  {reminders.length > 0 && (
+                    <View style={styles.remindersList}>
+                      {reminders.map((reminder) => (
+                        <View key={reminder.id} style={styles.reminderItem}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Icon name="clock" size={14} color={colors.textSecondary} />
+                            <Text style={styles.reminderTime}>{formatTime(reminder.time)}</Text>
+                          </View>
+                          <TouchableOpacity onPress={() => handleRemoveReminder(reminder.id)}>
+                            <Icon name="trash" size={16} color={colors.danger} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
                   )}
-                </View>
+
+                  {reminders.length < MAX_REMINDERS && (
+                    <TouchableOpacity
+                      style={styles.addButton}
+                      onPress={() => {
+                        hapticFeedback.light();
+                        setShowTimePicker(true);
+                      }}
+                    >
+                      <Icon name="add" size={14} color={colors.primary} />
+                      <Text style={[styles.addButtonText, { color: colors.primary }]}>
+                        Adicionar
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {showTimePicker && (
+                    <View style={styles.pickerContainer}>
+                      <DateTimePicker
+                        value={currentTime}
+                        mode="time"
+                        is24Hour={true}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onTimeChange}
+                      />
+                      {Platform.OS === 'ios' && (
+                        <View style={styles.pickerButtons}>
+                          <TouchableOpacity
+                            onPress={() => setShowTimePicker(false)}
+                            style={[styles.pickerButton, { backgroundColor: colors.surface }]}
+                          >
+                            <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>
+                              Cancelar
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleAddReminder}
+                            style={[styles.pickerButton, { backgroundColor: colors.primary }]}
+                          >
+                            <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>
+                              Confirmar
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </>
               )}
             </>
           )}
         </View>
 
-        {/* Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
-          <Icon name="info" size={16} color={colors.info} />
-          <Text style={[styles.infoText, { color: colors.info }]}>
-            {habitType === 'positive' ? (
-              <>
-                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
-              </>
-            ) : (
-              <>
-                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que resistir e evitar este hábito!
-              </>
-            )}
-            {hasTarget && targetValue && targetUnit && (
-              <Text>{'\n'}Meta: {targetValue} {targetUnit} por dia</Text>
-            )}
-            {frequencyType === 'weekly' && frequencyDays.length > 0 && (
-              <Text>{'\n'}Frequência: {frequencyDays.length === 7 ? 'Todos os dias' : `${frequencyDays.length}x por semana`}</Text>
-            )}
-          </Text>
-        </View>
+        {/* NOTIFICAÇÕES DE PROGRESSO */}
+        {hasTarget && (
+          <View style={styles.section}>
+            <ProgressNotificationSettings
+              config={progressNotificationConfig}
+              onChange={setProgressNotificationConfig}
+              hasPermission={hasPermission}
+              onRequestPermission={requestNotificationPermission}
+            />
+          </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -668,8 +594,11 @@ export default function CreateHabitScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -678,55 +607,220 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
-  headerTitle: { fontSize: 18, fontWeight: '600' },
-  cancelButton: { fontSize: 16 },
-  saveButton: { fontSize: 16, fontWeight: '600' },
-  content: { flex: 1, padding: 20 },
-  section: { marginBottom: 24 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
-  helperText: { fontSize: 12, marginTop: 2 },
-  charCount: { fontSize: 12, textAlign: 'right', marginTop: 4 },
-  reminderCount: { fontSize: 12, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  habitTypeContainer: { flexDirection: 'row', gap: 12 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  saveButton: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 4,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  textArea: {
+    height: 70,
+    textAlignVertical: 'top',
+  },
+  habitTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   habitTypeOption: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 2,
-    alignItems: 'center',
-    gap: 6,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  habitTypeLabel: { fontSize: 14, fontWeight: '500' },
-  habitTypeDescription: { fontSize: 11, textAlign: 'center' },
-  input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, borderWidth: 1 },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  difficultyContainer: { flexDirection: 'row', gap: 12 },
-  difficultyOption: { flex: 1, paddingVertical: 16, paddingHorizontal: 12, borderRadius: 12, borderWidth: 2, alignItems: 'center' },
-  difficultyLabel: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  difficultyPoints: { fontSize: 12 },
-  colorContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  colorOption: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: 'transparent' },
-  colorOptionSelected: { borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
-  infoCard: { flexDirection: 'row', gap: 8, borderRadius: 12, padding: 16, marginTop: 8 },
-  infoText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  infoBold: { fontWeight: '600' },
-  permissionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 12, marginBottom: 12 },
-  permissionButtonText: { fontSize: 15, fontWeight: '600' },
-  remindersList: { marginBottom: 12 },
-  reminderItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1 },
-  reminderTime: { fontSize: 15, fontWeight: '600' },
-  addReminderButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 8, borderWidth: 1, borderStyle: 'dashed' },
-  addReminderText: { fontSize: 15, fontWeight: '600' },
-  pickerContainer: { marginTop: 12, borderRadius: 8, padding: 16 },
-  pickerPreview: { padding: 12, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-  pickerPreviewText: { fontSize: 16, fontWeight: '600' },
-  pickerButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  pickerCancelButton: { flex: 1, padding: 12, marginRight: 8, borderRadius: 8, alignItems: 'center' },
-  pickerCancelText: { fontSize: 15, fontWeight: '600' },
-  pickerConfirmButton: { flex: 1, padding: 12, marginLeft: 8, borderRadius: 8, alignItems: 'center' },
-  pickerConfirmText: { fontSize: 15, fontWeight: '600' },
+  habitTypeOptionPositive: {
+    borderColor: colors.success,
+    backgroundColor: colors.successLight,
+  },
+  habitTypeOptionNegative: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningLight,
+  },
+  habitTypeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  habitTypeLabelPositive: {
+    color: colors.success,
+  },
+  habitTypeLabelNegative: {
+    color: colors.warning,
+  },
+  habitTypeDescription: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  difficultyContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  difficultyOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+  },
+  difficultyLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  difficultyPoints: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    fontWeight: '700',
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  reminderBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  reminderBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  permissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  permissionButtonText: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  remindersList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  reminderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reminderTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    marginTop: 8,
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pickerContainer: {
+    marginTop: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  pickerButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

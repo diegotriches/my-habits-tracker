@@ -7,9 +7,10 @@ import { Completion, Habit, Streak } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
 import { hapticFeedback } from '@/utils/haptics';
 import React, { useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { HabitProgressInput } from './HabitProgressInput';
+import { habitCardStyles } from './HabitCardStyles';
 
 interface HabitCardProps {
   habit: Habit;
@@ -18,7 +19,7 @@ interface HabitCardProps {
   isCompleted?: boolean;
   streak?: Streak;
   completion?: Completion;
-  isDueToday?: boolean; // 🆕 Prop para saber se é "devido hoje"
+  isDueToday?: boolean;
 }
 
 export default function HabitCard({
@@ -28,16 +29,17 @@ export default function HabitCard({
   isCompleted = false,
   streak,
   completion,
-  isDueToday = true, // 🆕 Default true para retrocompatibilidade
+  isDueToday = true,
 }: HabitCardProps) {
   const { colors } = useTheme();
+  const styles = habitCardStyles(colors);
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const hasStreak = (streak?.current_streak || 0) > 0;
   const isNegative = habit.type === 'negative';
 
   const [showProgressInput, setShowProgressInput] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
-  const checkScale = useRef(new Animated.Value(0)).current;
+  // ✅ REMOVIDO: checkScale (estava causando o problema de invisibilidade)
   const pointsAnim = useRef(new Animated.Value(0)).current;
   const pointsOpacity = useRef(new Animated.Value(0)).current;
 
@@ -48,53 +50,47 @@ export default function HabitCard({
 
     hapticFeedback.light();
 
+    // Se tem meta numérica, sempre abre o input (mesmo se completado)
     if (habit.has_target && habit.target_value && habit.target_unit) {
       setShowProgressInput(true);
       return;
     }
 
-    if (isCompleted) return;
-
+    // ✅ CORREÇÃO: Removido o "if (isCompleted) return;"
+    // Para hábitos binários, sempre permite ação (marcar ou desmarcar)
+    // A lógica de confirmação para desmarcar está no index.tsx
     hapticFeedback.success();
 
-    Animated.sequence([
-      Animated.timing(checkScale, {
-        toValue: 1.3,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.spring(checkScale, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // ✅ REMOVIDO: Animação de scale que causava invisibilidade
 
-    setShowAnimation(true);
-    Animated.parallel([
-      Animated.timing(pointsAnim, {
-        toValue: -30,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.sequence([
-        Animated.timing(pointsOpacity, {
-          toValue: 1,
-          duration: 200,
+    // Só mostra animação de pontos se NÃO estiver completado
+    if (!isCompleted) {
+      setShowAnimation(true);
+      Animated.parallel([
+        Animated.timing(pointsAnim, {
+          toValue: -30,
+          duration: 800,
           useNativeDriver: true,
         }),
-        Animated.timing(pointsOpacity, {
-          toValue: 0,
-          duration: 400,
-          delay: 200,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      setShowAnimation(false);
-      pointsAnim.setValue(0);
-      pointsOpacity.setValue(0);
-    });
+        Animated.sequence([
+          Animated.timing(pointsOpacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pointsOpacity, {
+            toValue: 0,
+            duration: 400,
+            delay: 200,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => {
+        setShowAnimation(false);
+        pointsAnim.setValue(0);
+        pointsOpacity.setValue(0);
+      });
+    }
 
     onComplete();
   };
@@ -128,41 +124,47 @@ export default function HabitCard({
   const successColor = isNegative ? colors.warning : colors.success;
 
   const renderCheckButton = () => {
+    // Para hábitos SEM meta numérica (binários)
     if (!habit.has_target) {
       return (
-        <Animated.View style={{ transform: [{ scale: isCompleted ? checkScale : 1 }] }}>
-          <TouchableOpacity
-            style={[
-              styles.checkButton,
-              { backgroundColor: colors.surface },
-              isCompleted && { backgroundColor: successColor },
-            ]}
-            onPress={handleComplete}
-          >
-            {isCompleted ? (
-              <Icon 
-                name={isNegative ? "shield" : "check"} 
-                size={24} 
-                color={colors.textInverse} 
-              />
-            ) : (
-              <View style={[styles.checkCircle, { borderColor: colors.border }]} />
-            )}
-          </TouchableOpacity>
-        </Animated.View>
+        <TouchableOpacity
+          style={[
+            styles.checkButton,
+            // ✅ Sempre aplicar backgroundColor explicitamente
+            { backgroundColor: isCompleted ? successColor : colors.surface },
+          ]}
+          onPress={handleComplete}
+        >
+          {isCompleted ? (
+            <Icon 
+              name={isNegative ? "shield" : "check"} 
+              size={24} 
+              color={colors.textInverse} 
+            />
+          ) : (
+            <View style={[styles.checkCircle, { borderColor: colors.border }]} />
+          )}
+        </TouchableOpacity>
       );
     }
 
+    // Para hábitos COM meta numérica
     const percentage = getProgressPercentage();
     const fullyCompleted = percentage >= 100;
+
+    // ✅ Definir backgroundColor explicitamente
+    let backgroundColor = colors.surface;
+    if (fullyCompleted) {
+      backgroundColor = successColor;
+    } else if (percentage > 0) {
+      backgroundColor = colors.primaryLight;
+    }
 
     return (
       <TouchableOpacity
         style={[
           styles.checkButton,
-          { backgroundColor: colors.surface },
-          fullyCompleted && { backgroundColor: successColor },
-          !fullyCompleted && percentage > 0 && { backgroundColor: colors.primaryLight },
+          { backgroundColor }, // ✅ Sempre aplicar backgroundColor
         ]}
         onPress={handleComplete}
       >
@@ -214,9 +216,8 @@ export default function HabitCard({
         onPress={handleCardPress}
         style={[
           styles.card,
-          { backgroundColor: colors.background, borderColor: colors.border },
-          isFullyCompleted() && { opacity: 0.7 },
-          // 🆕 Opacidade reduzida se não for devido hoje
+          // ✅ REMOVIDO: isFullyCompleted() && { opacity: 0.7 }
+          // Mantém opacidade normal para permitir visualizar e desmarcar
           !isDueToday && !isCompleted && { opacity: 0.6 },
         ]}
       >
@@ -228,7 +229,7 @@ export default function HabitCard({
               {isNegative && (
                 <Icon name="xCircle" size={16} color={colors.warning} />
               )}
-              <Text style={[styles.name, { color: colors.textPrimary }]}>{habit.name}</Text>
+              <Text style={styles.name}>{habit.name}</Text>
               {hasStreak && (
                 <View style={[
                   styles.streakBadge, 
@@ -249,27 +250,26 @@ export default function HabitCard({
               )}
             </View>
 
-            {/* 🆕 Badge "Fora do dia programado" */}
             {!isDueToday && !isCompleted && (
-              <View style={[styles.offDayBadge, { backgroundColor: colors.infoLight }]}>
+              <View style={styles.offDayBadge}>
                 <Icon name="info" size={11} color={colors.info} />
-                <Text style={[styles.offDayText, { color: colors.info }]}>
+                <Text style={styles.offDayText}>
                   Fora do dia programado
                 </Text>
               </View>
             )}
             
             {habit.frequency_type === 'weekly' && habit.frequency_days && isDueToday && (
-              <View style={[styles.frequencyBadge, { backgroundColor: colors.infoLight }]}>
+              <View style={styles.frequencyBadge}>
                 <Icon name="calendar" size={11} color={colors.info} />
-                <Text style={[styles.frequencyText, { color: colors.info }]}>
+                <Text style={styles.frequencyText}>
                   {formatSelectedDays(habit.frequency_days)}
                 </Text>
               </View>
             )}
             
             {habit.description && (
-              <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
+              <Text style={styles.description} numberOfLines={2}>
                 {habit.description}
               </Text>
             )}
@@ -277,19 +277,18 @@ export default function HabitCard({
             {habit.has_target && completion && habit.target_value && habit.target_unit && (
               <View style={styles.targetProgress}>
                 <View style={styles.targetHeader}>
-                  <Text style={[styles.targetLabel, { color: colors.textPrimary }]}>
+                  <Text style={styles.targetLabel}>
                     {completion.value_achieved || 0} / {habit.target_value} {habit.target_unit}
                   </Text>
                   <Text style={[
                     styles.targetPercentage,
-                    { color: colors.textSecondary },
                     getProgressPercentage() >= 100 && { color: successColor },
                   ]}>
                     {getProgressPercentage().toFixed(0)}%
                   </Text>
                 </View>
                 
-                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                <View style={styles.progressBar}>
                   <View 
                     style={[
                       styles.progressFill,
@@ -316,11 +315,8 @@ export default function HabitCard({
             )}
 
             {habit.has_target && !completion && (
-              <View style={[styles.targetHint, { 
-                backgroundColor: colors.infoLight,
-                borderLeftColor: colors.info 
-              }]}>
-                <Text style={[styles.targetHintText, { color: colors.info }]}>
+              <View style={styles.targetHint}>
+                <Text style={styles.targetHintText}>
                   Toque para registrar progresso
                 </Text>
               </View>
@@ -335,7 +331,7 @@ export default function HabitCard({
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Icon name="star" size={12} color={colors.primary} />
-                <Text style={[styles.points, { color: colors.primary }]}>
+                <Text style={styles.points}>
                   +{habit.points_base} pts
                 </Text>
               </View>
@@ -376,135 +372,3 @@ export default function HabitCard({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  content: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  colorIndicator: {
-    width: 4,
-    height: '100%',
-    borderRadius: 2,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-  },
-  info: { flex: 1, marginLeft: 12 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  name: { fontSize: 16, fontWeight: '600', flex: 1 },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 2,
-  },
-  streakText: { fontSize: 12, fontWeight: '600' },
-  // 🆕 Badge "Fora do dia"
-  offDayBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    marginBottom: 6,
-    alignSelf: 'flex-start',
-  },
-  offDayText: { fontSize: 11, fontWeight: '500', fontStyle: 'italic' },
-  frequencyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    marginBottom: 6,
-    alignSelf: 'flex-start',
-  },
-  frequencyText: { fontSize: 11, fontWeight: '500' },
-  description: { fontSize: 14, marginBottom: 8 },
-  targetProgress: { marginBottom: 8 },
-  targetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  targetLabel: { fontSize: 13, fontWeight: '600' },
-  targetPercentage: { fontSize: 12, fontWeight: '600' },
-  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3 },
-  achievementBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  achievementText: { fontSize: 11, fontWeight: '600' },
-  targetHint: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    marginBottom: 8,
-    borderLeftWidth: 2,
-  },
-  targetHintText: { fontSize: 12, fontStyle: 'italic' },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  points: { fontSize: 12, fontWeight: '600' },
-  checkButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 12,
-  },
-  partialCheckContainer: {
-    position: 'relative',
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  partialCheckText: {
-    position: 'absolute',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
-  floatingPoints: {
-    position: 'absolute',
-    top: 16,
-    right: 70,
-    zIndex: 10,
-  },
-  floatingPointsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-});

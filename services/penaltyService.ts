@@ -9,6 +9,8 @@ interface HabitData {
   name: string;
   frequency_type: 'daily' | 'weekly' | 'custom';
   frequency_days: number[] | null;
+  has_target: boolean;
+  target_value: number | null;
 }
 
 interface StreakData {
@@ -32,7 +34,7 @@ const streaksTable = () => supabase.from('streaks') as any;
 const completionsTable = () => supabase.from('completions') as any;
 
 /**
- * 🆕 Calcula quantos dias o hábito deveria ser feito por semana
+ * Calcula quantos dias o hábito deveria ser feito por semana
  */
 function getExpectedDaysPerWeek(habit: HabitData): number {
   if (habit.frequency_type === 'daily') return 7;
@@ -43,7 +45,7 @@ function getExpectedDaysPerWeek(habit: HabitData): number {
 }
 
 /**
- * 🆕 Verifica se o hábito atingiu a meta semanal
+ * Verifica se o hábito atingiu a meta semanal
  */
 async function checkWeeklyGoal(habitId: string): Promise<{
   completed: number;
@@ -74,9 +76,52 @@ async function checkWeeklyGoal(habitId: string): Promise<{
   return { completed, expected, metGoal };
 }
 
+/**
+ * 🆕 Verifica se há progresso parcial registrado hoje
+ * Retorna { hasProgress, percentage }
+ */
+async function checkTodayProgress(habitId: string, habit: HabitData): Promise<{
+  hasProgress: boolean;
+  percentage: number;
+  pointsEarned: number;
+}> {
+  const today = startOfDay(new Date()).toISOString();
+  const tomorrow = startOfDay(new Date(Date.now() + 86400000)).toISOString();
+
+  const { data: completion } = await completionsTable()
+    .select('value_achieved, points_earned')
+    .eq('habit_id', habitId)
+    .gte('completed_at', today)
+    .lt('completed_at', tomorrow)
+    .maybeSingle();
+
+  if (!completion) {
+    return { hasProgress: false, percentage: 0, pointsEarned: 0 };
+  }
+
+  // Se não é meta numérica, considera 100%
+  if (!habit.has_target || !habit.target_value) {
+    return { 
+      hasProgress: true, 
+      percentage: 100, 
+      pointsEarned: completion.points_earned || 0 
+    };
+  }
+
+  // Calcular percentual
+  const currentValue = completion.value_achieved || 0;
+  const percentage = (currentValue / habit.target_value) * 100;
+
+  return { 
+    hasProgress: true, 
+    percentage, 
+    pointsEarned: completion.points_earned || 0 
+  };
+}
+
 export const penaltyService = {
   /**
-   * 🔄 NOVA LÓGICA: Verifica penalidades baseado em META SEMANAL
+   * 🔄 ATUALIZADO: Verifica penalidades respeitando progresso parcial
    */
   async checkMissedDay(habitId: string): Promise<PenaltyResult> {
     try {
@@ -93,6 +138,28 @@ export const penaltyService = {
           reason: null,
           message: 'Hábito não encontrado',
         };
+      }
+
+      // 🆕 Verificar se há progresso parcial hoje
+      const { hasProgress, percentage, pointsEarned } = await checkTodayProgress(habitId, habit);
+
+      // Se teve QUALQUER progresso (mesmo que < 100%), NÃO aplica penalidade
+      if (hasProgress) {
+        if (pointsEarned > 0) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: `Meta completa! ${percentage.toFixed(0)}% ✅`,
+          };
+        } else {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: `Progresso parcial registrado (${percentage.toFixed(0)}%). Sem penalidade! 💪`,
+          };
+        }
       }
 
       // Buscar streak
@@ -154,7 +221,7 @@ export const penaltyService = {
           };
         }
 
-        // Aplicar penalidade para hábito diário
+        // Aplicar penalidade para hábito diário (apenas se NÃO teve progresso)
         let reason: string;
         let pointsLost: number;
         const difficulty = habit.difficulty as 'easy' | 'medium' | 'hard';
@@ -187,7 +254,6 @@ export const penaltyService = {
         const dayOfWeek = now.getDay();
 
         // Só verifica penalidades aos DOMINGOS (fim da semana)
-        // Isso dá tempo da pessoa completar a meta durante a semana
         if (dayOfWeek !== 0) {
           return {
             penaltyApplied: false,
@@ -385,7 +451,7 @@ export const penaltyService = {
   },
 
   /**
-   * 🆕 Helper para verificar progresso semanal de um hábito
+   * Helper para verificar progresso semanal de um hábito
    */
   async getWeeklyProgress(habitId: string) {
     return await checkWeeklyGoal(habitId);
