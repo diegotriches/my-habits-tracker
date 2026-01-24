@@ -9,7 +9,7 @@ export interface Reminder {
   time: string;
   days_of_week: number[];
   is_active: boolean;
-  notification_ids: string[]; // Array de IDs (um por dia da semana)
+  notification_ids: string[];
   sound?: NotificationSound;
   created_at: string;
 }
@@ -45,7 +45,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Buscar frequência do hábito (para sincronizar lembretes)
+   * Buscar frequência do hábito
    */
   const getHabitFrequency = async (habitId: string): Promise<number[]> => {
     try {
@@ -55,20 +55,17 @@ export function useReminders(habitId?: string) {
         .eq('id', habitId)
         .single();
 
-      if (error || !habit) return [0, 1, 2, 3, 4, 5, 6]; // Default: todos os dias
+      if (error || !habit) return [0, 1, 2, 3, 4, 5, 6];
 
-      // Casting explícito para o tipo correto
       const habitData = habit as {
         frequency_type: 'daily' | 'weekly' | 'custom';
         frequency_days: number[] | null;
       };
 
-      // Se for diário, retorna todos os dias
       if (habitData.frequency_type === 'daily') {
         return [0, 1, 2, 3, 4, 5, 6];
       }
 
-      // Se for semanal/custom, retorna os dias específicos
       return habitData.frequency_days || [0, 1, 2, 3, 4, 5, 6];
     } catch (error) {
       console.warn('Erro ao buscar frequência do hábito:', error);
@@ -77,7 +74,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Criar novo lembrete (sincroniza com frequência do hábito)
+   * Criar novo lembrete
    */
   const createReminder = async (
     habitId: string,
@@ -87,10 +84,9 @@ export function useReminders(habitId?: string) {
     customDaysOfWeek?: number[]
   ): Promise<Reminder | null> => {
     try {
-      // Buscar dias do hábito (se não fornecidos manualmente)
       const daysOfWeek = customDaysOfWeek || (await getHabitFrequency(habitId));
 
-      // Criar registro no banco (sem notification_ids ainda)
+      // Criar registro no banco
       const { data, error } = await remindersTable()
         .insert({
           habit_id: habitId,
@@ -106,7 +102,7 @@ export function useReminders(habitId?: string) {
 
       const createdReminder = data as Reminder;
 
-      // Agendar notificações (uma por dia da semana)
+      // Agendar notificações
       const notificationIds = await notificationService.scheduleWeeklyReminder(
         habitId,
         habitName,
@@ -114,10 +110,10 @@ export function useReminders(habitId?: string) {
         daysOfWeek,
         createdReminder.id,
         sound,
-        true // checkCompletion = true (não notificar se já completou)
+        true
       );
 
-      // Atualizar registro com os IDs das notificações
+      // Atualizar com IDs
       if (notificationIds.length > 0) {
         await remindersTable()
           .update({ notification_ids: notificationIds })
@@ -139,7 +135,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Atualizar lembrete existente
+   * 🔧 OTIMIZADO: Atualizar lembrete
    */
   const updateReminder = async (
     reminderId: string,
@@ -150,49 +146,95 @@ export function useReminders(habitId?: string) {
       const reminder = reminders.find((r) => r.id === reminderId);
       if (!reminder) throw new Error('Lembrete não encontrado');
 
-      // Cancelar notificações antigas
-      if (reminder.notification_ids && reminder.notification_ids.length > 0) {
-        await notificationService.cancelNotifications(reminder.notification_ids);
+      // 🆕 Verificar o que mudou
+      const timeChanged = updates.time !== undefined && updates.time !== reminder.time;
+      const daysChanged = updates.days_of_week !== undefined && 
+                          JSON.stringify(updates.days_of_week) !== JSON.stringify(reminder.days_of_week);
+      const soundChanged = updates.sound !== undefined && updates.sound !== reminder.sound;
+      const statusChanged = updates.is_active !== undefined && updates.is_active !== reminder.is_active;
+
+      const needsReschedule = timeChanged || daysChanged || soundChanged;
+
+      // 🆕 Lógica otimizada
+      if (statusChanged && updates.is_active === false) {
+        // Desativando → Só cancelar
+        if (reminder.notification_ids && reminder.notification_ids.length > 0) {
+          await notificationService.cancelNotifications(reminder.notification_ids);
+        }
+        
+        // Atualizar banco
+        await remindersTable()
+          .update({ is_active: false, notification_ids: [] })
+          .eq('id', reminderId);
+
+        setReminders((prev) =>
+          prev.map((r) =>
+            r.id === reminderId ? { ...r, is_active: false, notification_ids: [] } : r
+          )
+        );
+
+        return true;
       }
 
-      // Atualizar no banco
-      const { data, error } = await remindersTable()
+      if (needsReschedule || (statusChanged && updates.is_active === true)) {
+        // Cancelar notificações antigas
+        if (reminder.notification_ids && reminder.notification_ids.length > 0) {
+          await notificationService.cancelNotifications(reminder.notification_ids);
+        }
+
+        // Atualizar no banco
+        const { data, error } = await remindersTable()
+          .update(updates)
+          .eq('id', reminderId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedReminder = data as Reminder;
+
+        // Reagendar se estiver ativo
+        let newNotificationIds: string[] = [];
+
+        if (updatedReminder.is_active) {
+          newNotificationIds = await notificationService.scheduleWeeklyReminder(
+            updatedReminder.habit_id,
+            habitName,
+            updatedReminder.time,
+            updatedReminder.days_of_week,
+            updatedReminder.id,
+            updatedReminder.sound || 'default',
+            true
+          );
+
+          if (newNotificationIds.length > 0) {
+            await remindersTable()
+              .update({ notification_ids: newNotificationIds })
+              .eq('id', reminderId);
+          }
+        }
+
+        setReminders((prev) =>
+          prev.map((r) =>
+            r.id === reminderId
+              ? { ...updatedReminder, notification_ids: newNotificationIds }
+              : r
+          )
+        );
+
+        return true;
+      }
+
+      // Se chegou aqui, só atualizar no banco (sem mexer em notificações)
+      const { error } = await remindersTable()
         .update(updates)
-        .eq('id', reminderId)
-        .select()
-        .single();
+        .eq('id', reminderId);
 
       if (error) throw error;
 
-      const updatedReminder = data as Reminder;
-
-      // Reagendar notificações se estiver ativo
-      let newNotificationIds: string[] = [];
-
-      if (updatedReminder.is_active) {
-        newNotificationIds = await notificationService.scheduleWeeklyReminder(
-          updatedReminder.habit_id,
-          habitName,
-          updatedReminder.time,
-          updatedReminder.days_of_week,
-          updatedReminder.id,
-          updatedReminder.sound || 'default',
-          true
-        );
-
-        // Atualizar IDs no banco
-        if (newNotificationIds.length > 0) {
-          await remindersTable()
-            .update({ notification_ids: newNotificationIds })
-            .eq('id', reminderId);
-        }
-      }
-
       setReminders((prev) =>
         prev.map((r) =>
-          r.id === reminderId
-            ? { ...updatedReminder, notification_ids: newNotificationIds }
-            : r
+          r.id === reminderId ? { ...r, ...updates } : r
         )
       );
 
@@ -250,10 +292,8 @@ export function useReminders(habitId?: string) {
    */
   const deleteAllHabitReminders = async (habitId: string): Promise<boolean> => {
     try {
-      // Cancelar todas as notificações do hábito
       await notificationService.cancelHabitNotifications(habitId);
 
-      // Deletar do banco
       const { error } = await remindersTable().delete().eq('habit_id', habitId);
 
       if (error) throw error;
@@ -268,7 +308,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Atualizar som de um lembrete
+   * Atualizar som
    */
   const updateReminderSound = async (
     reminderId: string,
@@ -279,8 +319,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Sincronizar lembretes com a frequência do hábito
-   * (Útil quando o usuário edita a frequência do hábito)
+   * Sincronizar com frequência do hábito
    */
   const syncRemindersWithHabitFrequency = async (
     habitId: string,
@@ -290,7 +329,6 @@ export function useReminders(habitId?: string) {
       const habitReminders = reminders.filter((r) => r.habit_id === habitId);
       const newFrequency = await getHabitFrequency(habitId);
 
-      // Atualizar cada lembrete com a nova frequência
       for (const reminder of habitReminders) {
         await updateReminder(reminder.id, habitName, {
           days_of_week: newFrequency,
@@ -305,7 +343,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Testar notificação (dispara em 5 segundos)
+   * Testar notificação
    */
   const testNotification = async (habitName: string): Promise<void> => {
     await notificationService.scheduleTestNotification(habitName);

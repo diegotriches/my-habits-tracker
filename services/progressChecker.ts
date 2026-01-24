@@ -1,14 +1,41 @@
 // services/progressChecker.ts
 import { supabase } from './supabase';
-import { Habit, Completion, ProgressStatus, ProgressMessageType, NotificationMessage, NotificationPeriod } from '@/types/database';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { Habit, Completion } from '@/types/database';
+import { startOfDay, endOfDay } from 'date-fns';
+
+// 🆕 Tipos adicionais
+export interface ProgressStatus {
+  habitId: string;
+  habitName: string;
+  targetValue: number | null;
+  targetUnit: string | null;
+  currentValue: number;
+  percentage: number;
+  isCompleted: boolean;
+}
+
+export type ProgressMessageType = 
+  | 'completed' 
+  | 'high_progress' 
+  | 'moderate_progress' 
+  | 'low_progress' 
+  | 'no_progress';
+
+export type NotificationPeriod = 'morning' | 'afternoon' | 'evening';
+
+export interface NotificationMessage {
+  title: string;
+  body: string;
+  type: ProgressMessageType;
+  urgency: 'low' | 'medium' | 'high';
+}
 
 /**
  * Service para verificar progresso de hábitos e gerar mensagens de notificação
  */
 class ProgressCheckerService {
   /**
-   * Busca o progresso de hoje para um hábito específico
+   * 🔧 CORRIGIDO: Busca o progresso de hoje para um hábito específico
    */
   async getTodayProgress(habitId: string): Promise<ProgressStatus | null> {
     try {
@@ -31,14 +58,17 @@ class ProgressCheckerService {
         return null;
       }
 
-      // Buscar completion de hoje
-      const today = format(new Date(), 'yyyy-MM-dd');
+      // 🔧 CORRIGIDO: Usar range em vez de eq
+      const today = new Date();
+      const startOfToday = startOfDay(today).toISOString();
+      const endOfToday = endOfDay(today).toISOString();
 
       const { data: completion, error: completionError } = await supabase
         .from('completions')
         .select('*')
         .eq('habit_id', habitId)
-        .eq('completed_at', today)
+        .gte('completed_at', startOfToday)
+        .lte('completed_at', endOfToday)
         .maybeSingle();
 
       if (completionError) {
@@ -56,7 +86,7 @@ class ProgressCheckerService {
         targetValue: habitData.target_value,
         targetUnit: habitData.target_unit,
         currentValue,
-        percentage,
+        percentage: Math.min(percentage, 100),
         isCompleted: percentage >= 100,
       };
     } catch (error) {
@@ -183,7 +213,7 @@ class ProgressCheckerService {
       }
     }
 
-    // Fallback (não deveria acontecer)
+    // Fallback
     return {
       title: `📊 ${habitName}`,
       body: `Progresso: ${Math.round(percentage)}%`,
@@ -194,7 +224,6 @@ class ProgressCheckerService {
 
   /**
    * Verifica se deve enviar notificação baseado no progresso
-   * Retorna false se já atingiu 100% (não precisa notificar mais)
    */
   shouldNotify(progress: ProgressStatus, period: NotificationPeriod): boolean {
     const { percentage } = progress;
@@ -224,7 +253,6 @@ class ProgressCheckerService {
 
   /**
    * Busca todos os hábitos que precisam de notificação de progresso
-   * (habilitados, com meta numérica, programados para hoje)
    */
   async getHabitsNeedingProgressNotification(
     userId: string,

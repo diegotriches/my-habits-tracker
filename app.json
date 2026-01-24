@@ -83,7 +83,8 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#3B82F6",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": []
         }
       ],
       "@react-native-community/datetimepicker",
@@ -99,6 +100,12 @@
       "eas": {
         "projectId": "60e4b382-5295-4071-96e4-5e0d58f77a54"
       }
+    },
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#3B82F6",
+      "androidMode": "default",
+      "androidCollapsedTitle": "{{unread_count}} hábitos pendentes"
     }
   }
 }

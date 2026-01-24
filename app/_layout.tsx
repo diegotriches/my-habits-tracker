@@ -1,6 +1,6 @@
 // app/_layout.tsx
+import { NotificationHandler } from '@/components/notifications/NotificationHandler';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notifications';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -11,30 +11,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Configurar listeners de notificações
-  useEffect(() => {
-    // Handler de navegação quando clicar na notificação
-    const handleNavigationToHabit = (habitId: string) => {
-      // Navegar para a tela de detalhes do hábito
-      router.push(`/habits/${habitId}` as any);
-    };
-
-    // Configurar handlers de notificações (deep link + ações)
-    notificationService.setupNotificationHandlers(handleNavigationToHabit);
-
-    // Opcional: Solicitar permissões ao iniciar (se ainda não tiver)
-    (async () => {
-      const hasPermission = await notificationService.hasPermission();
-      if (!hasPermission) {
-        // Você pode pedir permissão aqui ou deixar para quando criar o primeiro hábito
-        // await notificationService.requestPermissions();
-      }
-    })();
-
-    // Cleanup não necessário - listeners são globais
-  }, []);
-
-  // Controle de autenticação e navegação
+  // 🔧 Controle de autenticação e navegação
   useEffect(() => {
     if (loading) return;
 
@@ -57,7 +34,15 @@ function RootLayoutNav() {
     );
   }
 
-  return <Slot />;
+  return (
+    <>
+      {/* 🆕 Handler de Notificações - Gerencia listeners globalmente */}
+      {isAuthenticated && <NotificationHandler />}
+      
+      {/* Conteúdo principal */}
+      <Slot />
+    </>
+  );
 }
 
 export default function RootLayout() {

@@ -2,7 +2,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
-import { format } from 'date-fns';
+import { startOfDay, endOfDay } from 'date-fns';
 
 // Configurar handler padrão de notificações
 Notifications.setNotificationHandler({
@@ -138,18 +138,21 @@ class NotificationService {
   }
 
   /**
-   * Verificar se o hábito foi completado hoje
+   * 🔧 CORRIGIDO: Verificar se o hábito foi completado hoje
    */
   async checkIfCompletedToday(habitId: string): Promise<boolean> {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = new Date();
+      const startOfToday = startOfDay(today).toISOString();
+      const endOfToday = endOfDay(today).toISOString();
       
       const { data, error } = await supabase
         .from('completions')
         .select('id')
         .eq('habit_id', habitId)
-        .eq('completed_at', today)
-        .maybeSingle(); // ← Usar maybeSingle() em vez de single()
+        .gte('completed_at', startOfToday)
+        .lte('completed_at', endOfToday)
+        .maybeSingle();
 
       // Se não houve erro e data existe, está completado
       return !error && data !== null;
@@ -159,14 +162,41 @@ class NotificationService {
   }
 
   /**
+   * 🆕 NOVO: Buscar dados do hábito (inclui has_target)
+   */
+  async getHabitData(habitId: string): Promise<{
+    id: string;
+    name: string;
+    has_target: boolean;
+    target_value: number | null;
+    target_unit: string | null;
+    points_base: number;
+    user_id: string;
+  } | null> {
+    try {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('id, name, has_target, target_value, target_unit, points_base, user_id')
+        .eq('id', habitId)
+        .single();
+
+      if (error) throw error;
+
+      return data as any;
+    } catch (error) {
+      console.error('Erro ao buscar hábito:', error);
+      return null;
+    }
+  }
+
+  /**
    * Agendar lembrete semanal (respeitando dias específicos)
-   * Retorna array de notification IDs (um por dia da semana)
    */
   async scheduleWeeklyReminder(
     habitId: string,
     habitName: string,
     time: string,
-    daysOfWeek: number[], // [0, 1, 2, 3, 4, 5, 6] = dom-sáb
+    daysOfWeek: number[],
     reminderId: string,
     sound: NotificationSound = 'default',
     checkCompletion: boolean = true
@@ -180,7 +210,6 @@ class NotificationService {
       const [hours, minutes] = time.split(':').map(Number);
       const notificationIds: string[] = [];
 
-      // Agendar uma notificação para cada dia da semana
       for (const dayOfWeek of daysOfWeek) {
         const notificationId = await Notifications.scheduleNotificationAsync({
           content: {
@@ -201,7 +230,7 @@ class NotificationService {
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            weekday: dayOfWeek + 1, // Expo usa 1-7 (dom-sáb), precisamos converter
+            weekday: dayOfWeek + 1,
             hour: hours,
             minute: minutes,
             repeats: true,
@@ -219,7 +248,7 @@ class NotificationService {
   }
 
   /**
-   * Agendar lembrete diário (todos os dias)
+   * Agendar lembrete diário
    */
   async scheduleDailyReminder(
     habitId: string,
@@ -269,7 +298,7 @@ class NotificationService {
   }
 
   /**
-   * Cancelar uma notificação específica
+   * Cancelar notificações
    */
   async cancelNotification(notificationId: string): Promise<void> {
     try {
@@ -279,9 +308,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Cancelar múltiplas notificações
-   */
   async cancelNotifications(notificationIds: string[]): Promise<void> {
     try {
       await Promise.all(
@@ -294,9 +320,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Cancelar todas as notificações de um hábito
-   */
   async cancelHabitNotifications(habitId: string): Promise<void> {
     try {
       const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
@@ -314,7 +337,7 @@ class NotificationService {
   }
 
   /**
-   * Agendar notificação de snooze (10 minutos)
+   * Snooze (10 minutos)
    */
   async handleSnooze(habitId: string, habitName: string): Promise<void> {
     try {
@@ -332,7 +355,7 @@ class NotificationService {
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 10 * 60, // 10 minutos
+          seconds: 10 * 60,
         },
       });
     } catch (error) {
@@ -341,79 +364,88 @@ class NotificationService {
   }
 
   /**
-   * Marcar hábito como completo rapidamente (via ação de notificação)
+   * 🔧 MELHORADO: Quick complete com suporte a metas numéricas
    */
   async handleQuickComplete(habitId: string): Promise<void> {
     try {
-      // Buscar dados do hábito
-      const { data: habit, error: habitError } = await supabase
-        .from('habits')
-        .select('points_base, user_id')
-        .eq('id', habitId)
-        .single();
-
-      if (habitError || !habit) {
-        console.warn('Hábito não encontrado:', habitError);
+      // 🆕 Buscar dados completos do hábito
+      const habit = await this.getHabitData(habitId);
+      
+      if (!habit) {
+        console.warn('Hábito não encontrado');
         return;
       }
 
-      // Casting para tipo correto
-      const habitData = habit as { points_base: number; user_id: string };
+      // 🆕 Se tem meta numérica, não pode completar via notificação
+      if (habit.has_target) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '📊 Meta Numérica',
+            body: `Abra o app para registrar o valor de "${habit.name}"`,
+            sound: 'default',
+            data: {
+              habitId,
+              type: 'open_app_required',
+            },
+          },
+          trigger: null,
+        });
+        return;
+      }
 
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = new Date();
+      const startOfToday = startOfDay(today).toISOString();
+      const endOfToday = endOfDay(today).toISOString();
 
-      // Verificar se já foi completado hoje
-      const { data: existing, error: checkError } = await supabase
+      // Verificar se já foi completado
+      const { data: existing } = await supabase
         .from('completions')
         .select('id')
         .eq('habit_id', habitId)
-        .eq('completed_at', today)
-        .single();
+        .gte('completed_at', startOfToday)
+        .lte('completed_at', endOfToday)
+        .maybeSingle();
 
-      if (!checkError && existing) {
-        // Mostrar feedback que já foi completado
+      if (existing) {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: '✅ Já completado!',
             body: 'Você já completou este hábito hoje.',
             sound: 'default',
           },
-          trigger: null, // Imediato
+          trigger: null,
         });
         return;
       }
 
-      // Criar completion (casting explícito)
+      // Criar completion
       const { error: insertError } = await (supabase.from('completions') as any).insert({
         habit_id: habitId,
-        completed_at: today,
-        points_earned: habitData.points_base,
+        completed_at: new Date().toISOString(),
+        points_earned: habit.points_base,
         was_synced: true,
       });
 
-      if (insertError) {
-        console.error('Erro ao criar completion:', insertError);
-        return;
-      }
+      if (insertError) throw insertError;
 
-      // Atualizar pontos do perfil (casting explícito)
+      // Atualizar pontos
       const { error: rpcError } = await (supabase.rpc as any)('increment_points', {
-        user_id_param: habitData.user_id,
-        points_param: habitData.points_base,
+        user_id_param: habit.user_id,
+        points_param: habit.points_base,
       });
 
       if (rpcError) {
         console.warn('Erro ao atualizar pontos:', rpcError);
       }
 
-      // Mostrar feedback de sucesso
+      // Feedback de sucesso
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🎉 Hábito completado!',
-          body: `+${habitData.points_base} pontos ganhos!`,
+          body: `+${habit.points_base} pontos ganhos!`,
           sound: 'default',
         },
-        trigger: null, // Imediato
+        trigger: null,
       });
     } catch (error) {
       console.error('Erro ao completar hábito:', error);
@@ -421,16 +453,16 @@ class NotificationService {
   }
 
   /**
-   * Obter arquivo de som baseado no tipo
+   * Som
    */
   private getSoundFile(sound: NotificationSound): string | boolean | undefined {
     switch (sound) {
       case 'default':
-        return true; // Som padrão do sistema
+        return true;
       case 'silence':
-        return false; // Sem som
+        return false;
       case 'water':
-        return 'water_drop.wav'; // Precisa adicionar o arquivo
+        return 'water_drop.wav';
       case 'bell':
         return 'bell.wav';
       case 'chime':
@@ -441,7 +473,7 @@ class NotificationService {
   }
 
   /**
-   * Agendar notificação de teste (dispara em 5 segundos)
+   * Teste
    */
   async scheduleTestNotification(habitName: string): Promise<void> {
     try {
@@ -463,7 +495,7 @@ class NotificationService {
   }
 
   /**
-   * Listar todas as notificações agendadas (DEBUG)
+   * Debug
    */
   async getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
     try {
@@ -474,9 +506,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Debug: Imprimir todas as notificações agendadas
-   */
   async debugScheduledNotifications(): Promise<void> {
     const notifications = await this.getAllScheduledNotifications();
     console.log('📋 Notificações Agendadas:', notifications.length);
@@ -489,9 +518,6 @@ class NotificationService {
     });
   }
 
-  /**
-   * Cancelar TODAS as notificações (use com cuidado!)
-   */
   async cancelAllNotifications(): Promise<void> {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
