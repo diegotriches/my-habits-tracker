@@ -260,6 +260,35 @@ export default function ProfileScreen() {
             </View>
             <Icon name="chevronRight" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
+
+          {/* 🆕 Botão de Testes Avançados (apenas em DEV) */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[
+                styles.settingItem, 
+                { 
+                  backgroundColor: colors.surface, 
+                  borderBottomColor: colors.border,
+                  borderWidth: 2,
+                  borderColor: colors.info + '40',
+                }
+              ]}
+              onPress={() => router.push('/debug/notifications' as any)}
+            >
+              <View style={styles.settingLeft}>
+                <Icon name="code" size={20} color={colors.info} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingText, { color: colors.info, fontWeight: '600' }]}>
+                    🧪 Testes de Notificação
+                  </Text>
+                  <Text style={[styles.devBadge, { color: colors.info }]}>
+                    Modo Desenvolvedor
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevronRight" size={20} color={colors.info} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Ações */}
@@ -281,6 +310,14 @@ export default function ProfileScreen() {
           <Text style={[styles.copyrightText, { color: colors.textTertiary }]}>
             Feito com ❤️ para seu crescimento
           </Text>
+          {/* 🆕 Badge de Modo DEV */}
+          {__DEV__ && (
+            <View style={[styles.devModeBadge, { backgroundColor: colors.infoLight }]}>
+              <Text style={[styles.devModeText, { color: colors.info }]}>
+                🔧 Modo Desenvolvedor Ativo
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 40 }} />
@@ -431,9 +468,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   settingText: {
     fontSize: 16,
+  },
+  // 🆕 Estilos para o botão de debug
+  devBadge: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  devModeBadge: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  devModeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   logoutButton: {
     flexDirection: 'row',

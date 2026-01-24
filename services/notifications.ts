@@ -4,6 +4,21 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { startOfDay, endOfDay } from 'date-fns';
 
+// 🆕 Interface estendida para suportar android.actions
+interface NotificationContentWithActions extends Notifications.NotificationContentInput {
+  android?: {
+    channelId?: string;
+    actions?: Array<{
+      identifier: string;
+      title: string;
+      buttonTitle: string;
+      options?: {
+        opensAppToForeground?: boolean;
+      };
+    }>;
+  };
+}
+
 // Configurar handler padrão de notificações
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -56,11 +71,12 @@ class NotificationService {
   }
 
   /**
-   * Configurar categorias com ações (snooze, complete)
+   * 🔧 CORRIGIDO: Configurar categorias com ações (iOS) e Actions (Android)
    */
   private async setupNotificationCategories(): Promise<void> {
     try {
       if (Platform.OS === 'ios') {
+        // iOS: Usa categorias
         await Notifications.setNotificationCategoryAsync('habit-reminder', [
           {
             identifier: 'snooze',
@@ -77,9 +93,11 @@ class NotificationService {
             },
           },
         ]);
+      } else {
+        // Android: Actions são configuradas por notificação
+        // Não precisa de setup global
+        console.log('Android: Actions serão configuradas por notificação');
       }
-      
-      // Android usa notification actions inline
     } catch (error) {
       console.warn('Erro ao configurar categorias:', error);
     }
@@ -190,7 +208,9 @@ class NotificationService {
   }
 
   /**
-   * Agendar lembrete semanal (respeitando dias específicos)
+   * 🔧 CORRIGIDO: Agendar lembrete semanal (respeitando dias específicos)
+   * iOS: Usa CALENDAR trigger com weekday + Categories
+   * Android: Usa DAILY trigger + Actions inline
    */
   async scheduleWeeklyReminder(
     habitId: string,
@@ -210,30 +230,84 @@ class NotificationService {
       const [hours, minutes] = time.split(':').map(Number);
       const notificationIds: string[] = [];
 
-      for (const dayOfWeek of daysOfWeek) {
-        const notificationId = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: '⏰ Hora do seu hábito!',
-            body: `Não esqueça: ${habitName}`,
-            data: {
-              habitId,
-              habitName,
-              reminderId,
-              dayOfWeek,
-              time,
-              checkCompletion,
-              type: 'habit_reminder',
+      if (Platform.OS === 'ios') {
+        // iOS: Suporta weekday no trigger calendar + Categories
+        for (const dayOfWeek of daysOfWeek) {
+          const notificationId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '⏰ Hora do seu hábito!',
+              body: `Não esqueça: ${habitName}`,
+              data: {
+                habitId,
+                habitName,
+                reminderId,
+                dayOfWeek,
+                time,
+                checkCompletion,
+                type: 'habit_reminder',
+                scheduledDays: daysOfWeek,
+              },
+              sound: this.getSoundFile(sound),
+              categoryIdentifier: 'habit-reminder', // iOS usa categoria
+              priority: Notifications.AndroidNotificationPriority.HIGH,
             },
-            sound: this.getSoundFile(sound),
-            categoryIdentifier: Platform.OS === 'ios' ? 'habit-reminder' : undefined,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              weekday: dayOfWeek + 1,
+              hour: hours,
+              minute: minutes,
+              repeats: true,
+            },
+          });
+
+          notificationIds.push(notificationId);
+        }
+      } else {
+        // 🔧 CORRIGIDO: Android com cast de tipo
+        const content: NotificationContentWithActions = {
+          title: '⏰ Hora do seu hábito!',
+          body: `Não esqueça: ${habitName}`,
+          data: {
+            habitId,
+            habitName,
+            reminderId,
+            time,
+            checkCompletion,
+            type: 'habit_reminder',
+            scheduledDays: daysOfWeek,
           },
+          sound: this.getSoundFile(sound),
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          // 🆕 Android: Actions inline na notificação
+          android: {
+            channelId: 'habits',
+            actions: [
+              {
+                identifier: 'snooze',
+                title: '⏰ Adiar 10min',
+                buttonTitle: '⏰ Adiar',
+                options: {
+                  opensAppToForeground: false,
+                },
+              },
+              {
+                identifier: 'complete',
+                title: '✅ Marcar como feito',
+                buttonTitle: '✅ Completar',
+                options: {
+                  opensAppToForeground: false,
+                },
+              },
+            ],
+          },
+        };
+
+        const notificationId = await Notifications.scheduleNotificationAsync({
+          content: content as Notifications.NotificationContentInput,
           trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-            weekday: dayOfWeek + 1,
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
             hour: hours,
             minute: minutes,
-            repeats: true,
           },
         });
 

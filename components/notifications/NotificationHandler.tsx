@@ -1,6 +1,6 @@
 // components/notifications/NotificationHandler.tsx
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { notificationService } from '@/services/notifications';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
@@ -27,6 +27,17 @@ export function NotificationHandler() {
       async (notification) => {
         const data = notification.request.content.data;
         
+        // 🆕 Android: Verificar se hoje é um dos dias programados
+        if (Platform.OS === 'android' && data?.scheduledDays && data?.type === 'habit_reminder') {
+          const today = new Date().getDay(); // 0 = domingo, 6 = sábado
+          const scheduledDays = data.scheduledDays as number[];
+          
+          if (!scheduledDays.includes(today)) {
+            // Hoje não é dia programado, não processar
+            return;
+          }
+        }
+        
         // Se for notificação de progresso, processar
         if (data?.type === 'progress_notification' && data?.habitId && data?.period) {
           await progressNotificationScheduler.processProgressNotification(
@@ -42,6 +53,17 @@ export function NotificationHandler() {
       async (response) => {
         const data = response.notification.request.content.data;
         const actionId = response.actionIdentifier;
+
+        // 🆕 Android: Verificar se hoje é um dos dias programados
+        if (Platform.OS === 'android' && data?.scheduledDays && data?.type === 'habit_reminder') {
+          const today = new Date().getDay();
+          const scheduledDays = data.scheduledDays as number[];
+          
+          if (!scheduledDays.includes(today)) {
+            // Hoje não é dia programado, não processar
+            return;
+          }
+        }
 
         // Ação: Snooze (adiar 10min)
         if (actionId === 'snooze' && data?.habitId && data?.habitName) {

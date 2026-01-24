@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
+  ArrowLeft, // 🆕 ADICIONADO
   X,
   XCircle,
   Check,
@@ -78,6 +79,7 @@ import {
   Sparkles,
   Rocket,
   List,
+  Code,
   type LucideIcon,
   AlertTriangle,
 } from 'lucide-react-native';
@@ -142,6 +144,7 @@ export const Icons = {
   chevronLeft: ChevronLeft,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
+  arrowLeft: ArrowLeft, // 🆕 ADICIONADO
   
   // UI
   close: X,
@@ -200,6 +203,9 @@ export const Icons = {
   brain: Brain,
   smile: Smile,
   location: MapPin,
+  
+  // Development
+  code: Code,
 } as const;
 
 export type IconName = keyof typeof Icons;

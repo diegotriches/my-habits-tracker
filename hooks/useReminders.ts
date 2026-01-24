@@ -86,6 +86,20 @@ export function useReminders(habitId?: string) {
     try {
       const daysOfWeek = customDaysOfWeek || (await getHabitFrequency(habitId));
 
+      // 🔧 VALIDAR formato do horário
+      if (!/^\d{2}:\d{2}$/.test(time)) {
+        console.error('Formato de horário inválido:', time);
+        setError('Formato de horário inválido. Use HH:MM');
+        return null;
+      }
+
+      console.log('🔔 Criando lembrete:', {
+        habitName,
+        time,
+        daysOfWeek,
+        sound,
+      });
+
       // Criar registro no banco
       const { data, error } = await remindersTable()
         .insert({
@@ -102,7 +116,10 @@ export function useReminders(habitId?: string) {
 
       const createdReminder = data as Reminder;
 
+      console.log('✅ Lembrete criado no banco:', createdReminder);
+
       // Agendar notificações
+      console.log('📅 Agendando notificações...');
       const notificationIds = await notificationService.scheduleWeeklyReminder(
         habitId,
         habitName,
@@ -112,6 +129,8 @@ export function useReminders(habitId?: string) {
         sound,
         true
       );
+
+      console.log('📬 IDs das notificações agendadas:', notificationIds);
 
       // Atualizar com IDs
       if (notificationIds.length > 0) {
@@ -129,7 +148,9 @@ export function useReminders(habitId?: string) {
 
       return newReminder;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar lembrete');
+      const errorMsg = err instanceof Error ? err.message : 'Erro ao criar lembrete';
+      console.error('❌ Erro ao criar lembrete:', errorMsg);
+      setError(errorMsg);
       return null;
     }
   };
