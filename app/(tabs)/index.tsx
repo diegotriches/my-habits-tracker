@@ -14,12 +14,14 @@ import { Icon } from '@/components/ui/Icon';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
+import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions'; // 🆕 NOVO HOOK
 import { useHabits } from '@/hooks/useHabits';
 import { usePenalties } from '@/hooks/usePenalties';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
+import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -32,11 +34,13 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const STORAGE_KEY = '@habitViewMode';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
   const { 
     completions, 
@@ -48,6 +52,14 @@ export default function HomeScreen() {
     getTodayPoints,
     refetch: refetchCompletions 
   } = useCompletions();
+  
+  // 🆕 Hook para completions da semana inteira
+  const {
+    completions: weeklyCompletions,
+    loading: weeklyLoading,
+    refetch: refetchWeeklyCompletions,
+  } = useWeeklyCompletions();
+  
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
   const { checkPenalties } = usePenalties();
@@ -66,8 +78,6 @@ export default function HomeScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
   const [selectedHabitId, setSelectedHabitId] = useState('');
-  
-  // 🆕 Estado do modal de progresso
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   
@@ -135,7 +145,6 @@ export default function HomeScreen() {
     router.push(`/habits/${habitId}` as any);
   };
 
-  // 🆕 Abrir modal de edição de progresso
   const handleEditProgress = (habitId: string) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || !habit.has_target) return;
@@ -144,9 +153,38 @@ export default function HomeScreen() {
     setShowProgressModal(true);
   };
 
-  // 🆕 Confirmar progresso no modal
   const handleConfirmProgress = async (value: number, mode: 'add' | 'replace') => {
-    if (!selectedHabit) return;
+    if (!selectedHabit || !user) return;
+
+    const retroDate = (window as any).__tempRetroDate;
+
+    if (retroDate) {
+      const result = await retroactiveCompletionService.completeRetroactively(
+        selectedHabit,
+        retroDate,
+        user.id,
+        value
+      );
+
+      if (result.success) {
+        await retroactiveCompletionService.recalculateStreak(selectedHabit.id);
+        await fetchStreaks([selectedHabit.id]);
+        
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+        await refetchCompletions();
+        await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+        await refetchProfile();
+      } else {
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+      }
+
+      (window as any).__tempRetroDate = null;
+      setShowProgressModal(false);
+      setSelectedHabit(null);
+      return;
+    }
 
     const streak = getStreak(selectedHabit.id);
     const { data, error } = await completeHabit(
@@ -188,11 +226,36 @@ export default function HomeScreen() {
         }, 1000);
       }
 
+      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
       refetchProfile();
     }
 
     setShowProgressModal(false);
     setSelectedHabit(null);
+  };
+
+  const handleRetroactiveComplete = async (habit: Habit, date: Date) => {
+    if (!user) return;
+
+    const result = await retroactiveCompletionService.completeRetroactively(
+      habit,
+      date,
+      user.id
+    );
+
+    if (result.success) {
+      await retroactiveCompletionService.recalculateStreak(habit.id);
+      await fetchStreaks([habit.id]);
+      
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+      await refetchCompletions();
+      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+      await refetchProfile();
+    } else {
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+    }
   };
 
   const handleComplete = async (
@@ -206,20 +269,16 @@ export default function HomeScreen() {
     const isCompleted = isCompletedToday(habitId);
     const completion = getCompletion(habitId);
 
-    // 🆕 Para hábitos com meta numérica, não fazer nada aqui
-    // O modal será aberto via onEditProgress
     if (habit.has_target) {
       return;
     }
 
-    // Hábitos binários: se já completou, mostrar confirmação para desmarcar
     if (isCompleted && !habit.has_target) {
       setSelectedHabitId(habitId);
       setShowUncompleteConfirm(true);
       return;
     }
 
-    // Hábitos binários: completar normalmente
     const streak = getStreak(habitId);
     const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
     
@@ -259,12 +318,37 @@ export default function HomeScreen() {
           checkPointsMilestone(data.totalPoints);
         }, 500);
       }
+
+      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
     }
   };
 
   const handleDayPress = async (habit: Habit, date: Date) => {
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
+    const isPast = date < today && !isToday;
+    
+    if (isPast && user) {
+      const completion = weeklyCompletions.find(c => { // 🆕 Usar weeklyCompletions
+        const compDate = new Date(c.completed_at);
+        return compDate.toDateString() === date.toDateString() && c.habit_id === habit.id;
+      });
+
+      if (completion) {
+        setShowUncompleteConfirm(true);
+        setSelectedHabitId(habit.id);
+        (window as any).__tempRetroDate = date;
+      } else {
+        if (habit.has_target) {
+          setSelectedHabit(habit);
+          (window as any).__tempRetroDate = date;
+          setShowProgressModal(true);
+        } else {
+          await handleRetroactiveComplete(habit, date);
+        }
+      }
+      return;
+    }
     
     if (isToday) {
       if (habit.has_target) {
@@ -279,7 +363,42 @@ export default function HomeScreen() {
     const habit = habits.find(h => h.id === selectedHabitId);
     const completion = getCompletion(selectedHabitId);
     
-    if (!habit || !completion) {
+    if (!habit || !user) {
+      setShowUncompleteConfirm(false);
+      setSelectedHabitId('');
+      return;
+    }
+
+    const retroDate = (window as any).__tempRetroDate;
+    
+    if (retroDate) {
+      const result = await retroactiveCompletionService.uncompleteRetroactively(
+        habit,
+        retroDate,
+        user.id
+      );
+
+      if (result.success) {
+        await retroactiveCompletionService.recalculateStreak(habit.id);
+        await fetchStreaks([habit.id]);
+        
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+        await refetchCompletions();
+        await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+        await refetchProfile();
+      } else {
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+      }
+
+      (window as any).__tempRetroDate = null;
+      setShowUncompleteConfirm(false);
+      setSelectedHabitId('');
+      return;
+    }
+
+    if (!completion) {
       setShowUncompleteConfirm(false);
       setSelectedHabitId('');
       return;
@@ -293,13 +412,13 @@ export default function HomeScreen() {
       setSuccessMessage('Erro ao desmarcar hábito');
       setShowSuccessToast(true);
     } else {
-      // Atualizar streak
       if (habit) {
         await updateStreakWithFrequency(selectedHabitId, habit, false);
       }
       
       setSuccessMessage(`Hábito desmarcado (-${pointsToDeduct} pontos)`);
       setShowSuccessToast(true);
+      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
       refetchProfile();
     }
     
@@ -311,6 +430,7 @@ export default function HomeScreen() {
     await Promise.all([
       refetchHabits(),
       refetchCompletions(),
+      refetchWeeklyCompletions(), // 🆕 Atualizar completions semanais
       refetchProfile(),
     ]);
     await checkForPenalties();
@@ -341,7 +461,7 @@ export default function HomeScreen() {
         <HabitWeeklyRow
           habit={item}
           streak={getStreak(item.id)}
-          completions={completions.filter(c => c.habit_id === item.id)}
+          completions={weeklyCompletions.filter(c => c.habit_id === item.id)} // 🆕 USAR WEEKLY COMPLETIONS
           onDayPress={handleDayPress}
           onHabitPress={handleHabitPress}
           isDueToday={isDueToday}
@@ -412,7 +532,6 @@ export default function HomeScreen() {
         }}
       />
 
-      {/* 🆕 Modal de Progresso */}
       {selectedHabit && selectedHabit.has_target && (
         <HabitProgressInput
           visible={showProgressModal}
@@ -485,7 +604,7 @@ export default function HomeScreen() {
             viewMode === 'weekly' ? (
               <WeeklySummaryCard
                 habits={habits}
-                completions={completions}
+                completions={weeklyCompletions} // 🆕 USAR WEEKLY COMPLETIONS
                 streaks={streaks}
               />
             ) : null
