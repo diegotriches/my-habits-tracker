@@ -3,14 +3,20 @@ import { ConsistencyChart } from '@/components/habits/ConsistencyChart';
 import { HabitHeatMap } from '@/components/habits/HabitHeatMap';
 import { PeriodStatsCard } from '@/components/habits/PeriodStatsCard';
 import { ReminderSetup } from '@/components/habits/ReminderSetup';
+import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { Icon } from '@/components/ui/Icon';
 import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
 import { useHabitDetails } from '@/hooks/useHabitDetails';
 import { useHabits } from '@/hooks/useHabits';
+import { useAuth } from '@/hooks/useAuth';
+import { notificationService } from '@/services/notificationService';
+import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
+import { supabase } from '@/services/supabase';
+import { ProgressNotification } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
 import { hapticFeedback } from '@/utils/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -27,8 +33,22 @@ export default function HabitDetailsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
   const { deleteHabit } = useHabits();
   const [deleting, setDeleting] = useState(false);
+
+  // 🆕 Estados para notificações de progresso
+  const [hasPermission, setHasPermission] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
+    enabled: false,
+    morningEnabled: true,
+    morningTime: '08:00:00',
+    afternoonEnabled: true,
+    afternoonTime: '15:00:00',
+    eveningEnabled: true,
+    eveningTime: '21:00:00',
+  });
 
   const {
     habit,
@@ -45,6 +65,127 @@ export default function HabitDetailsScreen() {
     error,
     refetch,
   } = useHabitDetails(id as string);
+
+  // 🆕 Carregar permissões e configurações de notificação
+  useEffect(() => {
+    checkNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    if (habit?.id) {
+      loadProgressNotificationSettings(habit.id);
+    }
+  }, [habit?.id]);
+
+  const checkNotificationPermission = async () => {
+    const permission = await notificationService.hasPermission();
+    setHasPermission(permission);
+  };
+
+  const requestNotificationPermission = async () => {
+    const granted = await notificationService.requestPermissions();
+    setHasPermission(granted);
+
+    if (!granted) {
+      Alert.alert('Permissão Negada', 'Ative as notificações nas configurações do dispositivo.');
+    }
+  };
+
+  // 🆕 Carregar configurações de notificações de progresso
+  const loadProgressNotificationSettings = async (habitId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('habit_progress_notifications')
+        .select('*')
+        .eq('habit_id', habitId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar configurações:', error);
+        return;
+      }
+
+      if (data) {
+        const config = data as ProgressNotification;
+        setProgressNotificationConfig({
+          enabled: config.enabled,
+          morningEnabled: config.morning_enabled,
+          morningTime: config.morning_time,
+          afternoonEnabled: config.afternoon_enabled,
+          afternoonTime: config.afternoon_time,
+          eveningEnabled: config.evening_enabled,
+          eveningTime: config.evening_time,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações de progresso:', error);
+    }
+  };
+
+  // 🆕 Salvar configurações de notificações (auto-save)
+  const handleProgressNotificationChange = async (newConfig: ProgressNotificationConfig) => {
+    setProgressNotificationConfig(newConfig);
+
+    if (!user?.id || !habit?.id) return;
+
+    setSavingNotifications(true);
+    hapticFeedback.light();
+
+    try {
+      const { data: existingConfig } = await supabase
+        .from('habit_progress_notifications')
+        .select('id')
+        .eq('habit_id', habit.id)
+        .maybeSingle();
+
+      if (existingConfig) {
+        // Atualizar configuração existente
+        await (supabase.from('habit_progress_notifications') as any)
+          .update({
+            enabled: newConfig.enabled,
+            morning_enabled: newConfig.morningEnabled,
+            morning_time: newConfig.morningTime,
+            afternoon_enabled: newConfig.afternoonEnabled,
+            afternoon_time: newConfig.afternoonTime,
+            evening_enabled: newConfig.eveningEnabled,
+            evening_time: newConfig.eveningTime,
+          })
+          .eq('habit_id', habit.id);
+
+        if (newConfig.enabled) {
+          await progressNotificationScheduler.updateNotificationSchedule(habit.id, user.id);
+        } else {
+          await progressNotificationScheduler.disableProgressNotifications(habit.id);
+        }
+      } else {
+        // Criar nova configuração
+        await (supabase.from('habit_progress_notifications') as any)
+          .insert({
+            habit_id: habit.id,
+            user_id: user.id,
+            enabled: newConfig.enabled,
+            morning_enabled: newConfig.morningEnabled,
+            morning_time: newConfig.morningTime,
+            afternoon_enabled: newConfig.afternoonEnabled,
+            afternoon_time: newConfig.afternoonTime,
+            evening_enabled: newConfig.eveningEnabled,
+            evening_time: newConfig.eveningTime,
+          });
+
+        if (newConfig.enabled) {
+          await progressNotificationScheduler.scheduleProgressNotifications(habit.id, user.id);
+        }
+      }
+
+      hapticFeedback.success();
+    } catch (error) {
+      console.error('Erro ao salvar notificações:', error);
+      hapticFeedback.error();
+      Alert.alert('Erro', 'Não foi possível salvar as configurações de notificação');
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
 
   const handleEdit = () => {
     hapticFeedback.light();
@@ -105,7 +246,7 @@ export default function HabitDetailsScreen() {
   if (error || !habit) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Icon name="alert" size={48} color={colors.danger} />
+        <Icon name="alertCircle" size={48} color={colors.danger} />
         <Text style={[styles.errorText, { color: colors.textSecondary }]}>
           {error || 'Hábito não encontrado'}
         </Text>
@@ -122,14 +263,11 @@ export default function HabitDetailsScreen() {
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const isNegative = habit.type === 'negative';
 
-  // 🆕 Textos contextuais baseados no tipo
   const streakLabel = isNegative 
     ? `${streak?.current_streak || 0} ${(streak?.current_streak || 0) === 1 ? 'dia' : 'dias'} sem`
-    : 'Streak Atual';
+    : 'Sequência Atual';
   
-  const bestStreakLabel = isNegative
-    ? 'Melhor Sequência'
-    : 'Melhor Streak';
+  const bestStreakLabel = 'Melhor Sequência';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -174,7 +312,6 @@ export default function HabitDetailsScreen() {
             </View>
           </View>
 
-          {/* 🆕 Badge do tipo de hábito */}
           {isNegative && (
             <View style={[styles.typeBadge, { backgroundColor: colors.warningLight }]}>
               <Icon name="shield" size={12} color={colors.warning} />
@@ -190,7 +327,6 @@ export default function HabitDetailsScreen() {
             </Text>
           )}
 
-          {/* Frequência */}
           <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon name="calendar" size={14} color={colors.textSecondary} />
@@ -205,7 +341,6 @@ export default function HabitDetailsScreen() {
             </Text>
           </View>
 
-          {/* Meta Numérica */}
           {habit.has_target && (
             <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -218,7 +353,6 @@ export default function HabitDetailsScreen() {
             </View>
           )}
 
-          {/* Pontos */}
           <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon name="star" size={14} color={colors.points} />
@@ -337,9 +471,39 @@ export default function HabitDetailsScreen() {
           />
         </View>
 
-        {/* SEÇÃO DE LEMBRETES */}
+        {/* 🆕 SEÇÃO DE NOTIFICAÇÕES (AGRUPADAS) */}
         <View style={styles.section}>
-          <ReminderSetup habitId={id as string} habitName={habit.name} />
+          <View style={[styles.notificationsHeader, { borderBottomColor: colors.border }]}>
+            <Icon name="bell" size={18} color={colors.primary} />
+            <Text style={[styles.notificationsSectionTitle, { color: colors.textPrimary }]}>
+              Notificações
+            </Text>
+          </View>
+
+          {/* Lembretes Simples */}
+          <View style={styles.notificationBlock}>
+            <ReminderSetup habitId={id as string} habitName={habit.name} />
+          </View>
+
+          {/* 🆕 Alertas de Progresso/Motivação/Urgência */}
+          <View style={styles.notificationBlock}>
+            <ProgressNotificationSettings
+              config={progressNotificationConfig}
+              onChange={handleProgressNotificationChange}
+              hasPermission={hasPermission}
+              onRequestPermission={requestNotificationPermission}
+              hasTarget={habit.has_target}
+              habitType={habit.type}
+            />
+            {savingNotifications && (
+              <View style={[styles.savingIndicator, { backgroundColor: colors.primaryLight }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.savingText, { color: colors.primary }]}>
+                  Salvando...
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Estatísticas Gerais */}
@@ -532,6 +696,40 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   sectionSubtitle: { fontSize: 12, marginBottom: 12 },
   periodCardsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  
+  // 🆕 Estilos da seção de notificações
+  notificationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingBottom: 12,
+    marginBottom: 16,
+    borderBottomWidth: 2,
+  },
+  notificationsSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  notificationBlock: {
+    marginBottom: 16,
+  },
+  savingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    marginHorizontal: 20,
+  },
+  savingText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  
+  // Estatísticas
   statsCard: { borderRadius: 12, padding: 16, borderWidth: 1 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1 },
   statLabel: { fontSize: 14 },

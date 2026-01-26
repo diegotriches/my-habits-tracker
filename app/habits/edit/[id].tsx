@@ -13,14 +13,11 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
-import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
+import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
 import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notifications';
-import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
-import { supabase } from '@/services/supabase';
-import { Habit, ProgressNotification } from '@/types/database';
+import { Habit } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { 
@@ -52,36 +49,9 @@ export default function EditHabitScreen() {
   const [originalHasTarget, setOriginalHasTarget] = useState(false);
   const [originalTargetValue, setOriginalTargetValue] = useState<number | null>(null);
 
-  // Estados de notificações
-  const [hasPermission, setHasPermission] = useState(false);
-  const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
-    enabled: false,
-    morningEnabled: true,
-    morningTime: '08:00:00',
-    afternoonEnabled: true,
-    afternoonTime: '15:00:00',
-    eveningEnabled: true,
-    eveningTime: '21:00:00',
-  });
-
   useEffect(() => {
     loadHabit();
-    checkNotificationPermission();
   }, [id]);
-
-  const checkNotificationPermission = async () => {
-    const permission = await notificationService.hasPermission();
-    setHasPermission(permission);
-  };
-
-  const requestNotificationPermission = async () => {
-    const granted = await notificationService.requestPermissions();
-    setHasPermission(granted);
-
-    if (!granted) {
-      Alert.alert('Permissão Negada', 'Ative as notificações nas configurações do dispositivo.');
-    }
-  };
 
   const loadHabit = async () => {
     const { data, error } = await getHabit(id as string);
@@ -110,41 +80,7 @@ export default function EditHabitScreen() {
       setTargetUnit(habitData.target_unit || '');
     }
 
-    // 🆕 Carregar notificações para TODOS os hábitos (não só metas)
-    await loadProgressNotificationSettings(habitData.id);
-
     setLoading(false);
-  };
-
-  // 🆕 Carregar configurações para TODOS os hábitos
-  const loadProgressNotificationSettings = async (habitId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('habit_progress_notifications')
-        .select('*')
-        .eq('habit_id', habitId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Erro ao carregar configurações:', error);
-        return;
-      }
-
-      if (data) {
-        const config = data as ProgressNotification;
-        setProgressNotificationConfig({
-          enabled: config.enabled,
-          morningEnabled: config.morning_enabled,
-          morningTime: config.morning_time,
-          afternoonEnabled: config.afternoon_enabled,
-          afternoonTime: config.afternoon_time,
-          eveningEnabled: config.evening_enabled,
-          eveningTime: config.evening_time,
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao carregar configurações de progresso:', error);
-    }
   };
 
   const confirmTargetChange = async (
@@ -264,56 +200,6 @@ export default function EditHabitScreen() {
             'Hábito atualizado, mas houve um erro ao recalcular pontos. Tente novamente.'
           );
         }
-      }
-
-      // 🆕 Salvar notificações para TODOS os hábitos (não só metas)
-      try {
-        const { data: existingConfig } = await supabase
-          .from('habit_progress_notifications')
-          .select('id')
-          .eq('habit_id', id as string)
-          .maybeSingle();
-
-        if (existingConfig) {
-          // Atualizar configuração existente
-          await (supabase.from('habit_progress_notifications') as any)
-            .update({
-              enabled: progressNotificationConfig.enabled,
-              morning_enabled: progressNotificationConfig.morningEnabled,
-              morning_time: progressNotificationConfig.morningTime,
-              afternoon_enabled: progressNotificationConfig.afternoonEnabled,
-              afternoon_time: progressNotificationConfig.afternoonTime,
-              evening_enabled: progressNotificationConfig.eveningEnabled,
-              evening_time: progressNotificationConfig.eveningTime,
-            })
-            .eq('habit_id', id as string);
-
-          if (progressNotificationConfig.enabled) {
-            await progressNotificationScheduler.updateNotificationSchedule(id as string, user.id);
-          } else {
-            await progressNotificationScheduler.disableProgressNotifications(id as string);
-          }
-        } else {
-          // Criar nova configuração
-          await (supabase.from('habit_progress_notifications') as any)
-            .insert({
-              habit_id: id as string,
-              user_id: user.id,
-              enabled: progressNotificationConfig.enabled,
-              morning_enabled: progressNotificationConfig.morningEnabled,
-              morning_time: progressNotificationConfig.morningTime,
-              afternoon_enabled: progressNotificationConfig.afternoonEnabled,
-              afternoon_time: progressNotificationConfig.afternoonTime,
-              evening_enabled: progressNotificationConfig.eveningEnabled,
-              evening_time: progressNotificationConfig.eveningTime,
-            });
-
-          if (progressNotificationConfig.enabled) {
-            await progressNotificationScheduler.scheduleProgressNotifications(id as string, user.id);
-          }
-        }
-      } catch (progressError) {
-        console.error('Erro ao atualizar notificações de progresso:', progressError);
       }
 
       setSaving(false);
@@ -530,10 +416,9 @@ export default function EditHabitScreen() {
                   key={key}
                   style={[
                     styles.difficultyOption,
-                    { borderColor: colors.border },
-                    isSelected && {
-                      borderColor: config.color,
-                      backgroundColor: config.color + '10',
+                    { 
+                      borderColor: isSelected ? config.color : colors.border,
+                      backgroundColor: isSelected ? config.color + '15' : colors.surface,
                     },
                   ]}
                   onPress={() => {
@@ -541,17 +426,17 @@ export default function EditHabitScreen() {
                     setDifficulty(key);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.difficultyLabel,
-                      { color: colors.textSecondary },
-                      isSelected && { color: config.color },
-                    ]}
-                  >
+                  <Text style={[
+                    styles.difficultyLabel,
+                    { color: isSelected ? config.color : colors.textSecondary },
+                  ]}>
                     {config.label}
                   </Text>
-                  <Text style={[styles.difficultyPoints, { color: colors.textTertiary }]}>
-                    +{config.points} pts
+                  <Text style={[
+                    styles.difficultyPoints,
+                    { color: isSelected ? config.color : colors.textTertiary },
+                  ]}>
+                    +{config.points}
                   </Text>
                 </TouchableOpacity>
               );
@@ -559,40 +444,18 @@ export default function EditHabitScreen() {
           </View>
         </View>
 
-        {/* Cor */}
+        {/* Cor Compacta */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Cor</Text>
-          <View style={styles.colorContainer}>
-            {HABIT_COLORS.map((color) => (
-              <TouchableOpacity
-                key={color}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color },
-                  selectedColor === color && styles.colorOptionSelected,
-                ]}
-                onPress={() => {
-                  hapticFeedback.selection();
-                  setSelectedColor(color);
-                }}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* 🆕 NOTIFICAÇÕES PARA TODOS OS HÁBITOS */}
-        <View style={styles.section}>
-          <ProgressNotificationSettings
-            config={progressNotificationConfig}
-            onChange={setProgressNotificationConfig}
-            hasPermission={hasPermission}
-            onRequestPermission={requestNotificationPermission}
-            hasTarget={hasTarget}
-            habitType={habitType}
+          <CompactColorSelector
+            selectedColor={selectedColor}
+            onColorSelect={(color) => {
+              hapticFeedback.selection();
+              setSelectedColor(color);
+            }}
           />
         </View>
 
-        {/* Info Card */}
+        {/* ✅ Info Card */}
         <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
           <Icon name="info" size={16} color={colors.info} />
           <Text style={[styles.infoText, { color: colors.info }]}>
@@ -609,6 +472,14 @@ export default function EditHabitScreen() {
                 Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
               </>
             )}
+          </Text>
+        </View>
+
+        {/* 💡 Dica sobre notificações */}
+        <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+          <Icon name="bell" size={16} color={colors.primary} />
+          <Text style={[styles.tipText, { color: colors.primary }]}>
+            <Text style={styles.tipBold}>Dica:</Text> Configure lembretes e alertas na página de detalhes do hábito após salvar!
           </Text>
         </View>
 
@@ -633,10 +504,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '600' },
   cancelButton: { fontSize: 16 },
   saveButton: { fontSize: 16, fontWeight: '600' },
-  content: { flex: 1, padding: 20 },
-  section: { marginBottom: 24 },
+  content: { flex: 1, padding: 16 },
+  section: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
-  helperText: { fontSize: 12, marginTop: 6, fontStyle: 'italic' },
+  helperText: { fontSize: 12, marginTop: 4 },
   typeIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -651,11 +522,11 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingVertical: 12,
+    fontSize: 15,
     borderWidth: 1,
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
+  textArea: { height: 70, textAlignVertical: 'top' },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -684,40 +555,35 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   warningText: { flex: 1, fontSize: 12, lineHeight: 18 },
-  difficultyContainer: { flexDirection: 'row', gap: 12 },
+  difficultyContainer: { flexDirection: 'row', gap: 8 },
   difficultyOption: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
   },
-  difficultyLabel: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  difficultyPoints: { fontSize: 12 },
-  colorContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  colorOption: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  colorOptionSelected: {
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+  difficultyLabel: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  difficultyPoints: { fontSize: 11, fontWeight: '700' },
   infoCard: {
     flexDirection: 'row',
     gap: 8,
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
+    marginBottom: 12,
   },
   infoText: { flex: 1, fontSize: 14, lineHeight: 20 },
   infoBold: { fontWeight: '600' },
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1.5,
+  },
+  tipText: { flex: 1, fontSize: 13, lineHeight: 19 },
+  tipBold: { fontWeight: '700' },
 });
