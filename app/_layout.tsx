@@ -2,7 +2,7 @@
 import { NotificationHandler } from '@/components/notifications/NotificationHandler';
 import { useAuth } from '@/hooks/useAuth';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 
@@ -45,6 +45,7 @@ function RootLayoutNav() {
   );
 }
 
+// ✅ EXPORT DEFAULT NA RAIZ (não dentro de função)
 export default function RootLayout() {
   return (
     <ThemeProvider>

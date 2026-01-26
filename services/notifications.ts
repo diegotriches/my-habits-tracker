@@ -1,10 +1,11 @@
-// services/notifications.ts
+// services/notifications.ts - VERSÃO ULTRA DEBUG
+
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { supabase } from './supabase';
 import { startOfDay, endOfDay } from 'date-fns';
 
-// 🆕 Interface estendida para suportar android.actions
+// Interface estendida para android.actions
 interface NotificationContentWithActions extends Notifications.NotificationContentInput {
   android?: {
     channelId?: string;
@@ -19,7 +20,7 @@ interface NotificationContentWithActions extends Notifications.NotificationConte
   };
 }
 
-// Configurar handler padrão de notificações
+// Configurar handler padrão
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -32,33 +33,24 @@ Notifications.setNotificationHandler({
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
 
-export interface ScheduledNotification {
-  id: string;
-  habitId: string;
-  reminderId: string;
-  dayOfWeek: number;
-  time: string;
-}
-
 class NotificationService {
   private navigationCallback: ((habitId: string) => void) | null = null;
 
-  /**
-   * Configurar listeners de notificações e deep link
-   */
   setupNotificationHandlers(navigationCallback: (habitId: string) => void): void {
     this.navigationCallback = navigationCallback;
 
-    // Listener para quando o usuário clica na notificação
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       
+      console.log('🔔 Notification Response Received:', {
+        actionIdentifier: response.actionIdentifier,
+        data,
+      });
+      
       if (data?.habitId) {
-        // Deep link para a tela do hábito
         this.navigationCallback?.(data.habitId as string);
       }
 
-      // Handler de ações (snooze, complete)
       if (response.actionIdentifier === 'snooze') {
         this.handleSnooze(data?.habitId as string, data?.habitName as string);
       } else if (response.actionIdentifier === 'complete') {
@@ -66,17 +58,12 @@ class NotificationService {
       }
     });
 
-    // Configurar categorias de notificação com ações
     this.setupNotificationCategories();
   }
 
-  /**
-   * 🔧 CORRIGIDO: Configurar categorias com ações (iOS) e Actions (Android)
-   */
   private async setupNotificationCategories(): Promise<void> {
     try {
       if (Platform.OS === 'ios') {
-        // iOS: Usa categorias
         await Notifications.setNotificationCategoryAsync('habit-reminder', [
           {
             identifier: 'snooze',
@@ -93,71 +80,246 @@ class NotificationService {
             },
           },
         ]);
+        console.log('✅ iOS categories configured');
       } else {
-        // Android: Actions são configuradas por notificação
-        // Não precisa de setup global
-        console.log('Android: Actions serão configuradas por notificação');
+        console.log('✅ Android: Actions will be inline per notification');
       }
     } catch (error) {
-      console.warn('Erro ao configurar categorias:', error);
+      console.warn('❌ Error configuring categories:', error);
     }
   }
 
-  /**
-   * Solicitar permissões de notificação
-   */
   async requestPermissions(): Promise<boolean> {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
+      console.log('📱 Current permission status:', existingStatus);
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
+        console.log('📱 New permission status:', status);
       }
 
       if (finalStatus !== 'granted') {
+        console.log('❌ Permission denied');
         return false;
       }
 
-      // Configurar canal Android
+      // Configurar canais Android com MÁXIMA importância
       if (Platform.OS === 'android') {
+        console.log('🔧 Creating Android channels...');
+        
         await Notifications.setNotificationChannelAsync('habits', {
           name: 'Lembretes de Hábitos',
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: Notifications.AndroidImportance.MAX, // MUDADO PARA MAX
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#3b82f6',
           sound: 'default',
           enableVibrate: true,
+          enableLights: true,
+          showBadge: true,
         });
 
-        // Canal para notificações silenciosas
-        await Notifications.setNotificationChannelAsync('habits-silent', {
-          name: 'Lembretes Silenciosos',
-          importance: Notifications.AndroidImportance.LOW,
-          sound: undefined,
-          enableVibrate: false,
-        });
+        // Verificar se foi criado
+        const channel = await Notifications.getNotificationChannelAsync('habits');
+        console.log('📢 Channel created:', channel);
       }
 
       return true;
     } catch (error) {
-      console.error('Erro ao solicitar permissões:', error);
+      console.error('❌ Error requesting permissions:', error);
       return false;
     }
   }
 
-  /**
-   * Verificar se tem permissão
-   */
   async hasPermission(): Promise<boolean> {
     const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';
   }
 
   /**
-   * 🔧 CORRIGIDO: Verificar se o hábito foi completado hoje
+   * 🆕 TESTE ULTRA-DEBUG: Múltiplas abordagens de notificação
    */
+  async testAllNotificationMethods(): Promise<void> {
+    try {
+      console.log('🧪 Testing ALL notification methods...');
+
+      // MÉTODO 1: Actions simples (padrão atual)
+      console.log('📤 Method 1: Simple actions');
+      const content1: NotificationContentWithActions = {
+        title: '🔵 MÉTODO 1: Actions Simples',
+        body: 'Expanda para ver botões',
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        android: {
+          channelId: 'habits',
+          actions: [
+            {
+              identifier: 'test1',
+              title: 'Teste 1',
+              buttonTitle: 'BOTÃO 1',
+            },
+            {
+              identifier: 'test2',
+              title: 'Teste 2',
+              buttonTitle: 'BOTÃO 2',
+            },
+          ],
+        },
+      };
+
+      await Notifications.scheduleNotificationAsync({
+        content: content1 as Notifications.NotificationContentInput,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 3,
+        },
+      });
+
+      // MÉTODO 2: Com opensAppToForeground = true
+      console.log('📤 Method 2: Opens app');
+      const content2: NotificationContentWithActions = {
+        title: '🟢 MÉTODO 2: Abre App',
+        body: 'Botões que abrem o app',
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        android: {
+          channelId: 'habits',
+          actions: [
+            {
+              identifier: 'open1',
+              title: 'Abrir 1',
+              buttonTitle: 'ABRIR 1',
+              options: {
+                opensAppToForeground: true,
+              },
+            },
+            {
+              identifier: 'open2',
+              title: 'Abrir 2',
+              buttonTitle: 'ABRIR 2',
+              options: {
+                opensAppToForeground: true,
+              },
+            },
+          ],
+        },
+      };
+
+      await Notifications.scheduleNotificationAsync({
+        content: content2 as Notifications.NotificationContentInput,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 6,
+        },
+      });
+
+      // MÉTODO 3: Sticky + AutoCancel
+      console.log('📤 Method 3: Sticky notification');
+      const content3: NotificationContentWithActions = {
+        title: '🟡 MÉTODO 3: Sticky',
+        body: 'Notificação grudenta com botões',
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        sticky: true,
+        autoDismiss: false,
+        android: {
+          channelId: 'habits',
+          actions: [
+            {
+              identifier: 'sticky1',
+              title: 'Sticky 1',
+              buttonTitle: 'STICKY 1',
+            },
+            {
+              identifier: 'sticky2',
+              title: 'Sticky 2',
+              buttonTitle: 'STICKY 2',
+            },
+          ],
+        },
+      };
+
+      await Notifications.scheduleNotificationAsync({
+        content: content3 as Notifications.NotificationContentInput,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 9,
+        },
+      });
+
+      console.log('✅ All 3 methods scheduled!');
+      
+      Alert.alert(
+        '🧪 Teste Agendado',
+        '3 notificações serão enviadas:\n\n' +
+        '⏰ 3s - Método 1 (simples)\n' +
+        '⏰ 6s - Método 2 (abre app)\n' +
+        '⏰ 9s - Método 3 (sticky)\n\n' +
+        'EXPANDA cada uma para ver os botões!',
+        [{ text: 'OK' }]
+      );
+
+    } catch (error) {
+      console.error('❌ Error testing methods:', error);
+      Alert.alert('Erro', `${error}`);
+    }
+  }
+
+  /**
+   * 🆕 VERIFICAR configuração do canal
+   */
+  async debugChannel(): Promise<void> {
+    if (Platform.OS !== 'android') {
+      console.log('⚠️ Channel debug is Android only');
+      return;
+    }
+
+    try {
+      const channel = await Notifications.getNotificationChannelAsync('habits');
+      
+      if (!channel) {
+        console.log('❌ Channel "habits" NOT FOUND!');
+        Alert.alert('Erro', 'Canal "habits" não existe! Execute "Verificar Permissões" primeiro.');
+        return;
+      }
+
+      console.log('📢 Channel Debug:', {
+        id: channel.id,
+        name: channel.name,
+        importance: channel.importance,
+        sound: channel.sound,
+        vibrate: channel.enableVibrate,
+        lights: channel.enableLights,
+      });
+
+      const importanceText = [
+        'NONE (0)',
+        'MIN (1)',
+        'LOW (2)',
+        'DEFAULT (3)',
+        'HIGH (4)',
+        'MAX (5)',
+      ][channel.importance] || `Unknown (${channel.importance})`;
+
+      Alert.alert(
+        '📢 Canal "habits"',
+        `Nome: ${channel.name}\n` +
+        `Importância: ${importanceText}\n` +
+        `Som: ${channel.sound || 'Nenhum'}\n` +
+        `Vibração: ${channel.enableVibrate ? 'Sim' : 'Não'}\n` +
+        `Luzes: ${channel.enableLights ? 'Sim' : 'Não'}\n\n` +
+        `${channel.importance < 4 ? '⚠️ IMPORTÂNCIA BAIXA!\nActions podem não aparecer.' : '✅ Importância adequada'}`,
+        [{ text: 'OK' }]
+      );
+
+    } catch (error) {
+      console.error('❌ Error debugging channel:', error);
+    }
+  }
+
   async checkIfCompletedToday(habitId: string): Promise<boolean> {
     try {
       const today = new Date();
@@ -172,16 +334,12 @@ class NotificationService {
         .lte('completed_at', endOfToday)
         .maybeSingle();
 
-      // Se não houve erro e data existe, está completado
       return !error && data !== null;
     } catch {
       return false;
     }
   }
 
-  /**
-   * 🆕 NOVO: Buscar dados do hábito (inclui has_target)
-   */
   async getHabitData(habitId: string): Promise<{
     id: string;
     name: string;
@@ -199,7 +357,6 @@ class NotificationService {
         .single();
 
       if (error) throw error;
-
       return data as any;
     } catch (error) {
       console.error('Erro ao buscar hábito:', error);
@@ -207,11 +364,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * 🔧 CORRIGIDO: Agendar lembrete semanal (respeitando dias específicos)
-   * iOS: Usa CALENDAR trigger com weekday + Categories
-   * Android: Usa DAILY trigger + Actions inline
-   */
   async scheduleWeeklyReminder(
     habitId: string,
     habitName: string,
@@ -231,7 +383,6 @@ class NotificationService {
       const notificationIds: string[] = [];
 
       if (Platform.OS === 'ios') {
-        // iOS: Suporta weekday no trigger calendar + Categories
         for (const dayOfWeek of daysOfWeek) {
           const notificationId = await Notifications.scheduleNotificationAsync({
             content: {
@@ -248,7 +399,7 @@ class NotificationService {
                 scheduledDays: daysOfWeek,
               },
               sound: this.getSoundFile(sound),
-              categoryIdentifier: 'habit-reminder', // iOS usa categoria
+              categoryIdentifier: 'habit-reminder',
               priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: {
@@ -263,7 +414,6 @@ class NotificationService {
           notificationIds.push(notificationId);
         }
       } else {
-        // 🔧 CORRIGIDO: Android com cast de tipo
         const content: NotificationContentWithActions = {
           title: '⏰ Hora do seu hábito!',
           body: `Não esqueça: ${habitName}`,
@@ -277,8 +427,7 @@ class NotificationService {
             scheduledDays: daysOfWeek,
           },
           sound: this.getSoundFile(sound),
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-          // 🆕 Android: Actions inline na notificação
+          priority: Notifications.AndroidNotificationPriority.MAX, // MAX para garantir
           android: {
             channelId: 'habits',
             actions: [
@@ -321,9 +470,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Agendar lembrete diário
-   */
   async scheduleDailyReminder(
     habitId: string,
     habitName: string,
@@ -371,9 +517,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Cancelar notificações
-   */
   async cancelNotification(notificationId: string): Promise<void> {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
@@ -410,9 +553,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Snooze (10 minutos)
-   */
   async handleSnooze(habitId: string, habitName: string): Promise<void> {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -437,12 +577,8 @@ class NotificationService {
     }
   }
 
-  /**
-   * 🔧 MELHORADO: Quick complete com suporte a metas numéricas
-   */
   async handleQuickComplete(habitId: string): Promise<void> {
     try {
-      // 🆕 Buscar dados completos do hábito
       const habit = await this.getHabitData(habitId);
       
       if (!habit) {
@@ -450,7 +586,6 @@ class NotificationService {
         return;
       }
 
-      // 🆕 Se tem meta numérica, não pode completar via notificação
       if (habit.has_target) {
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -471,7 +606,6 @@ class NotificationService {
       const startOfToday = startOfDay(today).toISOString();
       const endOfToday = endOfDay(today).toISOString();
 
-      // Verificar se já foi completado
       const { data: existing } = await supabase
         .from('completions')
         .select('id')
@@ -492,7 +626,6 @@ class NotificationService {
         return;
       }
 
-      // Criar completion
       const { error: insertError } = await (supabase.from('completions') as any).insert({
         habit_id: habitId,
         completed_at: new Date().toISOString(),
@@ -502,7 +635,6 @@ class NotificationService {
 
       if (insertError) throw insertError;
 
-      // Atualizar pontos
       const { error: rpcError } = await (supabase.rpc as any)('increment_points', {
         user_id_param: habit.user_id,
         points_param: habit.points_base,
@@ -512,7 +644,6 @@ class NotificationService {
         console.warn('Erro ao atualizar pontos:', rpcError);
       }
 
-      // Feedback de sucesso
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🎉 Hábito completado!',
@@ -526,9 +657,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Som
-   */
   private getSoundFile(sound: NotificationSound): string | boolean | undefined {
     switch (sound) {
       case 'default':
@@ -546,9 +674,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Teste
-   */
   async scheduleTestNotification(habitName: string): Promise<void> {
     try {
       await Notifications.scheduleNotificationAsync({
@@ -568,9 +693,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Debug
-   */
   async getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
     try {
       return await Notifications.getAllScheduledNotificationsAsync();

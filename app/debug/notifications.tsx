@@ -1,10 +1,10 @@
-// app/debug/notifications.tsx - VERSÃO DEBUG APRIMORADA
+// app/debug/notifications.tsx - VERSÃO WRAPPER (Funciona no Expo Go)
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notifications';
-import * as Notifications from 'expo-notifications';
+import { notificationService } from '@/services/notificationService'; // ✅ USAR WRAPPER
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import {
@@ -17,48 +17,47 @@ import {
   Platform,
 } from 'react-native';
 
-// Interface estendida para suportar android.actions
-interface NotificationContentWithActions extends Notifications.NotificationContentInput {
-  android?: {
-    channelId?: string;
-    actions?: Array<{
-      identifier: string;
-      title: string;
-      buttonTitle: string;
-      options?: {
-        opensAppToForeground?: boolean;
-      };
-    }>;
-  };
-}
-
 export default function NotificationTestScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const [testResults, setTestResults] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const [isExpoGo, setIsExpoGo] = useState(false);
 
   useEffect(() => {
     loadDeviceInfo();
+    checkEnvironment();
   }, []);
+
+  const checkEnvironment = () => {
+    const isRunningInExpoGo = Constants.appOwnership === 'expo';
+    setIsExpoGo(isRunningInExpoGo);
+    
+    if (isRunningInExpoGo) {
+      addResult('⚠️ Rodando no Expo Go', 'info');
+      addResult('📦 Usando Mock de Notificações', 'info');
+      addResult('✅ Notificações funcionam, mas SEM botões', 'info');
+      addResult('🏗️ Para testar botões: faça build standalone', 'info');
+    } else {
+      addResult('🚀 Rodando em Build Standalone', 'success');
+      addResult('✅ Notifee nativo ativado', 'success');
+      addResult('🎯 Botões de ação funcionam!', 'success');
+    }
+  };
 
   const loadDeviceInfo = async () => {
     const info = {
       brand: Device.brand,
       manufacturer: Device.manufacturer,
       modelName: Device.modelName,
-      osName: Device.osName,
       osVersion: Device.osVersion,
       platformApiLevel: Device.platformApiLevel,
-      deviceName: Device.deviceName,
-      isDevice: Device.isDevice,
     };
     setDeviceInfo(info);
     
-    addResult(`📱 Dispositivo: ${info.manufacturer} ${info.modelName}`, 'info');
-    addResult(`🤖 Android: ${info.osVersion} (API ${info.platformApiLevel})`, 'info');
-    addResult(`🏭 Marca: ${info.brand}`, 'info');
+    addResult(`📱 ${info.manufacturer} ${info.modelName}`, 'info');
+    addResult(`🤖 Android ${info.osVersion} (API ${info.platformApiLevel})`, 'info');
   };
 
   const addResult = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -66,39 +65,23 @@ export default function NotificationTestScreen() {
     setTestResults(prev => [`${emoji} ${message}`, ...prev]);
   };
 
-  // ========== TESTE DE PERMISSÃO ==========
-
   const testPermissions = async () => {
     setLoading(true);
     addResult('🔍 Verificando permissões...', 'info');
 
     try {
-      const { status, canAskAgain, granted } = await Notifications.getPermissionsAsync();
+      const hasPermission = await notificationService.hasPermission();
       
-      addResult(`Status: ${status}`, 'info');
-      addResult(`Pode perguntar novamente: ${canAskAgain}`, 'info');
-      addResult(`Concedido: ${granted}`, 'info');
-
-      if (status !== 'granted') {
-        addResult('Solicitando permissão...', 'info');
-        const { status: newStatus } = await Notifications.requestPermissionsAsync();
-        addResult(`Novo status: ${newStatus}`, newStatus === 'granted' ? 'success' : 'error');
-      } else {
+      if (hasPermission) {
         addResult('Permissão já concedida!', 'success');
-      }
-
-      // Verificar configurações do canal
-      if (Platform.OS === 'android') {
-        const channel = await Notifications.getNotificationChannelAsync('habits');
-        if (channel) {
-          addResult(`Canal 'habits' existe`, 'success');
-          addResult(`  - Importância: ${channel.importance}`, 'info');
-          addResult(`  - Som: ${channel.sound || 'padrão'}`, 'info');
+      } else {
+        addResult('Solicitando permissão...', 'info');
+        const granted = await notificationService.requestPermissions();
+        
+        if (granted) {
+          addResult('Permissão concedida!', 'success');
         } else {
-          addResult(`Canal 'habits' NÃO existe!`, 'error');
-          addResult(`Criando canal...`, 'info');
-          await notificationService.requestPermissions();
-          addResult(`Canal criado!`, 'success');
+          addResult('Permissão negada', 'error');
         }
       }
     } catch (error) {
@@ -108,234 +91,119 @@ export default function NotificationTestScreen() {
     }
   };
 
-  // ========== TESTE DE NOTIFICAÇÃO COM AÇÕES - VERSÃO VERBOSE ==========
-
-  const testNotificationWithActionsVerbose = async () => {
+  const testNotificationWithButtons = async () => {
     setLoading(true);
-    addResult('🧪 Iniciando teste de ações (Android)...', 'info');
+    
+    if (isExpoGo) {
+      addResult('⚠️ Notificação SEM botões (Expo Go)', 'info');
+      addResult('📦 Mock enviará notificação básica', 'info');
+    } else {
+      addResult('🧪 Agendando notificação com botões...', 'info');
+    }
 
     try {
-      if (Platform.OS !== 'android') {
-        addResult('⚠️ Este teste é específico para Android', 'info');
-        setLoading(false);
-        return;
-      }
-
-      addResult('📋 Configurando notificação...', 'info');
-
-      const content: NotificationContentWithActions = {
-        title: '🎯 TESTE DE BOTÕES',
-        body: '👇 EXPANDA para ver os botões de ação',
-        sound: true,
-        data: {
-          habitId: 'test-habit-android',
-          habitName: 'Teste Android',
-          type: 'habit_reminder',
-          testTimestamp: Date.now(),
-        },
-        priority: Notifications.AndroidNotificationPriority.MAX, // Mudado para MAX
-        android: {
-          channelId: 'habits',
-          actions: [
-            {
-              identifier: 'snooze',
-              title: '⏰ Adiar 10 minutos',
-              buttonTitle: '⏰ ADIAR',
-              options: {
-                opensAppToForeground: false,
-              },
-            },
-            {
-              identifier: 'complete',
-              title: '✅ Marcar como feito',
-              buttonTitle: '✅ COMPLETAR',
-              options: {
-                opensAppToForeground: false,
-              },
-            },
-          ],
-        },
-      };
-
-      addResult('📤 Agendando notificação para 3s...', 'info');
-      addResult('📱 Priority: MAX', 'info');
-      addResult('🔔 Canal: habits', 'info');
-      addResult('🎬 Actions: 2 botões', 'info');
-
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: content as Notifications.NotificationContentInput,
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 3,
-        },
-      });
-
-      addResult(`✅ Agendada! ID: ${notificationId}`, 'success');
-      addResult('', 'info');
-      addResult('📍 INSTRUÇÕES:', 'info');
-      addResult('1. Aguarde 3 segundos', 'info');
-      addResult('2. Quando aparecer, PUXE A NOTIFICAÇÃO PARA BAIXO', 'info');
-      addResult('3. Ou toque na seta/ícone para expandir', 'info');
-      addResult('4. Os botões devem aparecer embaixo do texto', 'info');
+      await notificationService.testNotificationWithActions();
       
-      // Adicionar alerta visual
+      addResult('✅ Notificação agendada para 3s!', 'success');
+      addResult('', 'info');
+      addResult('📍 AGUARDE 3 SEGUNDOS', 'info');
+      
+      if (!isExpoGo) {
+        addResult('👇 Quando aparecer, EXPANDA a notificação', 'info');
+        addResult('✨ Os botões [ADIAR] e [COMPLETAR] vão aparecer!', 'success');
+      } else {
+        addResult('ℹ️ Notificação básica (sem botões no Expo Go)', 'info');
+        addResult('🏗️ Para botões: eas build --profile preview', 'info');
+      }
+      
       setTimeout(() => {
-        addResult('⏰ NOTIFICAÇÃO DEVE TER CHEGADO AGORA!', 'success');
+        addResult('⏰ DEVE TER CHEGADO AGORA!', 'success');
         Alert.alert(
           '📱 Verifique a Notificação',
-          'A notificação acabou de ser enviada!\n\nExpanda ela para ver os botões:\n• Puxe para baixo\n• Ou toque no ícone ▼',
+          isExpoGo 
+            ? 'A notificação foi enviada!\n\n⚠️ No Expo Go os botões não aparecem.\n\nPara testar botões, faça uma build standalone.'
+            : 'A notificação acabou de ser enviada!\n\nExpanda para ver os BOTÕES:\n• [⏰ ADIAR]\n• [✅ COMPLETAR]',
           [{ text: 'OK' }]
         );
       }, 3500);
 
     } catch (error) {
-      addResult(`❌ Erro: ${error}`, 'error');
-      console.error('Erro completo:', error);
+      addResult(`Erro: ${error}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // ========== TESTE ALTERNATIVO: NOTIFICAÇÃO COM ESTILO EXPANDIDO ==========
-
-  const testExpandedNotification = async () => {
+  const listScheduledNotifications = async () => {
     setLoading(true);
-    addResult('🧪 Testando notificação expandida...', 'info');
+    addResult('📋 Listando notificações...', 'info');
 
     try {
-      if (Platform.OS !== 'android') {
-        addResult('⚠️ Teste específico para Android', 'info');
-        setLoading(false);
-        return;
-      }
-
-      const content: any = {
-        title: '📊 Notificação Expandida',
-        body: 'Esta notificação tem estilo BIG_TEXT para expandir automaticamente',
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-        android: {
-          channelId: 'habits',
-          // Estilo expandido
-          style: {
-            type: 'bigText',
-            text: 'Este é um texto longo que deve fazer a notificação expandir automaticamente. Tente puxar para baixo para ver se os botões aparecem.',
-          },
-          actions: [
-            {
-              identifier: 'test1',
-              title: 'Botão 1',
-              buttonTitle: '🔵 BOTÃO 1',
-            },
-            {
-              identifier: 'test2',
-              title: 'Botão 2',
-              buttonTitle: '🟢 BOTÃO 2',
-            },
-            {
-              identifier: 'test3',
-              title: 'Botão 3',
-              buttonTitle: '🟡 BOTÃO 3',
-            },
-          ],
-        },
-      };
-
-      await Notifications.scheduleNotificationAsync({
-        content,
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 3,
-        },
-      });
-
-      addResult('✅ Notificação expandida agendada para 3s', 'success');
-      addResult('Esta deve expandir mais facilmente', 'info');
-
-    } catch (error) {
-      addResult(`❌ Erro: ${error}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ========== TESTE: VERIFICAR CANAL ==========
-
-  const testChannel = async () => {
-    setLoading(true);
-    addResult('🔍 Verificando canais de notificação...', 'info');
-
-    try {
-      if (Platform.OS !== 'android') {
-        addResult('⚠️ Canais são específicos do Android', 'info');
-        setLoading(false);
-        return;
-      }
-
-      const channels = await Notifications.getNotificationChannelsAsync();
-      addResult(`📋 Total de canais: ${channels.length}`, 'info');
-
-      for (const channel of channels) {
-        addResult(``, 'info');
-        addResult(`📢 Canal: ${channel.name}`, 'info');
-        addResult(`  - ID: ${channel.id}`, 'info');
-        addResult(`  - Importância: ${channel.importance}`, 'info');
-        addResult(`  - Som: ${channel.sound || 'nenhum'}`, 'info');
-        addResult(`  - Vibração: ${channel.enableVibrate ? 'sim' : 'não'}`, 'info');
-      }
-
-      // Verificar especificamente o canal 'habits'
-      const habitsChannel = await Notifications.getNotificationChannelAsync('habits');
-      if (habitsChannel) {
-        addResult(``, 'info');
-        addResult(`✅ Canal 'habits' configurado corretamente`, 'success');
-        if (habitsChannel.importance < 3) {
-          addResult(`⚠️ Importância baixa (${habitsChannel.importance})`, 'error');
-          addResult(`Recomendado: 4 ou 5 para mostrar actions`, 'info');
-        }
+      const notifications = await notificationService.getAllScheduledNotifications();
+      
+      if (notifications.length === 0) {
+        addResult('Nenhuma notificação agendada', 'info');
       } else {
-        addResult(`❌ Canal 'habits' não encontrado!`, 'error');
+        addResult(`${notifications.length} notificações agendadas:`, 'success');
+        
+        notifications.forEach((item: any, index: number) => {
+          const title = item.notification?.title || item.content?.title || 'Sem título';
+          const habitName = item.notification?.data?.habitName || item.content?.data?.habitName;
+          
+          addResult(`${index + 1}. ${title}`, 'info');
+          if (habitName) {
+            addResult(`   Hábito: ${habitName}`, 'info');
+          }
+        });
       }
-
     } catch (error) {
-      addResult(`❌ Erro: ${error}`, 'error');
+      addResult(`Erro: ${error}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // ========== VERIFICAR DEVICE INFO ==========
+  const cancelAllNotifications = async () => {
+    Alert.alert(
+      'Cancelar Todas?',
+      'Isso vai cancelar TODAS as notificações agendadas',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            addResult('Cancelando todas...', 'info');
 
-  const showDeviceInfo = () => {
-    if (!deviceInfo) {
-      Alert.alert('Carregando...', 'Informações do dispositivo ainda não carregadas');
-      return;
-    }
-
-    const info = `
-📱 Dispositivo: ${deviceInfo.manufacturer} ${deviceInfo.modelName}
-🤖 Android: ${deviceInfo.osVersion}
-📊 API Level: ${deviceInfo.platformApiLevel}
-🏷️ Marca: ${deviceInfo.brand}
-📱 Nome: ${deviceInfo.deviceName}
-🔧 É dispositivo físico: ${deviceInfo.isDevice ? 'Sim' : 'Não (Emulador)'}
-
-⚠️ AVISOS IMPORTANTES:
-
-${deviceInfo.manufacturer === 'Xiaomi' ? '⚠️ XIAOMI detectado!\n- Vá em Configurações > Apps > Seu App\n- Ative "Exibir notificações pop-up"\n- Ative "Notificações flutuantes"\n\n' : ''}
-${deviceInfo.manufacturer === 'Huawei' ? '⚠️ HUAWEI detectado!\n- Pode ter restrições em notificações\n- Verifique configurações de bateria\n\n' : ''}
-${deviceInfo.manufacturer === 'Samsung' ? '⚠️ SAMSUNG detectado!\n- Verifique modo "Não perturbe"\n- Vá em Configurações > Notificações\n\n' : ''}
-${deviceInfo.platformApiLevel < 24 ? '⚠️ API LEVEL < 24!\n- Actions requerem Android 7.0+ (API 24)\n- Seu dispositivo não suporta botões\n\n' : ''}
-`;
-
-    Alert.alert('📱 Informações do Dispositivo', info);
+            try {
+              // Buscar todas as notificações
+              const notifications = await notificationService.getAllScheduledNotifications();
+              
+              // Cancelar uma por uma
+              for (const notif of notifications) {
+                const id = notif.id || notif.notification?.id;
+                if (id) {
+                  await notificationService.cancelNotification(id);
+                }
+              }
+              
+              addResult(`${notifications.length} notificações canceladas!`, 'success');
+            } catch (error) {
+              addResult(`Erro: ${error}`, 'error');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
-
-  // ========== LIMPAR LOG ==========
 
   const clearLog = () => {
     setTestResults([]);
     addResult('Log limpo!', 'success');
+    checkEnvironment(); // Re-adiciona info do ambiente
   };
 
   return (
@@ -346,7 +214,7 @@ ${deviceInfo.platformApiLevel < 24 ? '⚠️ API LEVEL < 24!\n- Actions requerem
           <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          🧪 Debug de Notificações
+          🚀 Testes de Notificações
         </Text>
         <TouchableOpacity onPress={clearLog}>
           <Icon name="trash" size={20} color={colors.textSecondary} />
@@ -354,39 +222,53 @@ ${deviceInfo.platformApiLevel < 24 ? '⚠️ API LEVEL < 24!\n- Actions requerem
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Banner de Aviso */}
-        {deviceInfo && deviceInfo.platformApiLevel < 24 && (
-          <View style={[styles.warningBanner, { backgroundColor: colors.dangerLight }]}>
-            <Icon name="alertTriangle" size={20} color={colors.danger} />
-            <Text style={[styles.warningText, { color: colors.danger }]}>
-              Seu Android é muito antigo (API {deviceInfo.platformApiLevel}). Actions requerem API 24+
+        {/* Banner de Aviso Expo Go */}
+        {isExpoGo && (
+          <View style={[styles.warningBanner, { backgroundColor: colors.warningLight }]}>
+            <Icon name="alertCircle" size={20} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.warningTitle, { color: colors.warning }]}>
+                Expo Go - Modo Limitado
+              </Text>
+              <Text style={[styles.warningText, { color: colors.warning }]}>
+                Botões de notificação não funcionam no Expo Go.
+                {'\n'}Faça uma build standalone para testar.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Banner de Info */}
+        <View style={[styles.infoBanner, { backgroundColor: colors.primaryLight }]}>
+          <Icon name="info" size={20} color={colors.primary} />
+          <Text style={[styles.infoText, { color: colors.primary }]}>
+            {isExpoGo 
+              ? 'Usando Mock - Notificações básicas funcionam'
+              : 'Usando Notifee - Botões funcionam 100%!'
+            }
+          </Text>
+        </View>
+
+        {/* Info do Dispositivo */}
+        {deviceInfo && (
+          <View style={[styles.deviceCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.deviceText, { color: colors.textPrimary }]}>
+              {deviceInfo.manufacturer} {deviceInfo.modelName}
+            </Text>
+            <Text style={[styles.deviceSubtext, { color: colors.textSecondary }]}>
+              Android {deviceInfo.osVersion} • API {deviceInfo.platformApiLevel}
             </Text>
           </View>
         )}
 
-        {/* Info do Dispositivo */}
-        <TouchableOpacity
-          style={[styles.infoCard, { backgroundColor: colors.surface }]}
-          onPress={showDeviceInfo}
-        >
-          <Icon name="info" size={20} color={colors.primary} />
-          <Text style={[styles.infoText, { color: colors.textPrimary }]}>
-            {deviceInfo 
-              ? `${deviceInfo.manufacturer} ${deviceInfo.modelName} • Android ${deviceInfo.osVersion}`
-              : 'Carregando informações...'
-            }
-          </Text>
-          <Icon name="chevronRight" size={16} color={colors.textTertiary} />
-        </TouchableOpacity>
-
-        {/* Testes Principais */}
+        {/* Testes */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
           🔔 Testes de Notificação
         </Text>
 
         <TestButton
-          title="1. Verificar Permissões e Canal"
-          subtitle="Analisa configurações completas"
+          title="1. Verificar Permissões"
+          subtitle="Solicita permissão de notificações"
           icon="shield"
           onPress={testPermissions}
           loading={loading}
@@ -394,35 +276,40 @@ ${deviceInfo.platformApiLevel < 24 ? '⚠️ API LEVEL < 24!\n- Actions requerem
         />
 
         <TestButton
-          title="2. Teste de Botões (Verbose)"
-          subtitle="Versão detalhada com instruções"
+          title={isExpoGo ? "2. Teste Básico 📦" : "2. Teste de BOTÕES 🎯"}
+          subtitle={isExpoGo 
+            ? "Notificação básica (sem botões)"
+            : "Notificação com [ADIAR] e [COMPLETAR]"
+          }
           icon="target"
-          onPress={testNotificationWithActionsVerbose}
+          onPress={testNotificationWithButtons}
           loading={loading}
           colors={colors}
+          highlight
         />
 
         <TestButton
-          title="3. Notificação Expandida"
-          subtitle="Testa com estilo BIG_TEXT"
-          icon="maximize"
-          onPress={testExpandedNotification}
-          loading={loading}
-          colors={colors}
-        />
-
-        <TestButton
-          title="4. Verificar Canais"
-          subtitle="Lista todos os canais configurados"
+          title="3. Listar Agendadas"
+          subtitle="Mostra todas as notificações"
           icon="list"
-          onPress={testChannel}
+          onPress={listScheduledNotifications}
           loading={loading}
           colors={colors}
         />
 
-        {/* Log de Resultados */}
+        <TestButton
+          title="4. Cancelar Todas"
+          subtitle="Remove todos os lembretes"
+          icon="alertCircle"
+          onPress={cancelAllNotifications}
+          loading={loading}
+          colors={colors}
+          danger
+        />
+
+        {/* Log */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          📊 Log de Debug
+          📊 Log de Testes
         </Text>
 
         <View style={[styles.logContainer, { backgroundColor: colors.surface }]}>
@@ -445,8 +332,7 @@ ${deviceInfo.platformApiLevel < 24 ? '⚠️ API LEVEL < 24!\n- Actions requerem
   );
 }
 
-// ========== COMPONENTE DE BOTÃO ==========
-
+// Componente de Botão
 interface TestButtonProps {
   title: string;
   subtitle: string;
@@ -455,18 +341,19 @@ interface TestButtonProps {
   loading: boolean;
   colors: any;
   danger?: boolean;
+  highlight?: boolean;
 }
 
-function TestButton({ title, subtitle, icon, onPress, loading, colors, danger }: TestButtonProps) {
+function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, highlight }: TestButtonProps) {
   return (
     <TouchableOpacity
       style={[
         styles.testButton,
         { 
-          backgroundColor: colors.surface,
-          borderColor: danger ? colors.danger : colors.border,
+          backgroundColor: highlight ? colors.primaryLight : colors.surface,
+          borderColor: danger ? colors.danger : highlight ? colors.primary : colors.border,
         },
-        danger && { borderWidth: 2 },
+        (danger || highlight) && { borderWidth: 2 },
       ]}
       onPress={onPress}
       disabled={loading}
@@ -474,13 +361,20 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger }:
     >
       <View style={[
         styles.iconContainer,
-        { backgroundColor: danger ? colors.dangerLight : colors.primaryLight }
+        { backgroundColor: danger ? colors.dangerLight : highlight ? colors.primary : colors.primaryLight }
       ]}>
-        <Icon name={icon} size={24} color={danger ? colors.danger : colors.primary} />
+        <Icon 
+          name={icon} 
+          size={24} 
+          color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary} 
+        />
       </View>
 
       <View style={styles.buttonContent}>
-        <Text style={[styles.buttonTitle, { color: danger ? colors.danger : colors.textPrimary }]}>
+        <Text style={[
+          styles.buttonTitle, 
+          { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary }
+        ]}>
           {title}
         </Text>
         <Text style={[styles.buttonSubtitle, { color: colors.textTertiary }]}>
@@ -493,12 +387,8 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger }:
   );
 }
 
-// ========== ESTILOS ==========
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,35 +398,27 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 32,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
+  backButton: { padding: 8, marginLeft: -8 },
+  headerTitle: { fontSize: 18, fontWeight: '700', flex: 1, textAlign: 'center', marginRight: 32 },
+  content: { flex: 1, paddingHorizontal: 20 },
   warningBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
     gap: 12,
   },
-  warningText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
+  warningTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
   },
-  infoCard: {
+  warningText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
@@ -544,17 +426,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     gap: 12,
   },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
+  infoText: { flex: 1, fontSize: 13, fontWeight: '600' },
+  deviceCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 24,
-    marginBottom: 12,
-  },
+  deviceText: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  deviceSubtext: { fontSize: 13 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 24, marginBottom: 12 },
   testButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -571,32 +451,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  buttonContent: {
-    flex: 1,
-  },
-  buttonTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  buttonSubtitle: {
-    fontSize: 13,
-  },
-  logContainer: {
-    padding: 16,
-    borderRadius: 12,
-    minHeight: 200,
-    marginTop: 8,
-  },
-  emptyLog: {
-    textAlign: 'center',
-    fontSize: 14,
-    paddingVertical: 40,
-  },
-  logItem: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 8,
-    fontFamily: 'monospace',
-  },
+  buttonContent: { flex: 1 },
+  buttonTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  buttonSubtitle: { fontSize: 13 },
+  logContainer: { padding: 16, borderRadius: 12, minHeight: 200, marginTop: 8 },
+  emptyLog: { textAlign: 'center', fontSize: 14, paddingVertical: 40 },
+  logItem: { fontSize: 13, lineHeight: 20, marginBottom: 8, fontFamily: 'monospace' },
 });

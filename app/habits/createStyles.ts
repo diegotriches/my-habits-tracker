@@ -1,0 +1,233 @@
+// app/habits/createStyles.ts
+import { StyleSheet } from 'react-native';
+
+export const styles = (colors: any) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  saveButton: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginTop: 4,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  textArea: {
+    height: 70,
+    textAlignVertical: 'top',
+  },
+  habitTypeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  habitTypeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  habitTypeOptionPositive: {
+    borderColor: colors.success,
+    backgroundColor: colors.successLight,
+  },
+  habitTypeOptionNegative: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningLight,
+  },
+  habitTypeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  habitTypeLabelPositive: {
+    color: colors.success,
+  },
+  habitTypeLabelNegative: {
+    color: colors.warning,
+  },
+  habitTypeDescription: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  difficultyContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  difficultyOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+  },
+  difficultyLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  difficultyPoints: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    fontWeight: '700',
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  reminderBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  reminderBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  permissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  permissionButtonText: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  remindersList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  reminderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reminderTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    marginTop: 8,
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pickerContainer: {
+    marginTop: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  pickerButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

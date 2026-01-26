@@ -23,7 +23,6 @@ import { supabase } from '@/services/supabase';
 import { Habit, ProgressNotification } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
-// 🆕 Import dos helpers tipados
 import { 
   recalculateCompletionPoints, 
   updateProfilePoints,
@@ -109,12 +108,15 @@ export default function EditHabitScreen() {
     if (habitData.has_target) {
       setTargetValue(habitData.target_value?.toString() || '');
       setTargetUnit(habitData.target_unit || '');
-      await loadProgressNotificationSettings(habitData.id);
     }
+
+    // 🆕 Carregar notificações para TODOS os hábitos (não só metas)
+    await loadProgressNotificationSettings(habitData.id);
 
     setLoading(false);
   };
 
+  // 🆕 Carregar configurações para TODOS os hábitos
   const loadProgressNotificationSettings = async (habitId: string) => {
     try {
       const { data, error } = await supabase
@@ -145,9 +147,6 @@ export default function EditHabitScreen() {
     }
   };
 
-  /**
-   * 🆕 Mostrar confirmação com preview de impacto
-   */
   const confirmTargetChange = async (
     newTargetValue: number
   ): Promise<boolean> => {
@@ -156,7 +155,6 @@ export default function EditHabitScreen() {
       const isIncrease = newTargetValue > oldValue;
       const percentChange = Math.abs(((newTargetValue - oldValue) / oldValue) * 100);
 
-      // Calcular impacto
       const impact = await calculateTargetChangeImpact(
         id as string,
         oldValue,
@@ -193,7 +191,6 @@ export default function EditHabitScreen() {
       return;
     }
 
-    // Validação de meta numérica
     if (hasTarget) {
       if (!targetValue || parseFloat(targetValue) <= 0) {
         Alert.alert('Erro', 'Digite um valor de meta válido');
@@ -210,11 +207,9 @@ export default function EditHabitScreen() {
       return;
     }
 
-    // Verificar se a meta mudou
     const newTargetValue = parseFloat(targetValue);
     const targetChanged = hasTarget && originalHasTarget && newTargetValue !== originalTargetValue;
 
-    // Pedir confirmação se a meta mudou
     if (targetChanged) {
       const confirmed = await confirmTargetChange(newTargetValue);
       if (!confirmed) return;
@@ -224,7 +219,6 @@ export default function EditHabitScreen() {
     setSaving(true);
 
     try {
-      // Atualizar dados básicos do hábito
       const updates: any = {
         name: name.trim(),
         description: description.trim() || null,
@@ -244,11 +238,9 @@ export default function EditHabitScreen() {
         return;
       }
 
-      // 🆕 Recalcular pontos se a meta mudou (usando helper tipado)
       let pointsDifference = 0;
       if (targetChanged && originalTargetValue) {
         try {
-          // Recalcular completions
           const pointsConfig = {
             easy: DIFFICULTY_CONFIG.easy.points,
             medium: DIFFICULTY_CONFIG.medium.points,
@@ -262,7 +254,6 @@ export default function EditHabitScreen() {
             pointsConfig
           );
 
-          // Atualizar perfil se houve mudança
           if (pointsDifference !== 0) {
             await updateProfilePoints(user.id, pointsDifference);
           }
@@ -275,60 +266,59 @@ export default function EditHabitScreen() {
         }
       }
 
-      // Atualizar configurações de notificações de progresso
-      if (hasTarget) {
-        try {
-          const { data: existingConfig } = await supabase
-            .from('habit_progress_notifications')
-            .select('id')
-            .eq('habit_id', id as string)
-            .maybeSingle();
+      // 🆕 Salvar notificações para TODOS os hábitos (não só metas)
+      try {
+        const { data: existingConfig } = await supabase
+          .from('habit_progress_notifications')
+          .select('id')
+          .eq('habit_id', id as string)
+          .maybeSingle();
 
-          if (existingConfig) {
-            await (supabase.from('habit_progress_notifications') as any)
-              .update({
-                enabled: progressNotificationConfig.enabled,
-                morning_enabled: progressNotificationConfig.morningEnabled,
-                morning_time: progressNotificationConfig.morningTime,
-                afternoon_enabled: progressNotificationConfig.afternoonEnabled,
-                afternoon_time: progressNotificationConfig.afternoonTime,
-                evening_enabled: progressNotificationConfig.eveningEnabled,
-                evening_time: progressNotificationConfig.eveningTime,
-              })
-              .eq('habit_id', id as string);
+        if (existingConfig) {
+          // Atualizar configuração existente
+          await (supabase.from('habit_progress_notifications') as any)
+            .update({
+              enabled: progressNotificationConfig.enabled,
+              morning_enabled: progressNotificationConfig.morningEnabled,
+              morning_time: progressNotificationConfig.morningTime,
+              afternoon_enabled: progressNotificationConfig.afternoonEnabled,
+              afternoon_time: progressNotificationConfig.afternoonTime,
+              evening_enabled: progressNotificationConfig.eveningEnabled,
+              evening_time: progressNotificationConfig.eveningTime,
+            })
+            .eq('habit_id', id as string);
 
-            if (progressNotificationConfig.enabled) {
-              await progressNotificationScheduler.updateNotificationSchedule(id as string, user.id);
-            } else {
-              await progressNotificationScheduler.disableProgressNotifications(id as string);
-            }
+          if (progressNotificationConfig.enabled) {
+            await progressNotificationScheduler.updateNotificationSchedule(id as string, user.id);
           } else {
-            await (supabase.from('habit_progress_notifications') as any)
-              .insert({
-                habit_id: id as string,
-                user_id: user.id,
-                enabled: progressNotificationConfig.enabled,
-                morning_enabled: progressNotificationConfig.morningEnabled,
-                morning_time: progressNotificationConfig.morningTime,
-                afternoon_enabled: progressNotificationConfig.afternoonEnabled,
-                afternoon_time: progressNotificationConfig.afternoonTime,
-                evening_enabled: progressNotificationConfig.eveningEnabled,
-                evening_time: progressNotificationConfig.eveningTime,
-              });
-
-            if (progressNotificationConfig.enabled) {
-              await progressNotificationScheduler.scheduleProgressNotifications(id as string, user.id);
-            }
+            await progressNotificationScheduler.disableProgressNotifications(id as string);
           }
-        } catch (progressError) {
-          console.error('Erro ao atualizar notificações de progresso:', progressError);
+        } else {
+          // Criar nova configuração
+          await (supabase.from('habit_progress_notifications') as any)
+            .insert({
+              habit_id: id as string,
+              user_id: user.id,
+              enabled: progressNotificationConfig.enabled,
+              morning_enabled: progressNotificationConfig.morningEnabled,
+              morning_time: progressNotificationConfig.morningTime,
+              afternoon_enabled: progressNotificationConfig.afternoonEnabled,
+              afternoon_time: progressNotificationConfig.afternoonTime,
+              evening_enabled: progressNotificationConfig.eveningEnabled,
+              evening_time: progressNotificationConfig.eveningTime,
+            });
+
+          if (progressNotificationConfig.enabled) {
+            await progressNotificationScheduler.scheduleProgressNotifications(id as string, user.id);
+          }
         }
+      } catch (progressError) {
+        console.error('Erro ao atualizar notificações de progresso:', progressError);
       }
 
       setSaving(false);
       hapticFeedback.success();
 
-      // Mensagem de sucesso personalizada
       const successMessage = targetChanged
         ? `Hábito atualizado!\n\n${pointsDifference >= 0 
             ? `+${pointsDifference} pontos adicionados` 
@@ -357,7 +347,6 @@ export default function EditHabitScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancelar</Text>
@@ -519,7 +508,6 @@ export default function EditHabitScreen() {
             </View>
           )}
 
-          {/* Aviso de mudança de meta */}
           {hasTarget && originalHasTarget && parseFloat(targetValue) !== originalTargetValue && targetValue !== '' && (
             <View style={[styles.warningCard, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
               <Icon name="alertTriangle" size={16} color={colors.warning} />
@@ -592,17 +580,17 @@ export default function EditHabitScreen() {
           </View>
         </View>
 
-        {/* NOTIFICAÇÕES DE PROGRESSO */}
-        {hasTarget && (
-          <View style={styles.section}>
-            <ProgressNotificationSettings
-              config={progressNotificationConfig}
-              onChange={setProgressNotificationConfig}
-              hasPermission={hasPermission}
-              onRequestPermission={requestNotificationPermission}
-            />
-          </View>
-        )}
+        {/* 🆕 NOTIFICAÇÕES PARA TODOS OS HÁBITOS */}
+        <View style={styles.section}>
+          <ProgressNotificationSettings
+            config={progressNotificationConfig}
+            onChange={setProgressNotificationConfig}
+            hasPermission={hasPermission}
+            onRequestPermission={requestNotificationPermission}
+            hasTarget={hasTarget}
+            habitType={habitType}
+          />
+        </View>
 
         {/* Info Card */}
         <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
@@ -631,14 +619,8 @@ export default function EditHabitScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -648,34 +630,13 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    fontSize: 16,
-  },
-  saveButton: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  helperText: {
-    fontSize: 12,
-    marginTop: 6,
-    fontStyle: 'italic',
-  },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
+  cancelButton: { fontSize: 16 },
+  saveButton: { fontSize: 16, fontWeight: '600' },
+  content: { flex: 1, padding: 20 },
+  section: { marginBottom: 24 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  helperText: { fontSize: 12, marginTop: 6, fontStyle: 'italic' },
   typeIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -684,18 +645,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
   },
-  typeLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  typeDescription: {
-    fontSize: 12,
-  },
-  lockBadge: {
-    padding: 6,
-    borderRadius: 6,
-  },
+  typeLabel: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  typeDescription: { fontSize: 12 },
+  lockBadge: { padding: 6, borderRadius: 6 },
   input: {
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -703,10 +655,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
+  textArea: { height: 80, textAlignVertical: 'top' },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -714,22 +663,10 @@ const styles = StyleSheet.create({
     gap: 16,
     marginBottom: 12,
   },
-  targetInputs: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  targetValueContainer: {
-    flex: 1,
-  },
-  targetUnitContainer: {
-    flex: 2,
-  },
-  targetLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
+  targetInputs: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  targetValueContainer: { flex: 1 },
+  targetUnitContainer: { flex: 2 },
+  targetLabel: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
   targetInput: {
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -746,15 +683,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 12,
   },
-  warningText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  difficultyContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  warningText: { flex: 1, fontSize: 12, lineHeight: 18 },
+  difficultyContainer: { flexDirection: 'row', gap: 12 },
   difficultyOption: {
     flex: 1,
     paddingVertical: 16,
@@ -763,19 +693,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
   },
-  difficultyLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  difficultyPoints: {
-    fontSize: 12,
-  },
-  colorContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+  difficultyLabel: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  difficultyPoints: { fontSize: 12 },
+  colorContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   colorOption: {
     width: 48,
     height: 48,
@@ -798,12 +718,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
   },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  infoBold: {
-    fontWeight: '600',
-  },
+  infoText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  infoBold: { fontWeight: '600' },
 });

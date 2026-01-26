@@ -1,17 +1,11 @@
 // components/habits/ProgressNotificationSettings.tsx
+
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Switch,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { hapticFeedback } from '@/utils/haptics';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 
 export interface ProgressNotificationConfig {
   enabled: boolean;
@@ -27,430 +21,390 @@ interface Props {
   config: ProgressNotificationConfig;
   onChange: (config: ProgressNotificationConfig) => void;
   hasPermission: boolean;
-  onRequestPermission: () => Promise<void>;
+  onRequestPermission: () => void;
+  hasTarget?: boolean; // 🆕 Opcional: indica se é meta numérica
+  habitType?: 'positive' | 'negative'; // 🆕 Opcional: tipo do hábito
 }
 
-type Period = 'morning' | 'afternoon' | 'evening';
-
-export const ProgressNotificationSettings: React.FC<Props> = ({
+export function ProgressNotificationSettings({
   config,
   onChange,
   hasPermission,
   onRequestPermission,
-}) => {
+  hasTarget = false,
+  habitType = 'positive',
+}: Props) {
   const { colors } = useTheme();
-  const [showTimePicker, setShowTimePicker] = useState<Period | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState<'morning' | 'afternoon' | 'evening' | null>(null);
+  const [tempTime, setTempTime] = useState(new Date());
 
-  const handleToggleEnabled = (value: boolean) => {
-    hapticFeedback.selection();
-    onChange({ ...config, enabled: value });
-  };
-
-  const handleTogglePeriod = (period: Period, value: boolean) => {
-    hapticFeedback.selection();
-    const key = `${period}Enabled` as keyof ProgressNotificationConfig;
-    onChange({ ...config, [key]: value });
-  };
-
-  const handleTimeChange = (period: Period, event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(null);
+  // 🆕 Textos contextuais baseados no tipo de hábito
+  const getTitle = () => {
+    if (hasTarget) {
+      return 'Lembretes de Progresso';
     }
-
-    if (event.type === 'set' && date) {
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const timeString = `${hours}:${minutes}:00`;
-
-      const key = `${period}Time` as keyof ProgressNotificationConfig;
-      onChange({ ...config, [key]: timeString });
-
-      if (Platform.OS === 'android') {
-        hapticFeedback.success();
-      }
-    } else if (event.type === 'dismissed') {
-      setShowTimePicker(null);
-    }
+    return habitType === 'negative' 
+      ? 'Alertas de Urgência' 
+      : 'Lembretes de Motivação';
   };
 
-  const formatTime = (timeString: string): string => {
-    const [hours, minutes] = timeString.split(':');
-    return `${hours}:${minutes}`;
+  const getDescription = () => {
+    if (hasTarget) {
+      return 'Receba notificações para atualizar seu progresso';
+    }
+    return habitType === 'negative'
+      ? 'Receba alertas para manter sua resistência forte'
+      : 'Receba lembretes para não esquecer de completar';
   };
 
   const parseTime = (timeString: string): Date => {
     const [hours, minutes] = timeString.split(':').map(Number);
     const date = new Date();
-    date.setHours(hours, minutes, 0);
+    date.setHours(hours);
+    date.setMinutes(minutes);
+    date.setSeconds(0);
     return date;
   };
 
-  const getPeriodInfo = (period: Period) => {
-    const info = {
-      morning: {
-        icon: 'sunrise' as const,
-        label: 'Lembrete Matinal',
-        description: 'Começar o dia com motivação',
-        color: colors.warning,
-      },
-      afternoon: {
-        icon: 'sun' as const,
-        label: 'Verificação da Tarde',
-        description: 'Avaliar progresso até agora',
-        color: colors.primary,
-      },
-      evening: {
-        icon: 'moon' as const,
-        label: 'Alerta de Urgência',
-        description: 'Última chance do dia',
-        color: colors.danger,
-      },
-    };
-    return info[period];
+  const formatTime = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}:00`;
   };
 
-  const renderPeriodRow = (period: Period) => {
-    const info = getPeriodInfo(period);
-    const enabled = config[`${period}Enabled` as keyof ProgressNotificationConfig] as boolean;
-    const time = config[`${period}Time` as keyof ProgressNotificationConfig] as string;
-
-    return (
-      <View key={period} style={[styles.periodRow, { borderBottomColor: colors.border }]}>
-        <View style={styles.periodLeft}>
-          <View style={[styles.periodIcon, { backgroundColor: `${info.color}15` }]}>
-            <Icon name={info.icon} size={20} color={info.color} />
-          </View>
-          <View style={styles.periodInfo}>
-            <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
-              {info.label}
-            </Text>
-            <Text style={[styles.periodDescription, { color: colors.textTertiary }]}>
-              {info.description}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.periodRight}>
-          {enabled && (
-            <TouchableOpacity
-              style={[styles.timeButton, { backgroundColor: colors.surface }]}
-              onPress={() => {
-                hapticFeedback.light();
-                setShowTimePicker(period);
-              }}
-            >
-              <Icon name="clock" size={14} color={colors.textSecondary} />
-              <Text style={[styles.timeText, { color: colors.textPrimary }]}>
-                {formatTime(time)}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <Switch
-            value={enabled}
-            onValueChange={(value) => handleTogglePeriod(period, value)}
-            trackColor={{ false: colors.border, true: colors.primaryLight }}
-            thumbColor={enabled ? colors.primary : colors.surface}
-          />
-        </View>
-      </View>
-    );
+  const displayTime = (timeString: string): string => {
+    const [hours, minutes] = timeString.split(':');
+    return `${hours}:${minutes}`;
   };
 
-  if (!hasPermission) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Icon name="bell" size={16} color={colors.textPrimary} />
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Notificações de Progresso
-            </Text>
-          </View>
-        </View>
+  const handleTimeChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(null);
+      if (event.type === 'set' && date && showTimePicker) {
+        const timeString = formatTime(date);
+        onChange({
+          ...config,
+          [`${showTimePicker}Time`]: timeString,
+        });
+      }
+    } else {
+      if (date) {
+        setTempTime(date);
+      }
+    }
+  };
 
-        <View style={[styles.permissionCard, { backgroundColor: colors.warningLight }]}>
-          <Icon name="alertCircle" size={24} color={colors.warning} />
+  const confirmTimeIOS = () => {
+    if (showTimePicker) {
+      const timeString = formatTime(tempTime);
+      onChange({
+        ...config,
+        [`${showTimePicker}Time`]: timeString,
+      });
+    }
+    setShowTimePicker(null);
+  };
+
+  const openTimePicker = (period: 'morning' | 'afternoon' | 'evening') => {
+    const currentTime = parseTime(config[`${period}Time`]);
+    setTempTime(currentTime);
+    setShowTimePicker(period);
+  };
+
+  const renderPeriodToggle = (
+    period: 'morning' | 'afternoon' | 'evening',
+    label: string,
+    icon: any
+  ) => {
+    const isEnabled = config[`${period}Enabled`];
+    const timeValue = config[`${period}Time`];
+
+    return (
+      <View style={[styles.periodRow, { borderColor: colors.border }]}>
+        <View style={styles.periodInfo}>
+          <Icon name={icon} size={16} color={colors.textSecondary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.permissionTitle, { color: colors.warning }]}>
-              Permissão Necessária
+            <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
+              {label}
             </Text>
-            <Text style={[styles.permissionText, { color: colors.warning }]}>
-              Habilite as notificações para receber lembretes sobre o progresso de suas metas
-            </Text>
+            {isEnabled && (
+              <TouchableOpacity
+                onPress={() => openTimePicker(period)}
+                style={styles.timeButton}
+              >
+                <Icon name="clock" size={12} color={colors.primary} />
+                <Text style={[styles.timeText, { color: colors.primary }]}>
+                  {displayTime(timeValue)}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-
-        <TouchableOpacity
-          style={[styles.permissionButton, { backgroundColor: colors.primary }]}
-          onPress={async () => {
-            hapticFeedback.light();
-            await onRequestPermission();
-          }}
-        >
-          <Icon name="unlock" size={16} color={colors.textInverse} />
-          <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>
-            Permitir Notificações
-          </Text>
-        </TouchableOpacity>
+        <Switch
+          value={isEnabled}
+          onValueChange={(value) =>
+            onChange({
+              ...config,
+              [`${period}Enabled`]: value,
+            })
+          }
+          trackColor={{ false: colors.border, true: colors.primaryLight }}
+          thumbColor={isEnabled ? colors.primary : colors.surface}
+        />
       </View>
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header com toggle principal */}
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Icon name="bell" size={16} color={colors.textPrimary} />
-            <Text style={[styles.title, { color: colors.textPrimary }]}>
-              Notificações de Progresso
-            </Text>
-          </View>
-          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
-            Receba lembretes durante o dia para atingir sua meta
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon 
+            name={hasTarget ? "target" : habitType === 'negative' ? "alertTriangle" : "bellRing"} 
+            size={16} 
+            color={colors.textPrimary} 
+          />
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            {getTitle()}
           </Text>
         </View>
-        <Switch
-          value={config.enabled}
-          onValueChange={handleToggleEnabled}
-          trackColor={{ false: colors.border, true: colors.primaryLight }}
-          thumbColor={config.enabled ? colors.primary : colors.surface}
-        />
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          {getDescription()}
+        </Text>
       </View>
 
-      {config.enabled && (
+      {!hasPermission && (
+        <TouchableOpacity
+          style={[styles.permissionButton, { backgroundColor: colors.primary }]}
+          onPress={onRequestPermission}
+        >
+          <Icon name="unlock" size={16} color={colors.textInverse} />
+          <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>
+            Ativar Notificações
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {hasPermission && (
         <>
-          {/* Info Card */}
-          <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
-            <Icon name="info" size={14} color={colors.info} />
-            <Text style={[styles.infoText, { color: colors.info }]}>
-              Você receberá até 3 notificações por dia baseadas no seu progresso
-            </Text>
+          <View style={[styles.masterToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.masterToggleLabel, { color: colors.textPrimary }]}>
+                Habilitar {hasTarget ? 'Lembretes' : 'Alertas'}
+              </Text>
+              <Text style={[styles.masterToggleSubtext, { color: colors.textTertiary }]}>
+                {hasTarget 
+                  ? 'Até 3 lembretes por dia'
+                  : habitType === 'negative'
+                    ? 'Alertas estratégicos para resistir'
+                    : 'Lembretes distribuídos ao longo do dia'
+                }
+              </Text>
+            </View>
+            <Switch
+              value={config.enabled}
+              onValueChange={(value) =>
+                onChange({
+                  ...config,
+                  enabled: value,
+                })
+              }
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={config.enabled ? colors.primary : colors.surface}
+            />
           </View>
 
-          {/* Períodos */}
-          <View style={[styles.periodsContainer, { backgroundColor: colors.surface }]}>
-            {renderPeriodRow('morning')}
-            {renderPeriodRow('afternoon')}
-            {renderPeriodRow('evening')}
-          </View>
+          {config.enabled && (
+            <View style={[styles.periodsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.periodsTitle, { color: colors.textSecondary }]}>
+                Horários
+              </Text>
+              
+              {renderPeriodToggle('morning', 'Manhã', 'sunrise')}
+              {renderPeriodToggle('afternoon', 'Tarde', 'sun')}
+              {renderPeriodToggle('evening', 'Noite', 'moon')}
 
-          {/* Time Picker Modal */}
-          {showTimePicker && (
-            <View style={[styles.pickerContainer, { backgroundColor: colors.surface }]}>
-              <View style={styles.pickerHeader}>
-                <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>
-                  Selecionar Horário
+              {/* 🆕 Info contextual */}
+              <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
+                <Icon name="info" size={14} color={colors.info} />
+                <Text style={[styles.infoText, { color: colors.info }]}>
+                  {hasTarget
+                    ? 'Você será notificado apenas se ainda não atingiu a meta do dia'
+                    : habitType === 'negative'
+                      ? 'Alertas enviados se você ainda não marcou resistência hoje'
+                      : 'Lembretes enviados apenas se o hábito não foi completado'
+                  }
                 </Text>
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      hapticFeedback.success();
-                      setShowTimePicker(null);
-                    }}
-                  >
-                    <Text style={[styles.pickerDone, { color: colors.primary }]}>
-                      Confirmar
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </View>
-
-              <DateTimePicker
-                value={parseTime(config[`${showTimePicker}Time` as keyof ProgressNotificationConfig] as string)}
-                mode="time"
-                is24Hour={true}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, date) => handleTimeChange(showTimePicker, event, date)}
-              />
             </View>
           )}
 
-          {/* Exemplo de mensagens */}
-          <View style={[styles.exampleCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.exampleTitle, { color: colors.textPrimary }]}>
-              💬 Exemplos de Mensagens
-            </Text>
-            <View style={styles.exampleList}>
-              <View style={styles.exampleItem}>
-                <Text style={[styles.exampleEmoji, { color: colors.textPrimary }]}>☀️</Text>
-                <Text style={[styles.exampleText, { color: colors.textSecondary }]}>
-                  Manhã: "Lembre-se da sua meta de hoje"
-                </Text>
-              </View>
-              <View style={styles.exampleItem}>
-                <Text style={[styles.exampleEmoji, { color: colors.textPrimary }]}>⚠️</Text>
-                <Text style={[styles.exampleText, { color: colors.textSecondary }]}>
-                  Tarde: "Você está em 40%. Continue!"
-                </Text>
-              </View>
-              <View style={styles.exampleItem}>
-                <Text style={[styles.exampleEmoji, { color: colors.textPrimary }]}>🚨</Text>
-                <Text style={[styles.exampleText, { color: colors.textSecondary }]}>
-                  Noite: "Última chance! Faltam 60%"
-                </Text>
-              </View>
+          {showTimePicker && (
+            <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>
+                Selecione o horário
+              </Text>
+              <DateTimePicker
+                value={tempTime}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleTimeChange}
+              />
+              {Platform.OS === 'ios' && (
+                <View style={styles.pickerButtons}>
+                  <TouchableOpacity
+                    onPress={() => setShowTimePicker(null)}
+                    style={[styles.pickerButton, { backgroundColor: colors.border }]}
+                  >
+                    <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>
+                      Cancelar
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={confirmTimeIOS}
+                    style={[styles.pickerButton, { backgroundColor: colors.primary }]}
+                  >
+                    <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>
+                      Confirmar
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          </View>
+          )}
         </>
       )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  subtitle: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  periodsContainer: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  periodRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  periodLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  periodIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  periodInfo: {
-    flex: 1,
-  },
-  periodLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  periodDescription: {
-    fontSize: 12,
-  },
-  periodRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  timeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  timeText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  exampleCard: {
-    padding: 16,
-    borderRadius: 12,
-  },
-  exampleTitle: {
-    fontSize: 13,
-    fontWeight: '600',
     marginBottom: 12,
   },
-  exampleList: {
-    gap: 8,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  exampleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  exampleEmoji: {
+  title: {
     fontSize: 16,
-  },
-  exampleText: {
-    flex: 1,
-    fontSize: 12,
-  },
-  permissionCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-  },
-  permissionTitle: {
-    fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
   },
-  permissionText: {
-    fontSize: 12,
-    lineHeight: 16,
+  subtitle: {
+    fontSize: 13,
+    marginTop: 4,
   },
   permissionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 14,
-    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   permissionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  pickerContainer: {
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  pickerTitle: {
     fontSize: 14,
     fontWeight: '600',
   },
-  pickerDone: {
+  masterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  masterToggleLabel: {
     fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  masterToggleSubtext: {
+    fontSize: 12,
+  },
+  periodsContainer: {
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  periodsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  periodInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  periodLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  pickerContainer: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  pickerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  pickerButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });

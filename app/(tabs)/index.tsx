@@ -3,8 +3,11 @@ import HabitCard from '@/components/habits/HabitCard';
 import { HabitCompactRow } from '@/components/habits/HabitCompactRow';
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
-import { ViewMode, ViewModeSelector } from '@/components/habits/ViewModeSelector';
+import { HabitMonthlyCalendar } from '@/components/habits/HabitMonthlyCalendar';
+import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
+import { DayViewToggle, DayViewMode } from '@/components/habits/DayViewToggle';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
+import { MonthlyStatsCard } from '@/components/habits/MonthlyStatsCard';
 import { PenaltyNotification } from '@/components/penalties/PenaltyNotification';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
@@ -14,7 +17,8 @@ import { Icon } from '@/components/ui/Icon';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
-import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions'; // 🆕 NOVO HOOK
+import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
+import { useMonthlyCompletions } from '@/hooks/useMonthlyCompletions';
 import { useHabits } from '@/hooks/useHabits';
 import { usePenalties } from '@/hooks/usePenalties';
 import { useProfile } from '@/hooks/useProfile';
@@ -36,7 +40,8 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 
-const STORAGE_KEY = '@habitViewMode';
+const PERIOD_STORAGE_KEY = '@habitTimePeriod';
+const DAY_VIEW_STORAGE_KEY = '@habitDayViewMode';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -53,12 +58,17 @@ export default function HomeScreen() {
     refetch: refetchCompletions 
   } = useCompletions();
   
-  // 🆕 Hook para completions da semana inteira
   const {
     completions: weeklyCompletions,
     loading: weeklyLoading,
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
+
+  const {
+    completions: monthlyCompletions,
+    loading: monthlyLoading,
+    refetch: refetchMonthlyCompletions,
+  } = useMonthlyCompletions();
   
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
@@ -72,7 +82,9 @@ export default function HomeScreen() {
     closeCelebration 
   } = useCelebration();
   
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
+  const [dayViewMode, setDayViewMode] = useState<DayViewMode>('detailed');
+  const [currentMonth] = useState(new Date());
   const [pendingPenalties, setPendingPenalties] = useState<any[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -84,7 +96,7 @@ export default function HomeScreen() {
   const loading = habitsLoading || completionsLoading;
 
   useEffect(() => {
-    loadViewMode();
+    loadViewPreferences();
   }, []);
 
   useEffect(() => {
@@ -99,21 +111,38 @@ export default function HomeScreen() {
     checkForPenalties();
   }, []);
 
-  const loadViewMode = async () => {
+  const loadViewPreferences = async () => {
     try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY);
-      if (saved === 'cards' || saved === 'weekly' || saved === 'compact') {
-        setViewMode(saved);
+      const [savedPeriod, savedDayView] = await Promise.all([
+        AsyncStorage.getItem(PERIOD_STORAGE_KEY),
+        AsyncStorage.getItem(DAY_VIEW_STORAGE_KEY),
+      ]);
+
+      if (savedPeriod === 'day' || savedPeriod === 'week' || savedPeriod === 'month') {
+        setTimePeriod(savedPeriod);
+      }
+
+      if (savedDayView === 'detailed' || savedDayView === 'compact') {
+        setDayViewMode(savedDayView);
       }
     } catch (error) {
-      console.error('Erro ao carregar modo de visualização:', error);
+      console.error('Erro ao carregar preferências:', error);
     }
   };
 
-  const handleViewModeChange = async (mode: ViewMode) => {
-    setViewMode(mode);
+  const handleTimePeriodChange = async (period: TimePeriod) => {
+    setTimePeriod(period);
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, mode);
+      await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
+    } catch (error) {
+      console.error('Erro ao salvar período:', error);
+    }
+  };
+
+  const handleDayViewModeChange = async (mode: DayViewMode) => {
+    setDayViewMode(mode);
+    try {
+      await AsyncStorage.setItem(DAY_VIEW_STORAGE_KEY, mode);
     } catch (error) {
       console.error('Erro ao salvar modo de visualização:', error);
     }
@@ -173,7 +202,8 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
-        await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+        await refetchWeeklyCompletions();
+        await refetchMonthlyCompletions();
         await refetchProfile();
       } else {
         setSuccessMessage(result.message);
@@ -226,7 +256,8 @@ export default function HomeScreen() {
         }, 1000);
       }
 
-      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+      await refetchWeeklyCompletions();
+      await refetchMonthlyCompletions();
       refetchProfile();
     }
 
@@ -250,7 +281,8 @@ export default function HomeScreen() {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
       await refetchCompletions();
-      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+      await refetchWeeklyCompletions();
+      await refetchMonthlyCompletions();
       await refetchProfile();
     } else {
       setSuccessMessage(result.message);
@@ -319,7 +351,8 @@ export default function HomeScreen() {
         }, 500);
       }
 
-      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+      await refetchWeeklyCompletions();
+      await refetchMonthlyCompletions();
     }
   };
 
@@ -328,8 +361,15 @@ export default function HomeScreen() {
     const isToday = date.toDateString() === today.toDateString();
     const isPast = date < today && !isToday;
     
+    // Determinar qual array de completions usar baseado no período
+    const completionsToCheck = timePeriod === 'month' 
+      ? monthlyCompletions 
+      : timePeriod === 'week'
+        ? weeklyCompletions
+        : completions;
+    
     if (isPast && user) {
-      const completion = weeklyCompletions.find(c => { // 🆕 Usar weeklyCompletions
+      const completion = completionsToCheck.find(c => {
         const compDate = new Date(c.completed_at);
         return compDate.toDateString() === date.toDateString() && c.habit_id === habit.id;
       });
@@ -385,7 +425,8 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
-        await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+        await refetchWeeklyCompletions();
+        await refetchMonthlyCompletions();
         await refetchProfile();
       } else {
         setSuccessMessage(result.message);
@@ -418,7 +459,8 @@ export default function HomeScreen() {
       
       setSuccessMessage(`Hábito desmarcado (-${pointsToDeduct} pontos)`);
       setShowSuccessToast(true);
-      await refetchWeeklyCompletions(); // 🆕 Atualizar completions semanais
+      await refetchWeeklyCompletions();
+      await refetchMonthlyCompletions();
       refetchProfile();
     }
     
@@ -430,7 +472,8 @@ export default function HomeScreen() {
     await Promise.all([
       refetchHabits(),
       refetchCompletions(),
-      refetchWeeklyCompletions(), // 🆕 Atualizar completions semanais
+      refetchWeeklyCompletions(),
+      refetchMonthlyCompletions(),
       refetchProfile(),
     ]);
     await checkForPenalties();
@@ -456,12 +499,43 @@ export default function HomeScreen() {
   const renderHabit = (item: Habit) => {
     const isDueToday = isHabitDueToday(item);
     
-    if (viewMode === 'weekly') {
+    // Renderizar baseado no período e modo de visualização
+    if (timePeriod === 'day') {
+      // Modo DIA - permite alternar entre Detalhado e Compacto
+      if (dayViewMode === 'detailed') {
+        return (
+          <HabitCard
+            habit={item}
+            onPress={() => handleHabitPress(item.id)}
+            onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
+            isCompleted={isCompletedToday(item.id)}
+            streak={getStreak(item.id)}
+            completion={getCompletion(item.id)}
+            isDueToday={isDueToday}
+          />
+        );
+      } else {
+        return (
+          <HabitCompactRow
+            habit={item}
+            streak={getStreak(item.id)}
+            completion={getCompletion(item.id)}
+            isCompleted={isCompletedToday(item.id)}
+            isDueToday={isDueToday}
+            onPress={() => handleHabitPress(item.id)}
+            onEditProgress={() => handleEditProgress(item.id)}
+            onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
+          />
+        );
+      }
+    }
+    
+    if (timePeriod === 'week') {
       return (
         <HabitWeeklyRow
           habit={item}
           streak={getStreak(item.id)}
-          completions={weeklyCompletions.filter(c => c.habit_id === item.id)} // 🆕 USAR WEEKLY COMPLETIONS
+          completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
           onDayPress={handleDayPress}
           onHabitPress={handleHabitPress}
           isDueToday={isDueToday}
@@ -469,32 +543,8 @@ export default function HomeScreen() {
       );
     }
     
-    if (viewMode === 'compact') {
-      return (
-        <HabitCompactRow
-          habit={item}
-          streak={getStreak(item.id)}
-          completion={getCompletion(item.id)}
-          isCompleted={isCompletedToday(item.id)}
-          isDueToday={isDueToday}
-          onPress={() => handleHabitPress(item.id)}
-          onEditProgress={() => handleEditProgress(item.id)}
-          onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
-        />
-      );
-    }
-    
-    return (
-      <HabitCard
-        habit={item}
-        onPress={() => handleHabitPress(item.id)}
-        onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
-        isCompleted={isCompletedToday(item.id)}
-        streak={getStreak(item.id)}
-        completion={getCompletion(item.id)}
-        isDueToday={isDueToday}
-      />
-    );
+    // timePeriod === 'month' não renderiza lista, só calendário
+    return null;
   };
 
   return (
@@ -521,7 +571,7 @@ export default function HomeScreen() {
       <ConfirmDialog
         visible={showUncompleteConfirm}
         title="Desmarcar hábito?"
-        message="Isso removerá os pontos ganhos hoje com este hábito."
+        message="Isso removerá os pontos ganhos com este hábito."
         confirmText="Confirmar"
         cancelText="Cancelar"
         confirmColor="danger"
@@ -572,10 +622,20 @@ export default function HomeScreen() {
 
       {habits.length > 0 && (
         <View style={[styles.viewModeContainer, { backgroundColor: colors.background }]}>
-          <ViewModeSelector 
-            mode={viewMode} 
-            onChange={handleViewModeChange}
+          <TimePeriodSelector 
+            period={timePeriod} 
+            onChange={handleTimePeriodChange}
           />
+          
+          {/* Sub-toggle apenas para visualização "Dia" */}
+          {timePeriod === 'day' && (
+            <View style={styles.dayViewToggleContainer}>
+              <DayViewToggle
+                mode={dayViewMode}
+                onChange={handleDayViewModeChange}
+              />
+            </View>
+          )}
         </View>
       )}
 
@@ -587,7 +647,39 @@ export default function HomeScreen() {
           buttonText="Criar Primeiro Hábito"
           onButtonPress={handleCreateHabit}
         />
+      ) : timePeriod === 'month' ? (
+        // Visualização MENSAL - Apenas calendário
+        <FlatList
+          data={[{ key: 'calendar' }]}
+          keyExtractor={(item) => item.key}
+          renderItem={() => (
+            <View style={styles.monthViewContainer}>
+              <MonthlyStatsCard
+                habits={habits}
+                completions={monthlyCompletions}
+                streaks={streaks}
+                month={currentMonth}
+              />
+              <HabitMonthlyCalendar
+                habits={habits}
+                completions={monthlyCompletions}
+                month={currentMonth}
+                onDayPress={handleDayPress}
+                onHabitPress={handleHabitPress}
+              />
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl 
+              refreshing={loading} 
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
+        />
       ) : (
+        // Visualização DIA e SEMANA - Lista de hábitos
         <FlatList
           data={habits}
           keyExtractor={(item) => item.id}
@@ -601,10 +693,10 @@ export default function HomeScreen() {
             />
           }
           ListHeaderComponent={
-            viewMode === 'weekly' ? (
+            timePeriod === 'week' ? (
               <WeeklySummaryCard
                 habits={habits}
-                completions={weeklyCompletions} // 🆕 USAR WEEKLY COMPLETIONS
+                completions={weeklyCompletions}
                 streaks={streaks}
               />
             ) : null
@@ -664,6 +756,12 @@ const styles = StyleSheet.create({
   viewModeContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  dayViewToggleContainer: {
+    marginTop: 8,
+  },
+  monthViewContainer: {
+    padding: 20,
   },
   listContent: { 
     padding: 20, 

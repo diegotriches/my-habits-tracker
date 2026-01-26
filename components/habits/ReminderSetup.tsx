@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReminders } from '@/hooks/useReminders';
 import { NotificationSound } from '@/services/notifications';
+import { hapticFeedback } from '@/utils/haptics';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
@@ -40,26 +41,43 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
     const success = await createReminder(habitId, habitName, timeString);
     
     if (success) {
-      Alert.alert('✅ Lembrete criado', `Você será notificado às ${timeString}`);
+      // ✅ SEM MODAL - Apenas feedback háptico
+      hapticFeedback.success();
       setShowTimePicker(false);
+      console.log('✅ Lembrete criado com sucesso');
     } else {
-      Alert.alert('❌ Erro', 'Não foi possível criar o lembrete');
+      // ❌ Mantém alerta de ERRO (importante para debug)
+      hapticFeedback.error();
+      Alert.alert('Erro', 'Não foi possível criar o lembrete');
     }
   };
 
   const handleDeleteReminder = (reminder: any) => {
+    hapticFeedback.warning();
+    
+    // ✅ MANTÉM confirmação antes de deletar (evita exclusões acidentais)
     Alert.alert(
       'Deletar Lembrete',
       `Deseja remover o lembrete das ${reminder.time}?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Cancelar', 
+          style: 'cancel',
+          onPress: () => hapticFeedback.light()
+        },
         {
           text: 'Deletar',
           style: 'destructive',
           onPress: async () => {
             const success = await deleteReminder(reminder.id);
             if (success) {
-              Alert.alert('✅ Lembrete removido');
+              // ✅ SEM MODAL de confirmação após deletar
+              hapticFeedback.success();
+              console.log('✅ Lembrete removido com sucesso');
+            } else {
+              // ❌ Mantém alerta de ERRO
+              hapticFeedback.error();
+              Alert.alert('Erro', 'Não foi possível remover o lembrete');
             }
           },
         },
@@ -68,13 +86,22 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   };
 
   const handleToggleReminder = async (reminder: any) => {
+    hapticFeedback.light();
     const success = await toggleReminder(reminder.id, habitName);
-    if (!success) {
-      Alert.alert('❌ Erro', 'Não foi possível atualizar o lembrete');
+    
+    if (success) {
+      // ✅ SEM MODAL - Apenas feedback háptico
+      hapticFeedback.success();
+      console.log(`✅ Lembrete ${reminder.is_active ? 'desativado' : 'ativado'}`);
+    } else {
+      // ❌ Mantém alerta de ERRO
+      hapticFeedback.error();
+      Alert.alert('Erro', 'Não foi possível atualizar o lembrete');
     }
   };
 
   const handleEditReminder = (reminder: any) => {
+    hapticFeedback.light();
     setEditingReminder(reminder);
     setShowEditModal(true);
   };
@@ -87,10 +114,14 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
     const success = await updateReminder(reminderId, habitName, { time, sound });
     
     if (success) {
-      Alert.alert('✅ Lembrete atualizado', `Novo horário: ${time}`);
+      // ✅ SEM MODAL - Apenas feedback háptico
+      hapticFeedback.success();
+      console.log('✅ Lembrete atualizado:', time);
       return true;
     } else {
-      Alert.alert('❌ Erro', 'Não foi possível atualizar o lembrete');
+      // ❌ Mantém alerta de ERRO
+      hapticFeedback.error();
+      Alert.alert('Erro', 'Não foi possível atualizar o lembrete');
       return false;
     }
   };
@@ -107,7 +138,6 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
       if (event.type === 'set' && date) {
         console.log('✅ Android: Horário confirmado:', date.toLocaleTimeString());
         
-        // 🔧 CORREÇÃO: Usar a data do picker, não o estado antigo
         const hours = date.getHours();
         const minutes = date.getMinutes();
         const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -122,13 +152,18 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
           const success = await createReminder(habitId, habitName, timeString);
           
           if (success) {
-            Alert.alert('✅ Lembrete criado', `Você será notificado às ${timeString}`);
+            // ✅ SEM MODAL - Apenas feedback háptico
+            hapticFeedback.success();
+            console.log('✅ Lembrete criado com sucesso');
           } else {
-            Alert.alert('❌ Erro', 'Não foi possível criar o lembrete');
+            // ❌ Mantém alerta de ERRO
+            hapticFeedback.error();
+            Alert.alert('Erro', 'Não foi possível criar o lembrete');
           }
         }, 100);
       } else {
         console.log('❌ Android: Usuário cancelou');
+        hapticFeedback.light();
       }
     } else {
       // iOS: Apenas atualiza o estado
@@ -226,6 +261,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: colors.primary }]}
         onPress={() => {
+          hapticFeedback.light();
           console.log('➕ Abrindo seletor de horário');
           setShowTimePicker(true);
         }}
@@ -258,6 +294,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
             <View style={styles.pickerButtons}>
               <TouchableOpacity
                 onPress={() => {
+                  hapticFeedback.light();
                   console.log('❌ iOS: Cancelado');
                   setShowTimePicker(false);
                 }}
@@ -270,6 +307,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
 
               <TouchableOpacity
                 onPress={() => {
+                  hapticFeedback.selection();
                   console.log('✅ iOS: Confirmado');
                   handleAddReminder();
                 }}
@@ -290,6 +328,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
         reminder={editingReminder}
         habitName={habitName}
         onClose={() => {
+          hapticFeedback.light();
           setShowEditModal(false);
           setEditingReminder(null);
         }}

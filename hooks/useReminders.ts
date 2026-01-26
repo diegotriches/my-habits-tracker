@@ -75,6 +75,7 @@ export function useReminders(habitId?: string) {
 
   /**
    * Criar novo lembrete
+   * ✅ SEM MODAL - Retorna sucesso/erro silenciosamente
    */
   const createReminder = async (
     habitId: string,
@@ -86,7 +87,7 @@ export function useReminders(habitId?: string) {
     try {
       const daysOfWeek = customDaysOfWeek || (await getHabitFrequency(habitId));
 
-      // 🔧 VALIDAR formato do horário
+      // Validar formato do horário
       if (!/^\d{2}:\d{2}$/.test(time)) {
         console.error('Formato de horário inválido:', time);
         setError('Formato de horário inválido. Use HH:MM');
@@ -146,6 +147,8 @@ export function useReminders(habitId?: string) {
 
       setReminders((prev) => [...prev, newReminder]);
 
+      // ✅ SEM MODAL - Apenas log e retorno
+      console.log('✅ Lembrete criado com sucesso');
       return newReminder;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar lembrete';
@@ -156,7 +159,8 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * 🔧 OTIMIZADO: Atualizar lembrete
+   * Atualizar lembrete
+   * ✅ SEM MODAL
    */
   const updateReminder = async (
     reminderId: string,
@@ -167,7 +171,7 @@ export function useReminders(habitId?: string) {
       const reminder = reminders.find((r) => r.id === reminderId);
       if (!reminder) throw new Error('Lembrete não encontrado');
 
-      // 🆕 Verificar o que mudou
+      // Verificar o que mudou
       const timeChanged = updates.time !== undefined && updates.time !== reminder.time;
       const daysChanged = updates.days_of_week !== undefined && 
                           JSON.stringify(updates.days_of_week) !== JSON.stringify(reminder.days_of_week);
@@ -176,14 +180,12 @@ export function useReminders(habitId?: string) {
 
       const needsReschedule = timeChanged || daysChanged || soundChanged;
 
-      // 🆕 Lógica otimizada
       if (statusChanged && updates.is_active === false) {
         // Desativando → Só cancelar
         if (reminder.notification_ids && reminder.notification_ids.length > 0) {
           await notificationService.cancelNotifications(reminder.notification_ids);
         }
         
-        // Atualizar banco
         await remindersTable()
           .update({ is_active: false, notification_ids: [] })
           .eq('id', reminderId);
@@ -194,6 +196,7 @@ export function useReminders(habitId?: string) {
           )
         );
 
+        console.log('✅ Lembrete desativado');
         return true;
       }
 
@@ -243,10 +246,11 @@ export function useReminders(habitId?: string) {
           )
         );
 
+        console.log('✅ Lembrete atualizado');
         return true;
       }
 
-      // Se chegou aqui, só atualizar no banco (sem mexer em notificações)
+      // Se chegou aqui, só atualizar no banco
       const { error } = await remindersTable()
         .update(updates)
         .eq('id', reminderId);
@@ -259,6 +263,7 @@ export function useReminders(habitId?: string) {
         )
       );
 
+      console.log('✅ Lembrete atualizado');
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar lembrete');
@@ -268,6 +273,7 @@ export function useReminders(habitId?: string) {
 
   /**
    * Deletar lembrete
+   * ✅ SEM MODAL
    */
   const deleteReminder = async (reminderId: string): Promise<boolean> => {
     try {
@@ -286,6 +292,7 @@ export function useReminders(habitId?: string) {
 
       setReminders((prev) => prev.filter((r) => r.id !== reminderId));
 
+      console.log('✅ Lembrete excluído');
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao deletar lembrete');
@@ -321,6 +328,7 @@ export function useReminders(habitId?: string) {
 
       setReminders((prev) => prev.filter((r) => r.habit_id !== habitId));
 
+      console.log('✅ Todos os lembretes do hábito excluídos');
       return true;
     } catch (err) {
       console.error('Erro ao deletar lembretes do hábito:', err);
@@ -356,6 +364,7 @@ export function useReminders(habitId?: string) {
         });
       }
 
+      console.log('✅ Lembretes sincronizados com frequência do hábito');
       return true;
     } catch (error) {
       console.error('Erro ao sincronizar lembretes:', error);
@@ -368,6 +377,7 @@ export function useReminders(habitId?: string) {
    */
   const testNotification = async (habitName: string): Promise<void> => {
     await notificationService.scheduleTestNotification(habitName);
+    console.log('🧪 Notificação de teste enviada');
   };
 
   useEffect(() => {

@@ -49,7 +49,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS"
       ],
       "googleServicesFile": "./google-services.json",
       "intentFilters": [

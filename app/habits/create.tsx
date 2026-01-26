@@ -1,4 +1,4 @@
-// app/habits/create.tsx
+// app/habits/create.tsx - LÓGICA (sem estilos)
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
 import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
@@ -17,9 +17,10 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { hapticFeedback } from '@/utils/haptics';
-import { Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { styles as createStylesFn } from './createStyles';
 
 const remindersTable = () => (supabase.from('reminders') as any);
 
@@ -57,6 +58,8 @@ export default function CreateHabitScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showReminders, setShowReminders] = useState(false);
+  
+  // 🆕 Notificações de progresso/urgência agora para TODOS os hábitos
   const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
     enabled: false,
     morningEnabled: true,
@@ -66,6 +69,7 @@ export default function CreateHabitScreen() {
     eveningEnabled: true,
     eveningTime: '21:00:00',
   });
+  
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [showErrorToast, setShowErrorToast] = useState(false);
@@ -134,8 +138,19 @@ export default function CreateHabitScreen() {
       return;
     }
 
+    // 🔧 FIX: Criar nova instância de Date com os valores corretos
+    const newReminderTime = new Date();
+    newReminderTime.setHours(currentTime.getHours());
+    newReminderTime.setMinutes(currentTime.getMinutes());
+    newReminderTime.setSeconds(0);
+    newReminderTime.setMilliseconds(0);
+
     hapticFeedback.success();
-    const newReminder = { id: Math.random().toString(), time: currentTime };
+    const newReminder = { 
+      id: Math.random().toString(), 
+      time: newReminderTime
+    };
+
     setReminders([...reminders, newReminder]);
     setShowTimePicker(false);
     setCurrentTime(new Date());
@@ -189,6 +204,7 @@ export default function CreateHabitScreen() {
       return;
     }
 
+    // Criar lembretes
     if (reminders.length > 0) {
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
@@ -212,7 +228,8 @@ export default function CreateHabitScreen() {
       }
     }
 
-    if (hasTarget && progressNotificationConfig.enabled) {
+    // 🆕 Notificações de progresso/urgência para TODOS os hábitos (não só metas numéricas)
+    if (progressNotificationConfig.enabled) {
       try {
         await (supabase.from('habit_progress_notifications') as any).insert({
           habit_id: habit.id,
@@ -229,7 +246,8 @@ export default function CreateHabitScreen() {
       } catch (progressError) {
         console.warn('Erro ao criar notificações de progresso:', progressError);
       }
-    } else if (hasTarget) {
+    } else {
+      // Criar configuração padrão desabilitada
       try {
         await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
       } catch (defaultError) {
@@ -243,15 +261,54 @@ export default function CreateHabitScreen() {
     setTimeout(() => router.back(), 1500);
   };
 
-  const onTimeChange = (_event: DateTimePickerEvent, date?: Date) => {
+  // 🔧 FIX: onTimeChange corrigido
+  const onTimeChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
-      if (date) {
+      
+      if (event.type === 'set' && date) {
         setCurrentTime(date);
-        setTimeout(() => handleAddReminder(), 100);
+        
+        setTimeout(() => {
+          const timeString = formatTime(date);
+          const exists = reminders.some(r => formatTime(r.time) === timeString);
+          
+          if (exists) {
+            hapticFeedback.warning();
+            setErrorMessage('Já existe um lembrete neste horário');
+            setShowErrorToast(true);
+            return;
+          }
+
+          if (reminders.length >= MAX_REMINDERS) {
+            hapticFeedback.error();
+            setErrorMessage(`Você pode ter no máximo ${MAX_REMINDERS} lembretes`);
+            setShowErrorToast(true);
+            return;
+          }
+
+          const newReminderTime = new Date();
+          newReminderTime.setHours(date.getHours());
+          newReminderTime.setMinutes(date.getMinutes());
+          newReminderTime.setSeconds(0);
+          newReminderTime.setMilliseconds(0);
+
+          const newReminder = { 
+            id: Math.random().toString(), 
+            time: newReminderTime 
+          };
+
+          hapticFeedback.success();
+          setReminders(prev => [...prev, newReminder]);
+          setCurrentTime(new Date());
+        }, 100);
+      } else {
+        hapticFeedback.light();
       }
     } else {
-      if (date) setCurrentTime(date);
+      if (date) {
+        setCurrentTime(date);
+      }
     }
   };
 
@@ -266,7 +323,7 @@ export default function CreateHabitScreen() {
 
   const getAllUnits = () => Object.values(TARGET_UNITS).flat();
 
-  const styles = createStyles(colors);
+  const styles = createStylesFn(colors);
 
   return (
     <View style={styles.container}>
@@ -384,7 +441,7 @@ export default function CreateHabitScreen() {
           />
         </View>
 
-        {/* DIFICULDADE E COR */}
+        {/* DIFICULDADE */}
         <View style={styles.section}>
           <Text style={styles.label}>Dificuldade</Text>
           <View style={styles.difficultyContainer}>
@@ -551,7 +608,11 @@ export default function CreateHabitScreen() {
                       {Platform.OS === 'ios' && (
                         <View style={styles.pickerButtons}>
                           <TouchableOpacity
-                            onPress={() => setShowTimePicker(false)}
+                            onPress={() => {
+                              hapticFeedback.light();
+                              setShowTimePicker(false);
+                              setCurrentTime(new Date());
+                            }}
                             style={[styles.pickerButton, { backgroundColor: colors.surface }]}
                           >
                             <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>
@@ -559,7 +620,10 @@ export default function CreateHabitScreen() {
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            onPress={handleAddReminder}
+                            onPress={() => {
+                              hapticFeedback.selection();
+                              handleAddReminder();
+                            }}
                             style={[styles.pickerButton, { backgroundColor: colors.primary }]}
                           >
                             <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>
@@ -576,251 +640,20 @@ export default function CreateHabitScreen() {
           )}
         </View>
 
-        {/* NOTIFICAÇÕES DE PROGRESSO */}
-        {hasTarget && (
-          <View style={styles.section}>
-            <ProgressNotificationSettings
-              config={progressNotificationConfig}
-              onChange={setProgressNotificationConfig}
-              hasPermission={hasPermission}
-              onRequestPermission={requestNotificationPermission}
-            />
-          </View>
-        )}
+        {/* 🆕 NOTIFICAÇÕES DE PROGRESSO/URGÊNCIA - AGORA PARA TODOS OS HÁBITOS */}
+        <View style={styles.section}>
+          <ProgressNotificationSettings
+            config={progressNotificationConfig}
+            onChange={setProgressNotificationConfig}
+            hasPermission={hasPermission}
+            onRequestPermission={requestNotificationPermission}
+            hasTarget={hasTarget} // 🆕 Passa info se tem meta numérica
+            habitType={habitType} // 🆕 Passa tipo do hábito
+          />
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
-
-const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  cancelButton: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  saveButton: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  helperText: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  textArea: {
-    height: 70,
-    textAlignVertical: 'top',
-  },
-  habitTypeContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  habitTypeOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  habitTypeOptionPositive: {
-    borderColor: colors.success,
-    backgroundColor: colors.successLight,
-  },
-  habitTypeOptionNegative: {
-    borderColor: colors.warning,
-    backgroundColor: colors.warningLight,
-  },
-  habitTypeLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  habitTypeLabelPositive: {
-    color: colors.success,
-  },
-  habitTypeLabelNegative: {
-    color: colors.warning,
-  },
-  habitTypeDescription: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  difficultyContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  difficultyOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-  },
-  difficultyLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  difficultyPoints: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    fontWeight: '700',
-  },
-  collapsibleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  reminderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  reminderBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  permissionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 8,
-  },
-  permissionButtonText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  remindersList: {
-    marginTop: 12,
-    gap: 8,
-  },
-  reminderItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  reminderTime: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    marginTop: 8,
-  },
-  addButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  pickerContainer: {
-    marginTop: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pickerButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  pickerButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  pickerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
