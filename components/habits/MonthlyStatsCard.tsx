@@ -1,16 +1,19 @@
-// components/habits/MonthlyStatsCard.tsx
+// components/habits/MonthlyStatsCard.tsx - ENHANCED VERSION
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Habit, Completion, Streak } from '@/types/database';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, subMonths, format } from 'date-fns';
 
 interface MonthlyStatsCardProps {
   habits: Habit[];
   completions: Completion[];
   streaks: Streak[];
   month: Date;
+  previousMonthCompletions?: Completion[]; // 🆕 Para comparação
+  monthlyGoal?: number; // 🆕 Meta personalizada (0-100)
+  onMonthChange?: (newMonth: Date) => void; // 🆕 Navegação
 }
 
 export function MonthlyStatsCard({
@@ -18,6 +21,9 @@ export function MonthlyStatsCard({
   completions,
   streaks,
   month,
+  previousMonthCompletions = [],
+  monthlyGoal = 80,
+  onMonthChange,
 }: MonthlyStatsCardProps) {
   const { colors } = useTheme();
 
@@ -44,6 +50,15 @@ export function MonthlyStatsCard({
   const percentage = totalExpected > 0 
     ? Math.round((totalCompleted / totalExpected) * 100)
     : 0;
+
+  // 🆕 Comparação com mês anterior
+  const previousMonthPercentage = previousMonthCompletions.length > 0 && totalExpected > 0
+    ? Math.round((previousMonthCompletions.length / totalExpected) * 100)
+    : 0;
+  
+  const percentageDiff = percentage - previousMonthPercentage;
+  const isImproving = percentageDiff > 0;
+  const hasComparison = previousMonthCompletions.length > 0;
 
   // Dias perfeitos (todos os hábitos do dia completados)
   const perfectDays = allDaysInMonth.filter(day => {
@@ -74,16 +89,70 @@ export function MonthlyStatsCard({
 
   const monthName = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
+  // 🆕 Status da meta mensal
+  const isGoalMet = percentage >= monthlyGoal;
+  const goalProgress = Math.min(percentage / monthlyGoal * 100, 100);
+
+  // 🆕 Navegação de meses
+  const handlePreviousMonth = () => {
+    if (onMonthChange) {
+      onMonthChange(subMonths(month, 1));
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (onMonthChange) {
+      const nextMonth = new Date(month);
+      nextMonth.setMonth(month.getMonth() + 1);
+      
+      // Não permite ir além do mês atual
+      const today = new Date();
+      if (nextMonth <= today) {
+        onMonthChange(nextMonth);
+      }
+    }
+  };
+
+  const canGoNext = () => {
+    const nextMonth = new Date(month);
+    nextMonth.setMonth(month.getMonth() + 1);
+    const today = new Date();
+    return nextMonth <= today;
+  };
+
   return (
     <View style={[styles.container, { 
       backgroundColor: colors.primaryLight,
       borderColor: colors.primary + '30',
     }]}>
+      {/* 🆕 Header com navegação */}
       <View style={styles.header}>
-        <Icon name="activity" size={16} color={colors.primary} />
-        <Text style={[styles.title, { color: colors.primary }]}>
-          {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
-        </Text>
+        <TouchableOpacity 
+          onPress={handlePreviousMonth}
+          style={styles.navButton}
+          disabled={!onMonthChange}
+        >
+          {onMonthChange && (
+            <Icon name="chevronLeft" size={20} color={colors.primary} />
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.titleContainer}>
+          <Icon name="calendar" size={16} color={colors.primary} />
+          <Text style={[styles.title, { color: colors.primary }]}>
+            {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+          </Text>
+        </View>
+
+        <TouchableOpacity 
+          onPress={handleNextMonth}
+          style={styles.navButton}
+          disabled={!onMonthChange || !canGoNext()}
+        >
+          {onMonthChange && canGoNext() && (
+            <Icon name="chevronRight" size={20} color={colors.primary} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -102,10 +171,67 @@ export function MonthlyStatsCard({
             <Text style={[styles.completedLabel, { color: colors.textSecondary }]}>
               neste mês
             </Text>
+
+            {/* 🆕 Comparação com mês anterior */}
+            {hasComparison && (
+              <View style={[
+                styles.comparisonBadge,
+                { backgroundColor: isImproving ? colors.successLight : colors.warningLight }
+              ]}>
+                <Icon 
+                  name={isImproving ? "trendingUp" : "chevronDown"} 
+                  size={12} 
+                  color={isImproving ? colors.success : colors.warning} 
+                />
+                <Text style={[
+                  styles.comparisonText,
+                  { color: isImproving ? colors.success : colors.warning }
+                ]}>
+                  {isImproving ? '+' : ''}{percentageDiff}% vs anterior
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Barra de Progresso */}
+        {/* 🆕 Barra de Meta Mensal */}
+        {monthlyGoal > 0 && (
+          <View style={styles.goalSection}>
+            <View style={styles.goalHeader}>
+              <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>
+                Meta do mês: {monthlyGoal}%
+              </Text>
+              {isGoalMet && (
+                <View style={[styles.goalMetBadge, { backgroundColor: colors.successLight }]}>
+                  <Icon name="checkCircle" size={12} color={colors.success} />
+                  <Text style={[styles.goalMetText, { color: colors.success }]}>
+                    Atingida!
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={[styles.goalBar, { backgroundColor: colors.border }]}>
+              <View 
+                style={[
+                  styles.goalFill,
+                  { 
+                    width: `${goalProgress}%`,
+                    backgroundColor: isGoalMet ? colors.success : colors.primary,
+                  }
+                ]}
+              />
+              {/* Marker da meta */}
+              <View 
+                style={[
+                  styles.goalMarker,
+                  { left: `${monthlyGoal}%`, backgroundColor: colors.textSecondary }
+                ]}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Barra de Progresso Original */}
         <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
           <View 
             style={[
@@ -165,10 +291,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 8,
+  },
+  navButton: {
+    padding: 4,
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 13,
@@ -206,6 +344,62 @@ const styles = StyleSheet.create({
   },
   completedLabel: {
     fontSize: 12,
+    marginBottom: 4,
+  },
+  comparisonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  comparisonText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  goalSection: {
+    marginBottom: 12,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  goalLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  goalMetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  goalMetText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  goalBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  goalFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  goalMarker: {
+    position: 'absolute',
+    top: -2,
+    width: 2,
+    height: 12,
+    borderRadius: 1,
   },
   progressBar: {
     height: 6,

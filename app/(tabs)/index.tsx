@@ -29,6 +29,7 @@ import { retroactiveCompletionService } from '@/services/retroactiveCompletionSe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { subMonths } from 'date-fns'; // 🆕 ADICIONAR
 import {
   FlatList,
   RefreshControl,
@@ -47,6 +48,10 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
+  
+  // 🆕 Estado para navegação de mês
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  
   const { 
     completions, 
     loading: completionsLoading, 
@@ -64,11 +69,18 @@ export default function HomeScreen() {
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
 
+  // 🆕 Usar currentMonth em vez de new Date()
   const {
     completions: monthlyCompletions,
     loading: monthlyLoading,
     refetch: refetchMonthlyCompletions,
-  } = useMonthlyCompletions();
+  } = useMonthlyCompletions(currentMonth);
+
+  // 🆕 Buscar completions do mês anterior para comparação
+  const previousMonth = subMonths(currentMonth, 1);
+  const {
+    completions: previousMonthCompletions,
+  } = useMonthlyCompletions(previousMonth);
   
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
@@ -84,7 +96,6 @@ export default function HomeScreen() {
   
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
   const [dayViewMode, setDayViewMode] = useState<DayViewMode>('detailed');
-  const [currentMonth] = useState(new Date());
   const [pendingPenalties, setPendingPenalties] = useState<any[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -111,6 +122,13 @@ export default function HomeScreen() {
     checkForPenalties();
   }, []);
 
+  // 🆕 Atualizar completions quando o mês mudar
+  useEffect(() => {
+    if (timePeriod === 'month') {
+      refetchMonthlyCompletions();
+    }
+  }, [currentMonth, timePeriod]);
+
   const loadViewPreferences = async () => {
     try {
       const [savedPeriod, savedDayView] = await Promise.all([
@@ -132,6 +150,10 @@ export default function HomeScreen() {
 
   const handleTimePeriodChange = async (period: TimePeriod) => {
     setTimePeriod(period);
+    // 🆕 Resetar para mês atual ao mudar de período
+    if (period === 'month') {
+      setCurrentMonth(new Date());
+    }
     try {
       await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
     } catch (error) {
@@ -499,9 +521,7 @@ export default function HomeScreen() {
   const renderHabit = (item: Habit) => {
     const isDueToday = isHabitDueToday(item);
     
-    // Renderizar baseado no período e modo de visualização
     if (timePeriod === 'day') {
-      // Modo DIA - permite alternar entre Detalhado e Compacto
       if (dayViewMode === 'detailed') {
         return (
           <HabitCard
@@ -543,7 +563,6 @@ export default function HomeScreen() {
       );
     }
     
-    // timePeriod === 'month' não renderiza lista, só calendário
     return null;
   };
 
@@ -627,7 +646,6 @@ export default function HomeScreen() {
             onChange={handleTimePeriodChange}
           />
           
-          {/* Sub-toggle apenas para visualização "Dia" */}
           {timePeriod === 'day' && (
             <View style={styles.dayViewToggleContainer}>
               <DayViewToggle
@@ -648,17 +666,20 @@ export default function HomeScreen() {
           onButtonPress={handleCreateHabit}
         />
       ) : timePeriod === 'month' ? (
-        // Visualização MENSAL - Apenas calendário
         <FlatList
           data={[{ key: 'calendar' }]}
           keyExtractor={(item) => item.key}
           renderItem={() => (
             <View style={styles.monthViewContainer}>
+              {/* 🆕 Props atualizadas com navegação e comparação */}
               <MonthlyStatsCard
                 habits={habits}
                 completions={monthlyCompletions}
                 streaks={streaks}
                 month={currentMonth}
+                previousMonthCompletions={previousMonthCompletions}
+                monthlyGoal={80}
+                onMonthChange={setCurrentMonth}
               />
               <HabitMonthlyCalendar
                 habits={habits}
@@ -679,7 +700,6 @@ export default function HomeScreen() {
           }
         />
       ) : (
-        // Visualização DIA e SEMANA - Lista de hábitos
         <FlatList
           data={habits}
           keyExtractor={(item) => item.id}

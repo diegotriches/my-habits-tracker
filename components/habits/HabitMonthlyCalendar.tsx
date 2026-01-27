@@ -1,4 +1,4 @@
-// components/habits/HabitMonthlyCalendar.tsx
+// components/habits/HabitMonthlyCalendar.tsx - ENHANCED VERSION
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Completion, Habit } from '@/types/database';
@@ -13,10 +13,14 @@ import {
   isSameDay, 
   isSameMonth, 
   startOfMonth, 
-  startOfWeek 
+  startOfWeek,
+  isToday as isTodayFn,
 } from 'date-fns';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+// 🆕 Tipos de filtro
+type FilterType = 'all' | 'completed' | 'missed' | 'perfect';
 
 interface HabitMonthlyCalendarProps {
   habits: Habit[];
@@ -35,8 +39,9 @@ export function HabitMonthlyCalendar({
 }: HabitMonthlyCalendarProps) {
   const { colors } = useTheme();
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const [filter, setFilter] = useState<FilterType>('all'); // 🆕 Estado de filtro
 
-  // Calcular dias do calendário (incluindo dias adjacentes para preencher grid)
+  // Calcular dias do calendário
   const monthStart = startOfMonth(month);
   const monthEnd = endOfMonth(month);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -90,12 +95,71 @@ export function HabitMonthlyCalendar({
 
   const getDayCompletionCount = (date: Date): number => {
     if (!selectedHabit) {
-      // Mostrar total de hábitos completados no dia
       return completions.filter(c => 
         isSameDay(new Date(c.completed_at), date)
       ).length;
     }
     return isCompletedOnDay(selectedHabit.id, date) ? 1 : 0;
+  };
+
+  // 🆕 Verificar se dia é perfeito (todos hábitos completados)
+  const isPerfectDay = (date: Date): boolean => {
+    if (isFuture(date) || !isSameMonth(date, month)) return false;
+    
+    const dayHabits = habits.filter(h => {
+      if (h.frequency_type === 'daily') return true;
+      if (h.frequency_type === 'weekly' && h.frequency_days) {
+        return h.frequency_days.includes(date.getDay());
+      }
+      return true;
+    });
+
+    if (dayHabits.length === 0) return false;
+
+    const dayCompletions = completions.filter(c => 
+      isSameDay(new Date(c.completed_at), date)
+    );
+
+    return dayCompletions.length >= dayHabits.length;
+  };
+
+  // 🆕 Verificar se dia foi perdido (nenhum hábito completado)
+  const isMissedDay = (date: Date): boolean => {
+    if (isFuture(date) || !isSameMonth(date, month)) return false;
+    
+    const dayHabits = habits.filter(h => {
+      if (h.frequency_type === 'daily') return true;
+      if (h.frequency_type === 'weekly' && h.frequency_days) {
+        return h.frequency_days.includes(date.getDay());
+      }
+      return true;
+    });
+
+    if (dayHabits.length === 0) return false;
+
+    const dayCompletions = completions.filter(c => 
+      isSameDay(new Date(c.completed_at), date)
+    );
+
+    return dayCompletions.length === 0;
+  };
+
+  // 🆕 Filtrar dias baseado no filtro selecionado
+  const shouldShowDay = (date: Date): boolean => {
+    if (!isSameMonth(date, month)) return true; // Sempre mostra dias fora do mês (com opacidade)
+    if (filter === 'all') return true;
+    
+    if (filter === 'completed') {
+      return getDayCompletionCount(date) > 0;
+    }
+    if (filter === 'missed') {
+      return isMissedDay(date);
+    }
+    if (filter === 'perfect') {
+      return isPerfectDay(date);
+    }
+    
+    return true;
   };
 
   const handleDayPress = (date: Date) => {
@@ -112,16 +176,41 @@ export function HabitMonthlyCalendar({
     setSelectedHabit(habit.id === selectedHabit?.id ? null : habit);
   };
 
+  const handleFilterChange = (newFilter: FilterType) => {
+    hapticFeedback.light();
+    setFilter(newFilter);
+  };
+
+  // 🆕 Calcular estatísticas para insights
+  const totalDaysInMonth = calendarDays.filter(d => isSameMonth(d, month) && !isFuture(d)).length;
+  const completedDaysCount = calendarDays.filter(d => 
+    isSameMonth(d, month) && !isFuture(d) && getDayCompletionCount(d) > 0
+  ).length;
+  const perfectDaysCount = calendarDays.filter(isPerfectDay).length;
+  const missedDaysCount = calendarDays.filter(isMissedDay).length;
+
+  const completionRate = totalDaysInMonth > 0 
+    ? Math.round((completedDaysCount / totalDaysInMonth) * 100)
+    : 0;
+
   // ========== RENDER ==========
 
   const renderDay = (date: Date, index: number) => {
     const isOutsideMonth = !isSameMonth(date, month);
-    const isToday = isSameDay(date, today);
+    const isToday = isTodayFn(date);
     const isDayFuture = isFuture(date);
     const completionCount = getDayCompletionCount(date);
+    const isPerfect = isPerfectDay(date);
+    const shouldShow = shouldShowDay(date);
 
     let backgroundColor = 'transparent';
     let showBadge = false;
+    let borderColor = 'transparent';
+
+    // 🆕 Destacar dias perfeitos com borda dourada
+    if (isPerfect && !selectedHabit) {
+      borderColor = colors.warning;
+    }
 
     if (selectedHabit && !isOutsideMonth) {
       const completion = getCompletionForDay(selectedHabit.id, date);
@@ -135,8 +224,10 @@ export function HabitMonthlyCalendar({
         style={[
           styles.dayCell,
           isToday && { borderColor: colors.primary, borderWidth: 2 },
+          isPerfect && !selectedHabit && { borderColor, borderWidth: 2 },
           isOutsideMonth && { opacity: 0.3 },
           isDayFuture && { opacity: 0.5 },
+          !shouldShow && { opacity: 0.2 }, // 🆕 Diminui opacidade de dias filtrados
           { backgroundColor },
         ]}
         onPress={() => handleDayPress(date)}
@@ -167,12 +258,121 @@ export function HabitMonthlyCalendar({
             <Text style={styles.dotText}>{completionCount}</Text>
           </View>
         )}
+
+        {/* 🆕 Ícone de estrela para dias perfeitos */}
+        {isPerfect && !selectedHabit && !isOutsideMonth && (
+          <View style={styles.perfectStar}>
+            <Icon name="sparkles" size={10} color={colors.warning} />
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
+      {/* 🆕 Filtros Rápidos */}
+      {!selectedHabit && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterRow}
+          contentContainerStyle={styles.filterContent}
+        >
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { 
+                backgroundColor: filter === 'all' ? colors.primary : colors.surface,
+                borderColor: filter === 'all' ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={() => handleFilterChange('all')}
+          >
+            <Icon 
+              name="list" 
+              size={14} 
+              color={filter === 'all' ? '#FFFFFF' : colors.textSecondary} 
+            />
+            <Text style={[
+              styles.filterText,
+              { color: filter === 'all' ? '#FFFFFF' : colors.textSecondary }
+            ]}>
+              Todos ({totalDaysInMonth})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { 
+                backgroundColor: filter === 'completed' ? colors.success : colors.surface,
+                borderColor: filter === 'completed' ? colors.success : colors.border,
+              },
+            ]}
+            onPress={() => handleFilterChange('completed')}
+          >
+            <Icon 
+              name="checkCircle" 
+              size={14} 
+              color={filter === 'completed' ? '#FFFFFF' : colors.textSecondary} 
+            />
+            <Text style={[
+              styles.filterText,
+              { color: filter === 'completed' ? '#FFFFFF' : colors.textSecondary }
+            ]}>
+              Completados ({completedDaysCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { 
+                backgroundColor: filter === 'perfect' ? colors.warning : colors.surface,
+                borderColor: filter === 'perfect' ? colors.warning : colors.border,
+              },
+            ]}
+            onPress={() => handleFilterChange('perfect')}
+          >
+            <Icon 
+              name="sparkles" 
+              size={14} 
+              color={filter === 'perfect' ? '#FFFFFF' : colors.textSecondary} 
+            />
+            <Text style={[
+              styles.filterText,
+              { color: filter === 'perfect' ? '#FFFFFF' : colors.textSecondary }
+            ]}>
+              Perfeitos ({perfectDaysCount})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { 
+                backgroundColor: filter === 'missed' ? colors.danger : colors.surface,
+                borderColor: filter === 'missed' ? colors.danger : colors.border,
+              },
+            ]}
+            onPress={() => handleFilterChange('missed')}
+          >
+            <Icon 
+              name="xCircle" 
+              size={14} 
+              color={filter === 'missed' ? '#FFFFFF' : colors.textSecondary} 
+            />
+            <Text style={[
+              styles.filterText,
+              { color: filter === 'missed' ? '#FFFFFF' : colors.textSecondary }
+            ]}>
+              Perdidos ({missedDaysCount})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
       {/* Filtro de Hábitos */}
       <ScrollView 
         horizontal 
@@ -244,6 +444,18 @@ export function HabitMonthlyCalendar({
         </View>
       </View>
 
+      {/* 🆕 Insight Inteligente */}
+      {!selectedHabit && completionRate > 0 && (
+        <View style={[styles.insightCard, { backgroundColor: colors.infoLight, borderColor: colors.info }]}>
+          <Icon name="info" size={16} color={colors.info} />
+          <Text style={[styles.insightText, { color: colors.info }]}>
+            {completionRate >= 80 && `🎉 Incrível! Você está mantendo ${completionRate}% dos seus hábitos!`}
+            {completionRate >= 50 && completionRate < 80 && `💪 Bom trabalho! ${completionRate}% de conclusão. Continue assim!`}
+            {completionRate < 50 && `📈 Foco! Você está em ${completionRate}%. Vamos melhorar!`}
+          </Text>
+        </View>
+      )}
+
       {/* Legenda */}
       {selectedHabit && (
         <View style={styles.legend}>
@@ -293,6 +505,26 @@ export function HabitMonthlyCalendar({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
+  },
+  filterRow: {
+    marginBottom: 12,
+  },
+  filterContent: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   habitFilter: {
     marginBottom: 12,
@@ -373,6 +605,26 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  perfectStar: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+  },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 12,
+    borderWidth: 1,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   legend: {
     marginTop: 12,
