@@ -1,35 +1,21 @@
 // services/notificationService.ts
-// Wrapper ULTRA-SEGURO para Expo Go
-
 import { Platform } from 'react-native';
 import { notificationService as expoNotifications } from './notifications';
-import { notificationNotifeeService as mockNotifications } from './notificationsNotifee.mock';
+import { notificationNotifeeService as notifeeReal } from './notificationsNotifee';
 
-/**
- * Service unificado de notificações
- * 
- * NO EXPO GO (desenvolvimento):
- * - Android: Mock do Notifee (sem botões, mas funciona)
- * - iOS: Expo Notifications nativo
- * 
- * NA BUILD STANDALONE:
- * - Para usar Notifee real, mude manualmente antes da build
- * - Descomente a linha do import e use notifeeReal
- */
+// 🔓 CONFIGURADO PARA BUILD (Notifee Real)
+// Para voltar ao Expo Go: comente linha 4 e descomente linha abaixo
+// import { notificationNotifeeService as mockNotifications } from './notificationsNotifee.mock';
 
-// 🔒 SEMPRE usar mock no Expo Go (não tenta importar Notifee)
-const androidService = mockNotifications as any; // Type cast para evitar erro de tipos privados
-
-// 🔓 PARA BUILD: Descomente estas linhas:
-// import { notificationNotifeeService as notifeeReal } from './notificationsNotifee';
-// const androidService = notifeeReal as any;
+const androidService = notifeeReal as any;
+// Para Expo Go: const androidService = mockNotifications as any;
 
 export const notificationService = Platform.select({
   android: androidService,
   ios: expoNotifications,
   default: expoNotifications,
-}) as any; // Type cast final
+}) as any;
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
 
-console.log('📱 Notification Service:', Platform.OS === 'android' ? 'Mock (Expo Go)' : 'Expo Native (iOS)');
+console.log('📱 Notification Service (Android): NOTIFEE REAL');

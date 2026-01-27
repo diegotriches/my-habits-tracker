@@ -15,16 +15,22 @@ import { startOfDay, endOfDay } from 'date-fns';
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
 
 /**
- * 🆕 Service de Notificações usando Notifee
+ * Service de Notificações usando Notifee
  * Suporte COMPLETO para actions/botões no Android
  */
 class NotificationNotifeeService {
   private navigationCallback: ((habitId: string) => void) | null = null;
+  private isInitialized = false;
 
   /**
    * Inicializar listeners de eventos
    */
   async initialize(navigationCallback: (habitId: string) => void): Promise<void> {
+    if (this.isInitialized) {
+      console.log('⚠️ Notifee já foi inicializado');
+      return;
+    }
+
     this.navigationCallback = navigationCallback;
 
     // Listener para quando usuário clica na notificação ou botão
@@ -73,6 +79,9 @@ class NotificationNotifeeService {
 
     // Criar canais
     await this.createChannels();
+    
+    this.isInitialized = true;
+    console.log('✅ Notifee inicializado com sucesso');
   }
 
   /**
@@ -137,7 +146,7 @@ class NotificationNotifeeService {
   }
 
   /**
-   * 🎯 Agendar lembrete semanal com BOTÕES
+   * Agendar lembrete semanal com BOTÕES
    */
   async scheduleWeeklyReminder(
     habitId: string,
@@ -160,7 +169,6 @@ class NotificationNotifeeService {
       // Para cada dia da semana, criar um trigger
       for (const dayOfWeek of daysOfWeek) {
         // Calcular próxima ocorrência deste dia
-        const now = new Date();
         const trigger: TimestampTrigger = {
           type: TriggerType.TIMESTAMP,
           timestamp: this.getNextOccurrence(dayOfWeek, hours, minutes).getTime(),
@@ -186,7 +194,7 @@ class NotificationNotifeeService {
               pressAction: {
                 id: 'default',
               },
-              // 🎉 ACTIONS/BOTÕES (funciona 100%!)
+              // ACTIONS/BOTÕES
               actions: [
                 {
                   title: '⏰ Adiar 10min',
@@ -205,7 +213,7 @@ class NotificationNotifeeService {
         );
 
         notificationIds.push(notificationId);
-        console.log(`✅ Notificação agendada: ${notificationId} (${dayOfWeek})`);
+        console.log(`✅ Notificação agendada: ${notificationId} (dia ${dayOfWeek})`);
       }
 
       return notificationIds;
@@ -238,6 +246,30 @@ class NotificationNotifeeService {
   }
 
   /**
+   * Agendar lembrete diário (compatibilidade)
+   */
+  async scheduleDailyReminder(
+    habitId: string,
+    habitName: string,
+    time: string,
+    reminderId: string,
+    sound: NotificationSound = 'default',
+    checkCompletion: boolean = true
+  ): Promise<string | null> {
+    // Agenda para todos os dias (0-6)
+    const ids = await this.scheduleWeeklyReminder(
+      habitId,
+      habitName,
+      time,
+      [0, 1, 2, 3, 4, 5, 6],
+      reminderId,
+      sound
+    );
+    
+    return ids.length > 0 ? ids[0] : null;
+  }
+
+  /**
    * Cancelar notificação
    */
   async cancelNotification(notificationId: string): Promise<void> {
@@ -254,7 +286,6 @@ class NotificationNotifeeService {
    */
   async cancelNotifications(notificationIds: string[]): Promise<void> {
     try {
-      // Notifee não tem cancelNotifications plural, usar loop
       for (const id of notificationIds) {
         await notifee.cancelNotification(id);
       }
@@ -276,7 +307,6 @@ class NotificationNotifeeService {
         .map(n => n.notification.id as string);
 
       if (habitNotificationIds.length > 0) {
-        // Cancelar um por um
         for (const id of habitNotificationIds) {
           await notifee.cancelNotification(id);
         }
@@ -350,7 +380,6 @@ class NotificationNotifeeService {
         return;
       }
 
-      // Tipar explicitamente
       const habit = habitData as {
         id: string;
         name: string;
@@ -433,7 +462,7 @@ class NotificationNotifeeService {
   }
 
   /**
-   * 🧪 TESTE: Notificação com botões
+   * TESTE: Notificação com botões
    */
   async testNotificationWithActions(): Promise<void> {
     try {
@@ -501,6 +530,87 @@ class NotificationNotifeeService {
       console.log('✅ Todas as notificações canceladas');
     } catch (error) {
       console.error('❌ Erro ao cancelar todas:', error);
+    }
+  }
+
+  /**
+   * Métodos auxiliares de compatibilidade com interface antiga
+   */
+  async setupNotificationHandlers(navigationCallback: (habitId: string) => void): Promise<void> {
+    await this.initialize(navigationCallback);
+  }
+
+  async checkIfCompletedToday(habitId: string): Promise<boolean> {
+    try {
+      const today = new Date();
+      const startOfToday = startOfDay(today).toISOString();
+      const endOfToday = endOfDay(today).toISOString();
+      
+      const { data, error } = await supabase
+        .from('completions')
+        .select('id')
+        .eq('habit_id', habitId)
+        .gte('completed_at', startOfToday)
+        .lte('completed_at', endOfToday)
+        .maybeSingle();
+
+      return !error && data !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  async getHabitData(habitId: string): Promise<any | null> {
+    try {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('id, name, has_target, target_value, target_unit, points_base, user_id')
+        .eq('id', habitId)
+        .single();
+
+      if (error) throw error;
+      return data as any;
+    } catch (error) {
+      console.error('Erro ao buscar hábito:', error);
+      return null;
+    }
+  }
+
+  async scheduleTestNotification(habitName: string): Promise<void> {
+    await this.testNotificationWithActions();
+  }
+
+  async testAllNotificationMethods(): Promise<void> {
+    await this.testNotificationWithActions();
+  }
+
+  async debugChannel(): Promise<void> {
+    console.log('📢 Debug de canais disponível apenas via configurações do Android');
+  }
+
+  async debugScheduledNotifications(): Promise<void> {
+    const notifications = await this.getAllScheduledNotifications();
+    console.log('📋 Notificações agendadas:', notifications.length);
+    
+    notifications.forEach((n, index) => {
+      console.log(`${index + 1}. ${n.notification.title} (${n.notification.id})`);
+    });
+  }
+
+  private getSoundFile(sound: NotificationSound): string | undefined {
+    switch (sound) {
+      case 'default':
+        return 'default';
+      case 'water':
+        return 'water_drop.wav';
+      case 'bell':
+        return 'bell.wav';
+      case 'chime':
+        return 'chime.wav';
+      case 'silence':
+        return undefined;
+      default:
+        return 'default';
     }
   }
 }
