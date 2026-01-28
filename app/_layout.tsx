@@ -1,7 +1,6 @@
 // app/_layout.tsx
 import { NotificationHandler } from '@/components/notifications/NotificationHandler';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notificationService';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -11,33 +10,6 @@ function RootLayoutNav() {
   const { isAuthenticated, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-
-  // 🔔 Inicializar Notifee (APENAS UMA VEZ)
-  useEffect(() => {
-    const initNotifications = async () => {
-      try {
-        console.log('🔔 Inicializando sistema de notificações...');
-        
-        // Inicializar com callback de navegação
-        await notificationService.initialize?.((habitId: string) => {
-          console.log('📱 Navegando para hábito via notificação:', habitId);
-          router.push(`/habits/${habitId}`);
-        });
-
-        // Solicitar permissões
-        const hasPermission = await notificationService.requestPermissions();
-        if (hasPermission) {
-          console.log('✅ Permissões de notificação concedidas');
-        } else {
-          console.warn('⚠️ Permissões de notificação negadas');
-        }
-      } catch (error) {
-        console.error('❌ Erro ao inicializar notificações:', error);
-      }
-    };
-
-    initNotifications();
-  }, []); // Array vazio = executa apenas uma vez
 
   // 🔧 Controle de autenticação e navegação
   useEffect(() => {
@@ -64,7 +36,7 @@ function RootLayoutNav() {
 
   return (
     <>
-      {/* 🆕 Handler de Notificações - Gerencia listeners globalmente */}
+      {/* 🔔 Handler de Notificações - Gerencia TUDO (inicialização + listeners) */}
       {isAuthenticated && <NotificationHandler />}
       
       {/* Conteúdo principal */}
@@ -73,7 +45,6 @@ function RootLayoutNav() {
   );
 }
 
-// ✅ EXPORT DEFAULT NA RAIZ (não dentro de função)
 export default function RootLayout() {
   return (
     <ThemeProvider>

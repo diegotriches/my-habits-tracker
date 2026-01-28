@@ -1,12 +1,14 @@
-// services/notificationsNotifee.ts
-import notifee, { 
-  AndroidImportance, 
+// services/notificationsNotifee.ts - VERSÃO COM LAYOUT EXPANDIDO FORÇADO
+import notifee, {
+  AndroidImportance,
   AndroidCategory,
   TriggerType,
   RepeatFrequency,
   TimestampTrigger,
   EventType,
   AuthorizationStatus,
+  AndroidStyle,
+  AndroidVisibility,
 } from '@notifee/react-native';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
@@ -16,82 +18,93 @@ export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silenc
 
 /**
  * Service de Notificações usando Notifee
- * Suporte COMPLETO para actions/botões no Android
+ * VERSÃO COM DEBUGGING INTENSIVO
  */
 class NotificationNotifeeService {
   private navigationCallback: ((habitId: string) => void) | null = null;
   private isInitialized = false;
 
-  /**
-   * Inicializar listeners de eventos
-   */
+  constructor() {
+    console.log('🔔 Constructor Notifee executado');
+    
+    // Background listener
+    notifee.onBackgroundEvent(async ({ type, detail }) => {
+      console.log('🔔 [BACKGROUND] Event type:', type);
+      console.log('🔔 [BACKGROUND] Detail:', JSON.stringify(detail, null, 2));
+      
+      if (type !== EventType.PRESS) return;
+
+      const { notification, pressAction } = detail;
+      const data = notification?.data;
+
+      console.log('🔔 [BACKGROUND] Press action ID:', pressAction?.id);
+      console.log('🔔 [BACKGROUND] Notification data:', data);
+
+      if (!data?.habitId) {
+        console.warn('⚠️ [BACKGROUND] Sem habitId nos dados');
+        return;
+      }
+
+      if (pressAction?.id === 'snooze') {
+        console.log('⏰ [BACKGROUND] Executando SNOOZE');
+        await this.handleSnooze(
+          data.habitId as string,
+          data.habitName as string
+        );
+      } else if (pressAction?.id === 'complete') {
+        console.log('✅ [BACKGROUND] Executando COMPLETE');
+        await this.handleQuickComplete(data.habitId as string);
+      } else {
+        console.log('📱 [BACKGROUND] Click na notificação (sem action)');
+        if (this.navigationCallback) {
+          this.navigationCallback(data.habitId as string);
+        }
+      }
+    });
+  }
+
   async initialize(navigationCallback: (habitId: string) => void): Promise<void> {
     if (this.isInitialized) {
-      console.log('⚠️ Notifee já foi inicializado');
+      console.log('⚠️ Notifee já inicializado');
       return;
     }
 
+    console.log('🔔 Inicializando Notifee...');
     this.navigationCallback = navigationCallback;
 
-    // Listener para quando usuário clica na notificação ou botão
-    notifee.onBackgroundEvent(async ({ type, detail }) => {
-      console.log('🔔 Background Event:', type);
-      
-      if (type === EventType.PRESS) {
-        const { notification, pressAction } = detail;
-        const data = notification?.data;
-
-        // Click em action/botão
-        if (pressAction?.id === 'snooze') {
-          await this.handleSnooze(
-            data?.habitId as string, 
-            data?.habitName as string
-          );
-        } else if (pressAction?.id === 'complete') {
-          await this.handleQuickComplete(data?.habitId as string);
-        } else if (data?.habitId) {
-          // Click na notificação (sem action)
-          this.navigationCallback?.(data.habitId as string);
-        }
-      }
-    });
-
-    // Listener para foreground
+    // Foreground listener
     notifee.onForegroundEvent(({ type, detail }) => {
-      console.log('🔔 Foreground Event:', type);
-      
+      console.log('🔔 [FOREGROUND] Event type:', type);
+      console.log('🔔 [FOREGROUND] Detail:', JSON.stringify(detail, null, 2));
+
       if (type === EventType.PRESS) {
         const { notification, pressAction } = detail;
         const data = notification?.data;
 
+        console.log('🔔 [FOREGROUND] Press action ID:', pressAction?.id);
+
         if (pressAction?.id === 'snooze') {
-          this.handleSnooze(
-            data?.habitId as string, 
-            data?.habitName as string
-          );
+          console.log('⏰ [FOREGROUND] Snooze');
+          this.handleSnooze(data?.habitId as string, data?.habitName as string);
         } else if (pressAction?.id === 'complete') {
+          console.log('✅ [FOREGROUND] Complete');
           this.handleQuickComplete(data?.habitId as string);
         } else if (data?.habitId) {
+          console.log('📱 [FOREGROUND] Navegação');
           this.navigationCallback?.(data.habitId as string);
         }
       }
     });
 
-    // Criar canais
     await this.createChannels();
-    
     this.isInitialized = true;
-    console.log('✅ Notifee inicializado com sucesso');
+    console.log('✅ Notifee inicializado');
   }
 
-  /**
-   * Criar canais de notificação
-   */
   private async createChannels(): Promise<void> {
     if (Platform.OS !== 'android') return;
 
     try {
-      // Canal principal de hábitos
       await notifee.createChannel({
         id: 'habits',
         name: 'Lembretes de Hábitos',
@@ -103,7 +116,6 @@ class NotificationNotifeeService {
         badge: true,
       });
 
-      // Canal de progresso
       await notifee.createChannel({
         id: 'habits-progress',
         name: 'Atualizações de Progresso',
@@ -111,43 +123,29 @@ class NotificationNotifeeService {
         sound: 'default',
       });
 
-      console.log('✅ Canais Notifee criados');
+      console.log('✅ Canais criados');
     } catch (error) {
       console.error('❌ Erro ao criar canais:', error);
     }
   }
 
-  /**
-   * Solicitar permissões
-   */
   async requestPermissions(): Promise<boolean> {
     try {
       const settings = await notifee.requestPermission();
-      
-      if (settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED) {
-        console.log('✅ Permissões concedidas');
-        return true;
-      }
-
-      console.log('❌ Permissões negadas');
-      return false;
+      const granted = settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
+      console.log(granted ? '✅ Permissões OK' : '❌ Permissões negadas');
+      return granted;
     } catch (error) {
-      console.error('❌ Erro ao solicitar permissões:', error);
+      console.error('❌ Erro permissões:', error);
       return false;
     }
   }
 
-  /**
-   * Verificar se tem permissão
-   */
   async hasPermission(): Promise<boolean> {
     const settings = await notifee.getNotificationSettings();
     return settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
   }
 
-  /**
-   * Agendar lembrete semanal com BOTÕES
-   */
   async scheduleWeeklyReminder(
     habitId: string,
     habitName: string,
@@ -166,19 +164,20 @@ class NotificationNotifeeService {
       const [hours, minutes] = time.split(':').map(Number);
       const notificationIds: string[] = [];
 
-      // Para cada dia da semana, criar um trigger
+      console.log('🔔 Criando notificações com ACTIONS para:', habitName);
+
       for (const dayOfWeek of daysOfWeek) {
-        // Calcular próxima ocorrência deste dia
         const trigger: TimestampTrigger = {
           type: TriggerType.TIMESTAMP,
           timestamp: this.getNextOccurrence(dayOfWeek, hours, minutes).getTime(),
           repeatFrequency: RepeatFrequency.WEEKLY,
         };
 
+        // 🔥 CONFIGURAÇÃO CRÍTICA PARA BOTÕES
         const notificationId = await notifee.createTriggerNotification(
           {
             title: '⏰ Hora do seu hábito!',
-            body: `Não esqueça: ${habitName}`,
+            body: `${habitName} - Expanda para ver as opções`,
             data: {
               habitId,
               habitName,
@@ -190,32 +189,61 @@ class NotificationNotifeeService {
             android: {
               channelId: 'habits',
               importance: AndroidImportance.HIGH,
-              sound: sound === 'default' ? 'default' : undefined,
-              pressAction: {
-                id: 'default',
-              },
-              // ACTIONS/BOTÕES
+              
+              // 🎯 ACTIONS - BOTÕES
               actions: [
                 {
-                  title: '⏰ Adiar 10min',
+                  title: '⏰ Adiar',
                   pressAction: { id: 'snooze' },
+                  icon: 'ic_launcher', // Ícone padrão
                 },
                 {
-                  title: '✅ Completar',
+                  title: '✅ Feito',
                   pressAction: { id: 'complete' },
+                  icon: 'ic_launcher',
                 },
               ],
-              category: AndroidCategory.REMINDER,
+
+              // Força expansão
+              style: {
+                type: AndroidStyle.BIGTEXT,
+                text: `${habitName}\n\n👇 Toque para expandir e ver os botões de ação`,
+              },
+
+              // Configurações que ajudam
+              smallIcon: 'ic_notification',
+              color: '#3B82F6',
+              showTimestamp: true,
+              timestamp: Date.now(),
+              
+              // Não desaparecer ao clicar
               autoCancel: false,
+              ongoing: false,
+              
+              // Visibilidade
+              visibility: AndroidVisibility.PUBLIC,
+              
+              // Categoria
+              category: AndroidCategory.REMINDER,
+              
+              // Press action padrão
+              pressAction: {
+                id: 'default',
+                launchActivity: 'default',
+              },
+
+              // Som
+              sound: sound === 'default' ? 'default' : undefined,
             },
           },
           trigger
         );
 
         notificationIds.push(notificationId);
-        console.log(`✅ Notificação agendada: ${notificationId} (dia ${dayOfWeek})`);
+        console.log(`✅ Notificação ${notificationId} criada com 2 actions`);
       }
 
+      console.log(`✅ Total: ${notificationIds.length} notificações agendadas`);
       return notificationIds;
     } catch (error) {
       console.error('❌ Erro ao agendar:', error);
@@ -223,31 +251,23 @@ class NotificationNotifeeService {
     }
   }
 
-  /**
-   * Calcular próxima ocorrência de um dia da semana
-   */
   private getNextOccurrence(dayOfWeek: number, hours: number, minutes: number): Date {
     const now = new Date();
-    const result = new Date(now);
-    
+    const result = new Date();
+
     result.setHours(hours, minutes, 0, 0);
-    
-    // Se já passou hoje, ir para próxima semana
-    if (result <= now) {
-      result.setDate(result.getDate() + 1);
+
+    const currentDay = result.getDay();
+    let daysUntil = dayOfWeek - currentDay;
+
+    if (daysUntil < 0 || (daysUntil === 0 && result <= now)) {
+      daysUntil += 7;
     }
-    
-    // Ajustar para o dia da semana correto
-    while (result.getDay() !== dayOfWeek) {
-      result.setDate(result.getDate() + 1);
-    }
-    
+
+    result.setDate(result.getDate() + daysUntil);
     return result;
   }
 
-  /**
-   * Agendar lembrete diário (compatibilidade)
-   */
   async scheduleDailyReminder(
     habitId: string,
     habitName: string,
@@ -256,7 +276,6 @@ class NotificationNotifeeService {
     sound: NotificationSound = 'default',
     checkCompletion: boolean = true
   ): Promise<string | null> {
-    // Agenda para todos os dias (0-6)
     const ids = await this.scheduleWeeklyReminder(
       habitId,
       habitName,
@@ -265,77 +284,57 @@ class NotificationNotifeeService {
       reminderId,
       sound
     );
-    
     return ids.length > 0 ? ids[0] : null;
   }
 
-  /**
-   * Cancelar notificação
-   */
   async cancelNotification(notificationId: string): Promise<void> {
     try {
       await notifee.cancelNotification(notificationId);
-      console.log(`✅ Notificação cancelada: ${notificationId}`);
+      console.log(`✅ Cancelado: ${notificationId}`);
     } catch (error) {
       console.warn('❌ Erro ao cancelar:', error);
     }
   }
 
-  /**
-   * Cancelar múltiplas notificações
-   */
   async cancelNotifications(notificationIds: string[]): Promise<void> {
-    try {
-      for (const id of notificationIds) {
-        await notifee.cancelNotification(id);
-      }
-      console.log(`✅ ${notificationIds.length} notificações canceladas`);
-    } catch (error) {
-      console.warn('❌ Erro ao cancelar:', error);
+    for (const id of notificationIds) {
+      await this.cancelNotification(id);
     }
   }
 
-  /**
-   * Cancelar todas as notificações de um hábito
-   */
   async cancelHabitNotifications(habitId: string): Promise<void> {
     try {
       const notifications = await notifee.getTriggerNotifications();
-      
-      const habitNotificationIds = notifications
+      const ids = notifications
         .filter(n => n.notification.data?.habitId === habitId)
         .map(n => n.notification.id as string);
 
-      if (habitNotificationIds.length > 0) {
-        for (const id of habitNotificationIds) {
-          await notifee.cancelNotification(id);
-        }
-        console.log(`✅ Canceladas ${habitNotificationIds.length} notificações do hábito`);
+      for (const id of ids) {
+        await notifee.cancelNotification(id);
+      }
+      
+      if (ids.length > 0) {
+        console.log(`✅ Canceladas ${ids.length} notificações`);
       }
     } catch (error) {
-      console.warn('❌ Erro ao cancelar notificações do hábito:', error);
+      console.warn('❌ Erro:', error);
     }
   }
 
-  /**
-   * Snooze - Adiar 10 minutos
-   */
   async handleSnooze(habitId: string, habitName: string): Promise<void> {
     try {
+      console.log('⏰ Snooze:', habitName);
+
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
-        timestamp: Date.now() + 10 * 60 * 1000, // 10 minutos
+        timestamp: Date.now() + 10 * 60 * 1000,
       };
 
       await notifee.createTriggerNotification(
         {
           title: '⏰ Lembrete adiado',
           body: `${habitName} - Hora de fazer agora!`,
-          data: {
-            habitId,
-            habitName,
-            type: 'snooze_reminder',
-          },
+          data: { habitId, habitName, type: 'snooze_reminder' },
           android: {
             channelId: 'habits',
             importance: AndroidImportance.HIGH,
@@ -346,55 +345,43 @@ class NotificationNotifeeService {
         trigger
       );
 
-      console.log('✅ Snooze agendado');
-      
-      // Feedback imediato
       await notifee.displayNotification({
         title: '⏰ Adiado',
-        body: 'Te lembrarei em 10 minutos',
+        body: 'Lembrarei em 10 minutos',
         android: {
           channelId: 'habits-progress',
           importance: AndroidImportance.LOW,
           autoCancel: true,
         },
       });
+
+      console.log('✅ Snooze OK');
     } catch (error) {
-      console.error('❌ Erro ao agendar snooze:', error);
+      console.error('❌ Erro snooze:', error);
     }
   }
 
-  /**
-   * Quick Complete - Completar via notificação
-   */
   async handleQuickComplete(habitId: string): Promise<void> {
     try {
-      // Buscar dados do hábito
-      const { data: habitData, error: habitError } = await supabase
+      console.log('✅ Quick complete:', habitId);
+
+      const { data: habitData, error } = await supabase
         .from('habits')
-        .select('id, name, has_target, target_value, target_unit, points_base, user_id')
+        .select('id, name, has_target, points_base, user_id')
         .eq('id', habitId)
         .single();
 
-      if (habitError || !habitData) {
+      if (error || !habitData) {
         console.warn('Hábito não encontrado');
         return;
       }
 
-      const habit = habitData as {
-        id: string;
-        name: string;
-        has_target: boolean;
-        target_value: number | null;
-        target_unit: string | null;
-        points_base: number;
-        user_id: string;
-      };
+      const habit = habitData as any;
 
-      // Se tem meta numérica, não pode completar via notificação
       if (habit.has_target) {
         await notifee.displayNotification({
           title: '📊 Meta Numérica',
-          body: `Abra o app para registrar o valor de "${habit.name}"`,
+          body: `Abra o app para registrar "${habit.name}"`,
           android: {
             channelId: 'habits-progress',
             importance: AndroidImportance.HIGH,
@@ -403,23 +390,19 @@ class NotificationNotifeeService {
         return;
       }
 
-      // Verificar se já foi completado hoje
       const today = new Date();
-      const startOfToday = startOfDay(today).toISOString();
-      const endOfToday = endOfDay(today).toISOString();
-
       const { data: existing } = await supabase
         .from('completions')
         .select('id')
         .eq('habit_id', habitId)
-        .gte('completed_at', startOfToday)
-        .lte('completed_at', endOfToday)
+        .gte('completed_at', startOfDay(today).toISOString())
+        .lte('completed_at', endOfDay(today).toISOString())
         .maybeSingle();
 
       if (existing) {
         await notifee.displayNotification({
           title: '✅ Já completado!',
-          body: 'Você já completou este hábito hoje.',
+          body: 'Você já fez isso hoje.',
           android: {
             channelId: 'habits-progress',
             importance: AndroidImportance.LOW,
@@ -428,26 +411,21 @@ class NotificationNotifeeService {
         return;
       }
 
-      // Criar completion
-      const { error: insertError } = await (supabase.from('completions') as any).insert({
+      await (supabase.from('completions') as any).insert({
         habit_id: habitId,
         completed_at: new Date().toISOString(),
         points_earned: habit.points_base,
         was_synced: true,
       });
 
-      if (insertError) throw insertError;
-
-      // Atualizar pontos
       await (supabase.rpc as any)('increment_points', {
         user_id_param: habit.user_id,
         points_param: habit.points_base,
       });
 
-      // Feedback de sucesso
       await notifee.displayNotification({
-        title: '🎉 Hábito completado!',
-        body: `+${habit.points_base} pontos ganhos!`,
+        title: '🎉 Completado!',
+        body: `+${habit.points_base} pontos!`,
         android: {
           channelId: 'habits-progress',
           importance: AndroidImportance.HIGH,
@@ -455,26 +433,25 @@ class NotificationNotifeeService {
         },
       });
 
-      console.log('✅ Hábito completado via notificação');
+      console.log('✅ Complete OK');
     } catch (error) {
-      console.error('❌ Erro ao completar hábito:', error);
+      console.error('❌ Erro complete:', error);
     }
   }
 
-  /**
-   * TESTE: Notificação com botões
-   */
   async testNotificationWithActions(): Promise<void> {
     try {
+      console.log('🧪 TESTE: Notificação em 3 segundos...');
+
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
-        timestamp: Date.now() + 3000, // 3 segundos
+        timestamp: Date.now() + 3000,
       };
 
       await notifee.createTriggerNotification(
         {
           title: '🎯 TESTE DE BOTÕES',
-          body: '👇 Expanda para ver os botões!',
+          body: 'Expanda para ver os botões',
           data: {
             habitId: 'test-123',
             habitName: 'Teste',
@@ -483,135 +460,92 @@ class NotificationNotifeeService {
           android: {
             channelId: 'habits',
             importance: AndroidImportance.HIGH,
-            sound: 'default',
-            pressAction: { id: 'default' },
+            
             actions: [
               {
                 title: '⏰ ADIAR',
                 pressAction: { id: 'snooze' },
               },
               {
-                title: '✅ COMPLETAR',
+                title: '✅ FEITO',
                 pressAction: { id: 'complete' },
               },
             ],
-            category: AndroidCategory.REMINDER,
+
+            style: {
+              type: AndroidStyle.BIGTEXT,
+              text: 'TESTE\n\n👇 Expanda a notificação para ver 2 botões: ADIAR e FEITO',
+            },
+
+            autoCancel: false,
+            showTimestamp: true,
+            pressAction: { id: 'default' },
           },
         },
         trigger
       );
 
-      console.log('✅ Teste agendado para 3s');
+      console.log('✅ Teste agendado');
     } catch (error) {
-      console.error('❌ Erro no teste:', error);
+      console.error('❌ Erro teste:', error);
     }
   }
 
-  /**
-   * Listar notificações agendadas
-   */
   async getAllScheduledNotifications(): Promise<any[]> {
     try {
       const notifications = await notifee.getTriggerNotifications();
-      console.log(`📋 ${notifications.length} notificações agendadas`);
+      console.log(`📋 ${notifications.length} agendadas`);
       return notifications;
     } catch (error) {
-      console.error('❌ Erro ao listar:', error);
+      console.error('❌ Erro listar:', error);
       return [];
     }
   }
 
-  /**
-   * Cancelar todas as notificações
-   */
   async cancelAllNotifications(): Promise<void> {
     try {
       await notifee.cancelAllNotifications();
-      console.log('✅ Todas as notificações canceladas');
+      console.log('✅ Todas canceladas');
     } catch (error) {
-      console.error('❌ Erro ao cancelar todas:', error);
+      console.error('❌ Erro cancelar:', error);
     }
   }
 
-  /**
-   * Métodos auxiliares de compatibilidade com interface antiga
-   */
-  async setupNotificationHandlers(navigationCallback: (habitId: string) => void): Promise<void> {
-    await this.initialize(navigationCallback);
+  // Compatibilidade
+  async setupNotificationHandlers(cb: (habitId: string) => void): Promise<void> {
+    await this.initialize(cb);
   }
-
   async checkIfCompletedToday(habitId: string): Promise<boolean> {
-    try {
-      const today = new Date();
-      const startOfToday = startOfDay(today).toISOString();
-      const endOfToday = endOfDay(today).toISOString();
-      
-      const { data, error } = await supabase
-        .from('completions')
-        .select('id')
-        .eq('habit_id', habitId)
-        .gte('completed_at', startOfToday)
-        .lte('completed_at', endOfToday)
-        .maybeSingle();
-
-      return !error && data !== null;
-    } catch {
-      return false;
-    }
+    const today = new Date();
+    const { data } = await supabase
+      .from('completions')
+      .select('id')
+      .eq('habit_id', habitId)
+      .gte('completed_at', startOfDay(today).toISOString())
+      .lte('completed_at', endOfDay(today).toISOString())
+      .maybeSingle();
+    return !!data;
   }
-
   async getHabitData(habitId: string): Promise<any | null> {
-    try {
-      const { data, error } = await supabase
-        .from('habits')
-        .select('id, name, has_target, target_value, target_unit, points_base, user_id')
-        .eq('id', habitId)
-        .single();
-
-      if (error) throw error;
-      return data as any;
-    } catch (error) {
-      console.error('Erro ao buscar hábito:', error);
-      return null;
-    }
+    const { data } = await supabase
+      .from('habits')
+      .select('*')
+      .eq('id', habitId)
+      .single();
+    return data || null;
   }
-
-  async scheduleTestNotification(habitName: string): Promise<void> {
+  async scheduleTestNotification(): Promise<void> {
     await this.testNotificationWithActions();
   }
-
   async testAllNotificationMethods(): Promise<void> {
     await this.testNotificationWithActions();
   }
-
   async debugChannel(): Promise<void> {
-    console.log('📢 Debug de canais disponível apenas via configurações do Android');
+    console.log('📢 Veja configurações do Android');
   }
-
   async debugScheduledNotifications(): Promise<void> {
-    const notifications = await this.getAllScheduledNotifications();
-    console.log('📋 Notificações agendadas:', notifications.length);
-    
-    notifications.forEach((n, index) => {
-      console.log(`${index + 1}. ${n.notification.title} (${n.notification.id})`);
-    });
-  }
-
-  private getSoundFile(sound: NotificationSound): string | undefined {
-    switch (sound) {
-      case 'default':
-        return 'default';
-      case 'water':
-        return 'water_drop.wav';
-      case 'bell':
-        return 'bell.wav';
-      case 'chime':
-        return 'chime.wav';
-      case 'silence':
-        return undefined;
-      default:
-        return 'default';
-    }
+    const n = await this.getAllScheduledNotifications();
+    n.forEach((not, i) => console.log(`${i + 1}. ${not.notification.title}`));
   }
 }
 

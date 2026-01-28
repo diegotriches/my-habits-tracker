@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notificationService'; // ✅ USAR O WRAPPER
+import { notificationService } from '@/services/notificationService';
 
 /**
  * Handler global de notificações

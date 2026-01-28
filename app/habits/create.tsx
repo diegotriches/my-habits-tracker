@@ -1,16 +1,17 @@
-// app/habits/create.tsx - LÓGICA (sem estilos)
+// app/habits/create.tsx - CORRIGIDO
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
 import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
-import { HabitPreviewCard } from '@/components/habits/HabitPreviewCard';
+// ❌ REMOVIDO: import { HabitPreviewCard } from '@/components/habits/HabitPreviewCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
 import { useHabits } from '@/hooks/useHabits';
-import { notificationService } from '@/services/notifications';
+// ✅ CORRIGIDO: Usar wrapper que escolhe Notifee/Expo automaticamente
+import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { supabase } from '@/services/supabase';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -59,7 +60,6 @@ export default function CreateHabitScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showReminders, setShowReminders] = useState(false);
   
-  // 🆕 Notificações de progresso/urgência agora para TODOS os hábitos
   const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
     enabled: false,
     morningEnabled: true,
@@ -138,7 +138,6 @@ export default function CreateHabitScreen() {
       return;
     }
 
-    // 🔧 FIX: Criar nova instância de Date com os valores corretos
     const newReminderTime = new Date();
     newReminderTime.setHours(currentTime.getHours());
     newReminderTime.setMinutes(currentTime.getMinutes());
@@ -204,31 +203,39 @@ export default function CreateHabitScreen() {
       return;
     }
 
-    // Criar lembretes
+    // ✅ CORRIGIDO: Criar lembretes usando Notifee
     if (reminders.length > 0) {
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
         try {
-          const notificationId = await notificationService.scheduleDailyReminder(
+          console.log('🔔 Agendando lembrete:', { habitName: habit.name, time: timeString });
+
+          // Usar scheduleWeeklyReminder para todos os dias (compatível com Notifee)
+          const notificationIds = await notificationService.scheduleWeeklyReminder(
             habit.id,
             habit.name,
             timeString,
+            [0, 1, 2, 3, 4, 5, 6], // Todos os dias
             reminder.id
           );
+
+          console.log('✅ Lembrete agendado:', notificationIds);
+
+          // Salvar no banco
           await remindersTable().insert({
             habit_id: habit.id,
             time: timeString,
             days_of_week: [0, 1, 2, 3, 4, 5, 6],
             is_active: true,
-            notification_id: notificationId,
+            notification_ids: notificationIds, // Array de IDs
           });
         } catch (reminderError) {
-          console.warn('Erro ao criar lembrete:', reminderError);
+          console.error('❌ Erro ao criar lembrete:', reminderError);
         }
       }
     }
 
-    // 🆕 Notificações de progresso/urgência para TODOS os hábitos (não só metas numéricas)
+    // Notificações de progresso
     if (progressNotificationConfig.enabled) {
       try {
         await (supabase.from('habit_progress_notifications') as any).insert({
@@ -247,7 +254,6 @@ export default function CreateHabitScreen() {
         console.warn('Erro ao criar notificações de progresso:', progressError);
       }
     } else {
-      // Criar configuração padrão desabilitada
       try {
         await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
       } catch (defaultError) {
@@ -261,7 +267,6 @@ export default function CreateHabitScreen() {
     setTimeout(() => router.back(), 1500);
   };
 
-  // 🔧 FIX: onTimeChange corrigido
   const onTimeChange = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
@@ -356,18 +361,7 @@ export default function CreateHabitScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* PREVIEW */}
-        {name.trim() && (
-          <HabitPreviewCard
-            name={name}
-            color={selectedColor}
-            difficulty={difficulty}
-            hasTarget={hasTarget}
-            targetValue={targetValue}
-            targetUnit={targetUnit}
-            habitType={habitType}
-          />
-        )}
+        {/* ❌ PREVIEW REMOVIDO */}
 
         {/* TIPO DE HÁBITO */}
         <View style={styles.section}>
@@ -640,15 +634,15 @@ export default function CreateHabitScreen() {
           )}
         </View>
 
-        {/* 🆕 NOTIFICAÇÕES DE PROGRESSO/URGÊNCIA - AGORA PARA TODOS OS HÁBITOS */}
+        {/* NOTIFICAÇÕES DE PROGRESSO */}
         <View style={styles.section}>
           <ProgressNotificationSettings
             config={progressNotificationConfig}
             onChange={setProgressNotificationConfig}
             hasPermission={hasPermission}
             onRequestPermission={requestNotificationPermission}
-            hasTarget={hasTarget} // 🆕 Passa info se tem meta numérica
-            habitType={habitType} // 🆕 Passa tipo do hábito
+            hasTarget={hasTarget}
+            habitType={habitType}
           />
         </View>
 

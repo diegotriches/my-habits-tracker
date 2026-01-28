@@ -1,8 +1,8 @@
-// app/debug/notifications.tsx - VERSÃO WRAPPER (Funciona no Expo Go)
+// app/debug/notifications.tsx - VERSÃO COMPLETA COM TODOS OS TESTES
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/services/notificationService'; // ✅ USAR WRAPPER
+import { notificationService } from '@/services/notificationService';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -134,6 +134,162 @@ export default function NotificationTestScreen() {
     }
   };
 
+  // 🆕 TESTE IMEDIATO
+  const testImmediateNotification = async () => {
+    setLoading(true);
+    addResult('🧪 Teste IMEDIATO (3s)...', 'info');
+
+    try {
+      const hasPermission = await notificationService.hasPermission();
+      if (!hasPermission) {
+        addResult('❌ SEM PERMISSÃO!', 'error');
+        addResult('Execute "Verificar Permissões" primeiro', 'info');
+        setLoading(false);
+        return;
+      }
+
+      addResult('✅ Permissão OK', 'success');
+
+      const now = new Date();
+      now.setSeconds(now.getSeconds() + 3);
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const timeString = `${hours}:${minutes}`;
+
+      addResult(`⏰ Agendando para ${timeString}`, 'info');
+
+      const today = now.getDay();
+      const notificationIds = await notificationService.scheduleWeeklyReminder(
+        'test-habit-id',
+        'TESTE IMEDIATO',
+        timeString,
+        [today],
+        'test-reminder-id'
+      );
+
+      addResult(`📬 IDs criados: ${notificationIds.length}`, 'info');
+      
+      if (notificationIds.length === 0) {
+        addResult('❌ FALHOU ao criar notificação!', 'error');
+        addResult('Verifique logs do console', 'info');
+      } else {
+        addResult('✅ Notificação agendada!', 'success');
+        addResult('', 'info');
+        addResult('⏰ AGUARDE 3 SEGUNDOS', 'success');
+        addResult('📱 Expanda quando aparecer', 'info');
+        
+        setTimeout(() => {
+          addResult('⏰ DEVE TER CHEGADO!', 'success');
+          Alert.alert(
+            '📱 Chegou?',
+            'A notificação deve ter aparecido AGORA!\n\nSe NÃO chegou, há um problema.\n\nExpanda para ver os botões.',
+            [{ text: 'OK' }]
+          );
+        }, 4000);
+      }
+
+    } catch (error) {
+      addResult(`❌ ERRO: ${error}`, 'error');
+      console.error('Erro completo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 DEBUG CANAL NOTIFEE
+  const debugNotifeeChannel = async () => {
+    setLoading(true);
+    addResult('🔍 Verificando canal Notifee...', 'info');
+
+    try {
+      const notifee = require('@notifee/react-native').default;
+      const { AndroidImportance } = require('@notifee/react-native');
+
+      const channels = await notifee.getChannels();
+      
+      addResult(`📢 Total de canais: ${channels.length}`, 'info');
+
+      const habitsChannel = channels.find((c: any) => c.id === 'habits');
+
+      if (!habitsChannel) {
+        addResult('❌ Canal "habits" NÃO EXISTE!', 'error');
+        addResult('Isso é um PROBLEMA GRAVE', 'error');
+        addResult('', 'info');
+        addResult('Solução: Recriando canal...', 'info');
+
+        await notifee.createChannel({
+          id: 'habits',
+          name: 'Lembretes de Hábitos',
+          importance: AndroidImportance.HIGH,
+          sound: 'default',
+          vibration: true,
+        });
+
+        addResult('✅ Canal recriado!', 'success');
+      } else {
+        addResult('✅ Canal existe!', 'success');
+        addResult(`   Nome: ${habitsChannel.name}`, 'info');
+        
+        const importanceText = [
+          'NONE (0)',
+          'MIN (1)', 
+          'LOW (2)',
+          'DEFAULT (3)',
+          'HIGH (4)',
+          'MAX (5)'
+        ][habitsChannel.importance] || 'Unknown';
+        
+        addResult(`   Importância: ${importanceText}`, 'info');
+        
+        if (habitsChannel.importance < 3) {
+          addResult('⚠️ IMPORTÂNCIA MUITO BAIXA!', 'error');
+          addResult('Botões podem não aparecer', 'error');
+        } else {
+          addResult('✅ Importância adequada', 'success');
+        }
+
+        addResult(`   Som: ${habitsChannel.sound || 'Nenhum'}`, 'info');
+        addResult(`   Vibração: ${habitsChannel.vibration ? 'Sim' : 'Não'}`, 'info');
+      }
+
+      const settings = await notifee.getNotificationSettings();
+      
+      addResult('', 'info');
+      addResult('📱 Status de Permissões:', 'info');
+      addResult(`   Authorization: ${settings.authorizationStatus}`, 'info');
+      
+      if (settings.authorizationStatus < 1) {
+        addResult('❌ PERMISSÃO NEGADA!', 'error');
+      } else {
+        addResult('✅ Permissão concedida', 'success');
+      }
+
+      const importanceText = habitsChannel 
+        ? [
+            'NONE (0)',
+            'MIN (1)', 
+            'LOW (2)',
+            'DEFAULT (3)',
+            'HIGH (4)',
+            'MAX (5)'
+          ][habitsChannel.importance] || 'Unknown'
+        : 'N/A';
+
+      Alert.alert(
+        '🔍 Debug Completo',
+        habitsChannel 
+          ? `Canal existe\nImportância: ${importanceText}\nPermissão: ${settings.authorizationStatus >= 1 ? 'OK' : 'NEGADA'}`
+          : 'Canal não existe! Foi recriado agora.',
+        [{ text: 'OK' }]
+      );
+
+    } catch (error) {
+      addResult(`❌ Erro: ${error}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const listScheduledNotifications = async () => {
     setLoading(true);
     addResult('📋 Listando notificações...', 'info');
@@ -177,10 +333,8 @@ export default function NotificationTestScreen() {
             addResult('Cancelando todas...', 'info');
 
             try {
-              // Buscar todas as notificações
               const notifications = await notificationService.getAllScheduledNotifications();
               
-              // Cancelar uma por uma
               for (const notif of notifications) {
                 const id = notif.id || notif.notification?.id;
                 if (id) {
@@ -203,12 +357,11 @@ export default function NotificationTestScreen() {
   const clearLog = () => {
     setTestResults([]);
     addResult('Log limpo!', 'success');
-    checkEnvironment(); // Re-adiciona info do ambiente
+    checkEnvironment();
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
@@ -222,7 +375,6 @@ export default function NotificationTestScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Banner de Aviso Expo Go */}
         {isExpoGo && (
           <View style={[styles.warningBanner, { backgroundColor: colors.warningLight }]}>
             <Icon name="alertCircle" size={20} color={colors.warning} />
@@ -238,7 +390,6 @@ export default function NotificationTestScreen() {
           </View>
         )}
 
-        {/* Banner de Info */}
         <View style={[styles.infoBanner, { backgroundColor: colors.primaryLight }]}>
           <Icon name="info" size={20} color={colors.primary} />
           <Text style={[styles.infoText, { color: colors.primary }]}>
@@ -249,7 +400,6 @@ export default function NotificationTestScreen() {
           </Text>
         </View>
 
-        {/* Info do Dispositivo */}
         {deviceInfo && (
           <View style={[styles.deviceCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.deviceText, { color: colors.textPrimary }]}>
@@ -261,7 +411,6 @@ export default function NotificationTestScreen() {
           </View>
         )}
 
-        {/* Testes */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
           🔔 Testes de Notificação
         </Text>
@@ -288,6 +437,31 @@ export default function NotificationTestScreen() {
           highlight
         />
 
+        {/* 🆕 NOVO */}
+        {!isExpoGo && (
+          <TestButton
+            title="🚨 TESTE IMEDIATO (3s)"
+            subtitle="Notificação agora + 3 segundos"
+            icon="zap"
+            onPress={testImmediateNotification}
+            loading={loading}
+            colors={colors}
+            highlight
+          />
+        )}
+
+        {/* 🆕 NOVO */}
+        {!isExpoGo && (
+          <TestButton
+            title="🔍 Debug Canal Notifee"
+            subtitle="Verificar configuração do canal"
+            icon="settings"
+            onPress={debugNotifeeChannel}
+            loading={loading}
+            colors={colors}
+          />
+        )}
+
         <TestButton
           title="3. Listar Agendadas"
           subtitle="Mostra todas as notificações"
@@ -307,7 +481,6 @@ export default function NotificationTestScreen() {
           danger
         />
 
-        {/* Log */}
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
           📊 Log de Testes
         </Text>
@@ -332,7 +505,6 @@ export default function NotificationTestScreen() {
   );
 }
 
-// Componente de Botão
 interface TestButtonProps {
   title: string;
   subtitle: string;

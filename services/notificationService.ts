@@ -17,5 +17,3 @@ export const notificationService = Platform.select({
 }) as any;
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
-
-console.log('📱 Notification Service (Android): NOTIFEE REAL');

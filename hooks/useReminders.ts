@@ -1,7 +1,8 @@
-// hooks/useReminders.ts
+// hooks/useReminders.ts - CORRIGIDO
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
-import { notificationService, NotificationSound } from '@/services/notifications';
+// ✅ CORRIGIDO: Importar do wrapper correto
+import { notificationService, NotificationSound } from '@/services/notificationService';
 
 export interface Reminder {
   id: string;
@@ -74,8 +75,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Criar novo lembrete
-   * ✅ SEM MODAL - Retorna sucesso/erro silenciosamente
+   * Criar novo lembrete com Notifee
    */
   const createReminder = async (
     habitId: string,
@@ -119,16 +119,15 @@ export function useReminders(habitId?: string) {
 
       console.log('✅ Lembrete criado no banco:', createdReminder);
 
-      // Agendar notificações
-      console.log('📅 Agendando notificações...');
+      // ✅ Agendar com Notifee (via wrapper)
+      console.log('📅 Agendando notificações com Notifee...');
       const notificationIds = await notificationService.scheduleWeeklyReminder(
         habitId,
         habitName,
         time,
         daysOfWeek,
         createdReminder.id,
-        sound,
-        true
+        sound
       );
 
       console.log('📬 IDs das notificações agendadas:', notificationIds);
@@ -147,7 +146,6 @@ export function useReminders(habitId?: string) {
 
       setReminders((prev) => [...prev, newReminder]);
 
-      // ✅ SEM MODAL - Apenas log e retorno
       console.log('✅ Lembrete criado com sucesso');
       return newReminder;
     } catch (err) {
@@ -160,7 +158,6 @@ export function useReminders(habitId?: string) {
 
   /**
    * Atualizar lembrete
-   * ✅ SEM MODAL
    */
   const updateReminder = async (
     reminderId: string,
@@ -171,7 +168,6 @@ export function useReminders(habitId?: string) {
       const reminder = reminders.find((r) => r.id === reminderId);
       if (!reminder) throw new Error('Lembrete não encontrado');
 
-      // Verificar o que mudou
       const timeChanged = updates.time !== undefined && updates.time !== reminder.time;
       const daysChanged = updates.days_of_week !== undefined && 
                           JSON.stringify(updates.days_of_week) !== JSON.stringify(reminder.days_of_week);
@@ -181,7 +177,7 @@ export function useReminders(habitId?: string) {
       const needsReschedule = timeChanged || daysChanged || soundChanged;
 
       if (statusChanged && updates.is_active === false) {
-        // Desativando → Só cancelar
+        // Desativando
         if (reminder.notification_ids && reminder.notification_ids.length > 0) {
           await notificationService.cancelNotifications(reminder.notification_ids);
         }
@@ -201,7 +197,7 @@ export function useReminders(habitId?: string) {
       }
 
       if (needsReschedule || (statusChanged && updates.is_active === true)) {
-        // Cancelar notificações antigas
+        // Cancelar antigas
         if (reminder.notification_ids && reminder.notification_ids.length > 0) {
           await notificationService.cancelNotifications(reminder.notification_ids);
         }
@@ -227,8 +223,7 @@ export function useReminders(habitId?: string) {
             updatedReminder.time,
             updatedReminder.days_of_week,
             updatedReminder.id,
-            updatedReminder.sound || 'default',
-            true
+            updatedReminder.sound || 'default'
           );
 
           if (newNotificationIds.length > 0) {
@@ -250,7 +245,6 @@ export function useReminders(habitId?: string) {
         return true;
       }
 
-      // Se chegou aqui, só atualizar no banco
       const { error } = await remindersTable()
         .update(updates)
         .eq('id', reminderId);
@@ -273,19 +267,16 @@ export function useReminders(habitId?: string) {
 
   /**
    * Deletar lembrete
-   * ✅ SEM MODAL
    */
   const deleteReminder = async (reminderId: string): Promise<boolean> => {
     try {
       const reminder = reminders.find((r) => r.id === reminderId);
       if (!reminder) throw new Error('Lembrete não encontrado');
 
-      // Cancelar notificações
       if (reminder.notification_ids && reminder.notification_ids.length > 0) {
         await notificationService.cancelNotifications(reminder.notification_ids);
       }
 
-      // Deletar do banco
       const { error } = await remindersTable().delete().eq('id', reminderId);
 
       if (error) throw error;
@@ -301,7 +292,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Toggle ativar/desativar lembrete
+   * Toggle ativar/desativar
    */
   const toggleReminder = async (
     reminderId: string,
@@ -316,7 +307,7 @@ export function useReminders(habitId?: string) {
   };
 
   /**
-   * Deletar todos os lembretes de um hábito
+   * Deletar todos de um hábito
    */
   const deleteAllHabitReminders = async (habitId: string): Promise<boolean> => {
     try {
