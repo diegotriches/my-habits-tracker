@@ -1,4 +1,4 @@
-// services/notificationsNotifee.ts - VERSÃO COM LAYOUT EXPANDIDO FORÇADO
+// services/notificationsNotifee.ts
 import notifee, {
   AndroidImportance,
   AndroidCategory,
@@ -133,7 +133,23 @@ class NotificationNotifeeService {
     try {
       const settings = await notifee.requestPermission();
       const granted = settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
-      console.log(granted ? '✅ Permissões OK' : '❌ Permissões negadas');
+      
+      if (granted) {
+        console.log('✅ Permissões de notificação concedidas');
+      
+        if (Platform.OS === 'android' && Platform.Version >= 31) {
+          try {
+            console.log('⏰ Verificando permissão de alarmes exatos...');
+            await notifee.openAlarmPermissionSettings();
+            console.log('📱 Abrindo configurações de alarmes. POR FAVOR, ATIVE "Permitir agendamento de alarmes e lembretes"');
+          } catch (alarmError) {
+            console.warn('⚠️ Erro ao abrir configurações de alarmes:', alarmError);
+          }
+        }
+      } else {
+        console.log('❌ Permissões negadas');
+      }
+      
       return granted;
     } catch (error) {
       console.error('❌ Erro permissões:', error);
@@ -167,10 +183,16 @@ class NotificationNotifeeService {
       console.log('🔔 Criando notificações com ACTIONS para:', habitName);
 
       for (const dayOfWeek of daysOfWeek) {
+        const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes);
+        const timestamp = nextOccurrence.getTime();
+        
+        console.log(`📅 Dia ${dayOfWeek}: Timestamp ${timestamp} = ${new Date(timestamp).toLocaleString()}`);
+        
+        // ✅ SEM REPEAT - Notificação única para próxima ocorrência
         const trigger: TimestampTrigger = {
           type: TriggerType.TIMESTAMP,
-          timestamp: this.getNextOccurrence(dayOfWeek, hours, minutes).getTime(),
-          repeatFrequency: RepeatFrequency.WEEKLY,
+          timestamp,
+          // ❌ REMOVIDO: repeatFrequency - Isso estava causando entrega imediata!
         };
 
         // 🔥 CONFIGURAÇÃO CRÍTICA PARA BOTÕES
@@ -260,11 +282,35 @@ class NotificationNotifeeService {
     const currentDay = result.getDay();
     let daysUntil = dayOfWeek - currentDay;
 
-    if (daysUntil < 0 || (daysUntil === 0 && result <= now)) {
+    // ✅ BUFFER CRÍTICO: Mínimo 2 minutos no futuro
+    const minBuffer = 2 * 60 * 1000; // 2 minutos em ms
+    const diffMs = result.getTime() - now.getTime();
+
+    if (daysUntil < 0) {
+      // Dia já passou esta semana
       daysUntil += 7;
+    } else if (daysUntil === 0 && diffMs < minBuffer) {
+      // É hoje mas está muito próximo (< 2 minutos) ou já passou
+      // FORÇA PRÓXIMA SEMANA para evitar entrega imediata
+      daysUntil += 7;
+      console.log('⚠️ Horário muito próximo! Pulando para próxima semana');
     }
 
     result.setDate(result.getDate() + daysUntil);
+    
+    const finalDiffMs = result.getTime() - now.getTime();
+    const finalDiffMinutes = Math.floor(finalDiffMs / 60000);
+    
+    console.log('📅 getNextOccurrence:', {
+      dayOfWeek,
+      currentDay,
+      time: `${hours}:${minutes}`,
+      daysUntil,
+      now: now.toLocaleString(),
+      scheduled: result.toLocaleString(),
+      diffMinutes: `${finalDiffMinutes} minutos (${Math.floor(finalDiffMinutes / 1440)} dias)`,
+    });
+    
     return result;
   }
 
@@ -446,6 +492,7 @@ class NotificationNotifeeService {
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
         timestamp: Date.now() + 3000,
+        // ❌ SEM REPEAT - Por isso funciona!
       };
 
       await notifee.createTriggerNotification(
@@ -485,9 +532,65 @@ class NotificationNotifeeService {
         trigger
       );
 
-      console.log('✅ Teste agendado');
+      console.log('✅ Teste agendado (SEM repeat)');
     } catch (error) {
       console.error('❌ Erro teste:', error);
+    }
+  }
+
+  /**
+   * 🆕 TESTE COM REPEAT WEEKLY (igual aos hábitos)
+   */
+  async testNotificationWithRepeat(): Promise<void> {
+    try {
+      console.log('🧪 TESTE COM REPEAT: 5 segundos...');
+
+      const trigger: TimestampTrigger = {
+        type: TriggerType.TIMESTAMP,
+        timestamp: Date.now() + 5000,
+        repeatFrequency: RepeatFrequency.WEEKLY, // ✅ COM REPEAT
+      };
+
+      await notifee.createTriggerNotification(
+        {
+          title: '🔁 TESTE COM REPEAT',
+          body: 'Expanda para ver os botões',
+          data: {
+            habitId: 'test-repeat',
+            habitName: 'Teste Repeat',
+            type: 'test',
+          },
+          android: {
+            channelId: 'habits',
+            importance: AndroidImportance.HIGH,
+            
+            actions: [
+              {
+                title: '⏰ ADIAR',
+                pressAction: { id: 'snooze' },
+              },
+              {
+                title: '✅ FEITO',
+                pressAction: { id: 'complete' },
+              },
+            ],
+
+            style: {
+              type: AndroidStyle.BIGTEXT,
+              text: 'TESTE COM REPEAT\n\n👇 Expanda para ver os botões',
+            },
+
+            autoCancel: false,
+            showTimestamp: true,
+            pressAction: { id: 'default' },
+          },
+        },
+        trigger
+      );
+
+      console.log('✅ Teste COM REPEAT agendado');
+    } catch (error) {
+      console.error('❌ Erro teste repeat:', error);
     }
   }
 

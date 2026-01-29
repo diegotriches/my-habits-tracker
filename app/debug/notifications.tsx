@@ -149,44 +149,24 @@ export default function NotificationTestScreen() {
       }
 
       addResult('✅ Permissão OK', 'success');
+      addResult('🔔 Usando testNotificationWithActions...', 'info');
 
-      const now = new Date();
-      now.setSeconds(now.getSeconds() + 3);
-      const hours = now.getHours().toString().padStart(2, '0');
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const timeString = `${hours}:${minutes}`;
+      // ✅ USAR O MESMO MÉTODO QUE FUNCIONA!
+      await notificationService.testNotificationWithActions();
 
-      addResult(`⏰ Agendando para ${timeString}`, 'info');
-
-      const today = now.getDay();
-      const notificationIds = await notificationService.scheduleWeeklyReminder(
-        'test-habit-id',
-        'TESTE IMEDIATO',
-        timeString,
-        [today],
-        'test-reminder-id'
-      );
-
-      addResult(`📬 IDs criados: ${notificationIds.length}`, 'info');
+      addResult('✅ Notificação agendada para 3s!', 'success');
+      addResult('', 'info');
+      addResult('⏰ AGUARDE 3 SEGUNDOS', 'success');
+      addResult('📱 Expanda quando aparecer', 'info');
       
-      if (notificationIds.length === 0) {
-        addResult('❌ FALHOU ao criar notificação!', 'error');
-        addResult('Verifique logs do console', 'info');
-      } else {
-        addResult('✅ Notificação agendada!', 'success');
-        addResult('', 'info');
-        addResult('⏰ AGUARDE 3 SEGUNDOS', 'success');
-        addResult('📱 Expanda quando aparecer', 'info');
-        
-        setTimeout(() => {
-          addResult('⏰ DEVE TER CHEGADO!', 'success');
-          Alert.alert(
-            '📱 Chegou?',
-            'A notificação deve ter aparecido AGORA!\n\nSe NÃO chegou, há um problema.\n\nExpanda para ver os botões.',
-            [{ text: 'OK' }]
-          );
-        }, 4000);
-      }
+      setTimeout(() => {
+        addResult('⏰ DEVE TER CHEGADO!', 'success');
+        Alert.alert(
+          '📱 Chegou?',
+          'A notificação deve ter aparecido AGORA!\n\nSe chegou:\n✅ Sistema funcionando!\n\nSe NÃO chegou:\n❌ Problema na configuração',
+          [{ text: 'OK' }]
+        );
+      }, 4000);
 
     } catch (error) {
       addResult(`❌ ERRO: ${error}`, 'error');

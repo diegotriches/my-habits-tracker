@@ -1,7 +1,6 @@
-// hooks/useReminders.ts - CORRIGIDO
+// hooks/useReminders.ts
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
-// ✅ CORRIGIDO: Importar do wrapper correto
 import { notificationService, NotificationSound } from '@/services/notificationService';
 
 export interface Reminder {
