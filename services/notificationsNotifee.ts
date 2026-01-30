@@ -1,4 +1,4 @@
-// services/notificationsNotifee.ts
+// services/notificationsNotifee.ts - VERSÃO FINAL CORRIGIDA
 import notifee, {
   AndroidImportance,
   AndroidCategory,
@@ -13,12 +13,13 @@ import notifee, {
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { startOfDay, endOfDay } from 'date-fns';
+import { exactAlarmService } from './exactAlarmService';
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
 
 /**
  * Service de Notificações usando Notifee
- * VERSÃO COM DEBUGGING INTENSIVO
+ * VERSÃO FINAL - Timestamp isolado por iteração
  */
 class NotificationNotifeeService {
   private navigationCallback: ((habitId: string) => void) | null = null;
@@ -26,12 +27,12 @@ class NotificationNotifeeService {
 
   constructor() {
     console.log('🔔 Constructor Notifee executado');
-    
+
     // Background listener
     notifee.onBackgroundEvent(async ({ type, detail }) => {
       console.log('🔔 [BACKGROUND] Event type:', type);
       console.log('🔔 [BACKGROUND] Detail:', JSON.stringify(detail, null, 2));
-      
+
       if (type !== EventType.PRESS) return;
 
       const { notification, pressAction } = detail;
@@ -133,10 +134,10 @@ class NotificationNotifeeService {
     try {
       const settings = await notifee.requestPermission();
       const granted = settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
-      
+
       if (granted) {
         console.log('✅ Permissões de notificação concedidas');
-      
+
         if (Platform.OS === 'android' && Platform.Version >= 31) {
           try {
             console.log('⏰ Verificando permissão de alarmes exatos...');
@@ -149,7 +150,7 @@ class NotificationNotifeeService {
       } else {
         console.log('❌ Permissões negadas');
       }
-      
+
       return granted;
     } catch (error) {
       console.error('❌ Erro permissões:', error);
@@ -177,96 +178,20 @@ class NotificationNotifeeService {
         return [];
       }
 
-      const [hours, minutes] = time.split(':').map(Number);
-      const notificationIds: string[] = [];
+      // ✅ USAR EXACT ALARM SERVICE
+      console.log('🔔 Usando ExactAlarmService (AlarmManager nativo)');
 
-      console.log('🔔 Criando notificações com ACTIONS para:', habitName);
+      const alarmIds = await exactAlarmService.scheduleWeeklyReminders(
+        habitId,
+        habitName,
+        time,
+        daysOfWeek,
+        reminderId
+      );
 
-      for (const dayOfWeek of daysOfWeek) {
-        const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes);
-        const timestamp = nextOccurrence.getTime();
-        
-        console.log(`📅 Dia ${dayOfWeek}: Timestamp ${timestamp} = ${new Date(timestamp).toLocaleString()}`);
-        
-        // ✅ SEM REPEAT - Notificação única para próxima ocorrência
-        const trigger: TimestampTrigger = {
-          type: TriggerType.TIMESTAMP,
-          timestamp,
-          // ❌ REMOVIDO: repeatFrequency - Isso estava causando entrega imediata!
-        };
+      console.log(`✅ ${alarmIds.length} alarmes agendados via AlarmManager`);
+      return alarmIds;
 
-        // 🔥 CONFIGURAÇÃO CRÍTICA PARA BOTÕES
-        const notificationId = await notifee.createTriggerNotification(
-          {
-            title: '⏰ Hora do seu hábito!',
-            body: `${habitName} - Expanda para ver as opções`,
-            data: {
-              habitId,
-              habitName,
-              reminderId,
-              dayOfWeek: String(dayOfWeek),
-              time,
-              type: 'habit_reminder',
-            },
-            android: {
-              channelId: 'habits',
-              importance: AndroidImportance.HIGH,
-              
-              // 🎯 ACTIONS - BOTÕES
-              actions: [
-                {
-                  title: '⏰ Adiar',
-                  pressAction: { id: 'snooze' },
-                  icon: 'ic_launcher', // Ícone padrão
-                },
-                {
-                  title: '✅ Feito',
-                  pressAction: { id: 'complete' },
-                  icon: 'ic_launcher',
-                },
-              ],
-
-              // Força expansão
-              style: {
-                type: AndroidStyle.BIGTEXT,
-                text: `${habitName}\n\n👇 Toque para expandir e ver os botões de ação`,
-              },
-
-              // Configurações que ajudam
-              smallIcon: 'ic_notification',
-              color: '#3B82F6',
-              showTimestamp: true,
-              timestamp: Date.now(),
-              
-              // Não desaparecer ao clicar
-              autoCancel: false,
-              ongoing: false,
-              
-              // Visibilidade
-              visibility: AndroidVisibility.PUBLIC,
-              
-              // Categoria
-              category: AndroidCategory.REMINDER,
-              
-              // Press action padrão
-              pressAction: {
-                id: 'default',
-                launchActivity: 'default',
-              },
-
-              // Som
-              sound: sound === 'default' ? 'default' : undefined,
-            },
-          },
-          trigger
-        );
-
-        notificationIds.push(notificationId);
-        console.log(`✅ Notificação ${notificationId} criada com 2 actions`);
-      }
-
-      console.log(`✅ Total: ${notificationIds.length} notificações agendadas`);
-      return notificationIds;
     } catch (error) {
       console.error('❌ Erro ao agendar:', error);
       return [];
@@ -282,25 +207,21 @@ class NotificationNotifeeService {
     const currentDay = result.getDay();
     let daysUntil = dayOfWeek - currentDay;
 
-    // ✅ BUFFER CRÍTICO: Mínimo 2 minutos no futuro
-    const minBuffer = 2 * 60 * 1000; // 2 minutos em ms
+    const minBuffer = 2 * 60 * 1000;
     const diffMs = result.getTime() - now.getTime();
 
     if (daysUntil < 0) {
-      // Dia já passou esta semana
       daysUntil += 7;
     } else if (daysUntil === 0 && diffMs < minBuffer) {
-      // É hoje mas está muito próximo (< 2 minutos) ou já passou
-      // FORÇA PRÓXIMA SEMANA para evitar entrega imediata
       daysUntil += 7;
       console.log('⚠️ Horário muito próximo! Pulando para próxima semana');
     }
 
     result.setDate(result.getDate() + daysUntil);
-    
+
     const finalDiffMs = result.getTime() - now.getTime();
     const finalDiffMinutes = Math.floor(finalDiffMs / 60000);
-    
+
     console.log('📅 getNextOccurrence:', {
       dayOfWeek,
       currentDay,
@@ -310,7 +231,7 @@ class NotificationNotifeeService {
       scheduled: result.toLocaleString(),
       diffMinutes: `${finalDiffMinutes} minutos (${Math.floor(finalDiffMinutes / 1440)} dias)`,
     });
-    
+
     return result;
   }
 
@@ -358,7 +279,7 @@ class NotificationNotifeeService {
       for (const id of ids) {
         await notifee.cancelNotification(id);
       }
-      
+
       if (ids.length > 0) {
         console.log(`✅ Canceladas ${ids.length} notificações`);
       }
@@ -492,7 +413,6 @@ class NotificationNotifeeService {
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
         timestamp: Date.now() + 3000,
-        // ❌ SEM REPEAT - Por isso funciona!
       };
 
       await notifee.createTriggerNotification(
@@ -507,7 +427,7 @@ class NotificationNotifeeService {
           android: {
             channelId: 'habits',
             importance: AndroidImportance.HIGH,
-            
+
             actions: [
               {
                 title: '⏰ ADIAR',
@@ -532,65 +452,9 @@ class NotificationNotifeeService {
         trigger
       );
 
-      console.log('✅ Teste agendado (SEM repeat)');
+      console.log('✅ Teste agendado');
     } catch (error) {
       console.error('❌ Erro teste:', error);
-    }
-  }
-
-  /**
-   * 🆕 TESTE COM REPEAT WEEKLY (igual aos hábitos)
-   */
-  async testNotificationWithRepeat(): Promise<void> {
-    try {
-      console.log('🧪 TESTE COM REPEAT: 5 segundos...');
-
-      const trigger: TimestampTrigger = {
-        type: TriggerType.TIMESTAMP,
-        timestamp: Date.now() + 5000,
-        repeatFrequency: RepeatFrequency.WEEKLY, // ✅ COM REPEAT
-      };
-
-      await notifee.createTriggerNotification(
-        {
-          title: '🔁 TESTE COM REPEAT',
-          body: 'Expanda para ver os botões',
-          data: {
-            habitId: 'test-repeat',
-            habitName: 'Teste Repeat',
-            type: 'test',
-          },
-          android: {
-            channelId: 'habits',
-            importance: AndroidImportance.HIGH,
-            
-            actions: [
-              {
-                title: '⏰ ADIAR',
-                pressAction: { id: 'snooze' },
-              },
-              {
-                title: '✅ FEITO',
-                pressAction: { id: 'complete' },
-              },
-            ],
-
-            style: {
-              type: AndroidStyle.BIGTEXT,
-              text: 'TESTE COM REPEAT\n\n👇 Expanda para ver os botões',
-            },
-
-            autoCancel: false,
-            showTimestamp: true,
-            pressAction: { id: 'default' },
-          },
-        },
-        trigger
-      );
-
-      console.log('✅ Teste COM REPEAT agendado');
-    } catch (error) {
-      console.error('❌ Erro teste repeat:', error);
     }
   }
 

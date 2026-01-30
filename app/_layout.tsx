@@ -5,6 +5,12 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { exactAlarmService } from '@/services/exactAlarmService';
+
+if (__DEV__) {
+  console.log('📝 Registrando HeadlessJS task...');
+}
+exactAlarmService.registerHeadlessTask();
 
 function RootLayoutNav() {
   const { isAuthenticated, loading } = useAuth();

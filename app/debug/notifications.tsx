@@ -7,6 +7,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import React, { useState, useEffect } from 'react';
+import { diagnosticService } from '@/services/notificationsDiagnostic';
 import {
   ScrollView,
   StyleSheet,
@@ -33,7 +34,7 @@ export default function NotificationTestScreen() {
   const checkEnvironment = () => {
     const isRunningInExpoGo = Constants.appOwnership === 'expo';
     setIsExpoGo(isRunningInExpoGo);
-    
+
     if (isRunningInExpoGo) {
       addResult('⚠️ Rodando no Expo Go', 'info');
       addResult('📦 Usando Mock de Notificações', 'info');
@@ -55,7 +56,7 @@ export default function NotificationTestScreen() {
       platformApiLevel: Device.platformApiLevel,
     };
     setDeviceInfo(info);
-    
+
     addResult(`📱 ${info.manufacturer} ${info.modelName}`, 'info');
     addResult(`🤖 Android ${info.osVersion} (API ${info.platformApiLevel})`, 'info');
   };
@@ -71,13 +72,13 @@ export default function NotificationTestScreen() {
 
     try {
       const hasPermission = await notificationService.hasPermission();
-      
+
       if (hasPermission) {
         addResult('Permissão já concedida!', 'success');
       } else {
         addResult('Solicitando permissão...', 'info');
         const granted = await notificationService.requestPermissions();
-        
+
         if (granted) {
           addResult('Permissão concedida!', 'success');
         } else {
@@ -93,7 +94,7 @@ export default function NotificationTestScreen() {
 
   const testNotificationWithButtons = async () => {
     setLoading(true);
-    
+
     if (isExpoGo) {
       addResult('⚠️ Notificação SEM botões (Expo Go)', 'info');
       addResult('📦 Mock enviará notificação básica', 'info');
@@ -103,11 +104,11 @@ export default function NotificationTestScreen() {
 
     try {
       await notificationService.testNotificationWithActions();
-      
+
       addResult('✅ Notificação agendada para 3s!', 'success');
       addResult('', 'info');
       addResult('📍 AGUARDE 3 SEGUNDOS', 'info');
-      
+
       if (!isExpoGo) {
         addResult('👇 Quando aparecer, EXPANDA a notificação', 'info');
         addResult('✨ Os botões [ADIAR] e [COMPLETAR] vão aparecer!', 'success');
@@ -115,12 +116,12 @@ export default function NotificationTestScreen() {
         addResult('ℹ️ Notificação básica (sem botões no Expo Go)', 'info');
         addResult('🏗️ Para botões: eas build --profile preview', 'info');
       }
-      
+
       setTimeout(() => {
         addResult('⏰ DEVE TER CHEGADO AGORA!', 'success');
         Alert.alert(
           '📱 Verifique a Notificação',
-          isExpoGo 
+          isExpoGo
             ? 'A notificação foi enviada!\n\n⚠️ No Expo Go os botões não aparecem.\n\nPara testar botões, faça uma build standalone.'
             : 'A notificação acabou de ser enviada!\n\nExpanda para ver os BOTÕES:\n• [⏰ ADIAR]\n• [✅ COMPLETAR]',
           [{ text: 'OK' }]
@@ -158,7 +159,7 @@ export default function NotificationTestScreen() {
       addResult('', 'info');
       addResult('⏰ AGUARDE 3 SEGUNDOS', 'success');
       addResult('📱 Expanda quando aparecer', 'info');
-      
+
       setTimeout(() => {
         addResult('⏰ DEVE TER CHEGADO!', 'success');
         Alert.alert(
@@ -186,7 +187,7 @@ export default function NotificationTestScreen() {
       const { AndroidImportance } = require('@notifee/react-native');
 
       const channels = await notifee.getChannels();
-      
+
       addResult(`📢 Total de canais: ${channels.length}`, 'info');
 
       const habitsChannel = channels.find((c: any) => c.id === 'habits');
@@ -209,18 +210,18 @@ export default function NotificationTestScreen() {
       } else {
         addResult('✅ Canal existe!', 'success');
         addResult(`   Nome: ${habitsChannel.name}`, 'info');
-        
+
         const importanceText = [
           'NONE (0)',
-          'MIN (1)', 
+          'MIN (1)',
           'LOW (2)',
           'DEFAULT (3)',
           'HIGH (4)',
           'MAX (5)'
         ][habitsChannel.importance] || 'Unknown';
-        
+
         addResult(`   Importância: ${importanceText}`, 'info');
-        
+
         if (habitsChannel.importance < 3) {
           addResult('⚠️ IMPORTÂNCIA MUITO BAIXA!', 'error');
           addResult('Botões podem não aparecer', 'error');
@@ -233,31 +234,31 @@ export default function NotificationTestScreen() {
       }
 
       const settings = await notifee.getNotificationSettings();
-      
+
       addResult('', 'info');
       addResult('📱 Status de Permissões:', 'info');
       addResult(`   Authorization: ${settings.authorizationStatus}`, 'info');
-      
+
       if (settings.authorizationStatus < 1) {
         addResult('❌ PERMISSÃO NEGADA!', 'error');
       } else {
         addResult('✅ Permissão concedida', 'success');
       }
 
-      const importanceText = habitsChannel 
+      const importanceText = habitsChannel
         ? [
-            'NONE (0)',
-            'MIN (1)', 
-            'LOW (2)',
-            'DEFAULT (3)',
-            'HIGH (4)',
-            'MAX (5)'
-          ][habitsChannel.importance] || 'Unknown'
+          'NONE (0)',
+          'MIN (1)',
+          'LOW (2)',
+          'DEFAULT (3)',
+          'HIGH (4)',
+          'MAX (5)'
+        ][habitsChannel.importance] || 'Unknown'
         : 'N/A';
 
       Alert.alert(
         '🔍 Debug Completo',
-        habitsChannel 
+        habitsChannel
           ? `Canal existe\nImportância: ${importanceText}\nPermissão: ${settings.authorizationStatus >= 1 ? 'OK' : 'NEGADA'}`
           : 'Canal não existe! Foi recriado agora.',
         [{ text: 'OK' }]
@@ -276,16 +277,16 @@ export default function NotificationTestScreen() {
 
     try {
       const notifications = await notificationService.getAllScheduledNotifications();
-      
+
       if (notifications.length === 0) {
         addResult('Nenhuma notificação agendada', 'info');
       } else {
         addResult(`${notifications.length} notificações agendadas:`, 'success');
-        
+
         notifications.forEach((item: any, index: number) => {
           const title = item.notification?.title || item.content?.title || 'Sem título';
           const habitName = item.notification?.data?.habitName || item.content?.data?.habitName;
-          
+
           addResult(`${index + 1}. ${title}`, 'info');
           if (habitName) {
             addResult(`   Hábito: ${habitName}`, 'info');
@@ -314,14 +315,14 @@ export default function NotificationTestScreen() {
 
             try {
               const notifications = await notificationService.getAllScheduledNotifications();
-              
+
               for (const notif of notifications) {
                 const id = notif.id || notif.notification?.id;
                 if (id) {
                   await notificationService.cancelNotification(id);
                 }
               }
-              
+
               addResult(`${notifications.length} notificações canceladas!`, 'success');
             } catch (error) {
               addResult(`Erro: ${error}`, 'error');
@@ -373,7 +374,7 @@ export default function NotificationTestScreen() {
         <View style={[styles.infoBanner, { backgroundColor: colors.primaryLight }]}>
           <Icon name="info" size={20} color={colors.primary} />
           <Text style={[styles.infoText, { color: colors.primary }]}>
-            {isExpoGo 
+            {isExpoGo
               ? 'Usando Mock - Notificações básicas funcionam'
               : 'Usando Notifee - Botões funcionam 100%!'
             }
@@ -406,7 +407,7 @@ export default function NotificationTestScreen() {
 
         <TestButton
           title={isExpoGo ? "2. Teste Básico 📦" : "2. Teste de BOTÕES 🎯"}
-          subtitle={isExpoGo 
+          subtitle={isExpoGo
             ? "Notificação básica (sem botões)"
             : "Notificação com [ADIAR] e [COMPLETAR]"
           }
@@ -461,6 +462,16 @@ export default function NotificationTestScreen() {
           danger
         />
 
+        <TestButton
+          title="🧪 DIAGNÓSTICO COMPLETO"
+          subtitle="Executar todos os testes"
+          icon="activity"
+          onPress={() => diagnosticService.runAllTests()}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
+
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
           📊 Log de Testes
         </Text>
@@ -501,7 +512,7 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, h
     <TouchableOpacity
       style={[
         styles.testButton,
-        { 
+        {
           backgroundColor: highlight ? colors.primaryLight : colors.surface,
           borderColor: danger ? colors.danger : highlight ? colors.primary : colors.border,
         },
@@ -515,16 +526,16 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, h
         styles.iconContainer,
         { backgroundColor: danger ? colors.dangerLight : highlight ? colors.primary : colors.primaryLight }
       ]}>
-        <Icon 
-          name={icon} 
-          size={24} 
-          color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary} 
+        <Icon
+          name={icon}
+          size={24}
+          color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary}
         />
       </View>
 
       <View style={styles.buttonContent}>
         <Text style={[
-          styles.buttonTitle, 
+          styles.buttonTitle,
           { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary }
         ]}>
           {title}

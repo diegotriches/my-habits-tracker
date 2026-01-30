@@ -1,4 +1,4 @@
-// services/notifications.ts - VERSÃO ULTRA DEBUG
+// services/notifications.ts
 
 import * as Notifications from 'expo-notifications';
 import { Platform, Alert } from 'react-native';
