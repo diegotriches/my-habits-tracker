@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Target,
   TrendingUp,
+  TrendingDown,
   Award,
   Zap,
   Clock,
@@ -21,7 +22,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
-  ArrowLeft, // 🆕 ADICIONADO
+  ArrowLeft,
   X,
   XCircle,
   Check,
@@ -57,6 +58,7 @@ import {
   Folder,
   Maximize2,
   Minimize2,
+  Lightbulb,
   RefreshCw,
   LogOut,
   LogIn,
@@ -126,6 +128,7 @@ export const Icons = {
   
   // Trends & Analytics
   trendingUp: TrendingUp,
+  trendingDown: TrendingDown,
   activity: Activity,
   
   // Actions
@@ -144,7 +147,7 @@ export const Icons = {
   chevronLeft: ChevronLeft,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
-  arrowLeft: ArrowLeft, // 🆕 ADICIONADO
+  arrowLeft: ArrowLeft,
   
   // UI
   close: X,
@@ -152,6 +155,7 @@ export const Icons = {
   alert: AlertCircle,
   alertCircle: AlertCircle,
   alertTriangle: AlertTriangle,
+  lightbulb: Lightbulb,
   
   // Theme
   moon: Moon,

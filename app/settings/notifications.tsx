@@ -55,30 +55,6 @@ export default function NotificationSettingsScreen() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [tempStartTime, setTempStartTime] = useState(new Date());
   const [tempEndTime, setTempEndTime] = useState(new Date());
-  const [debugLoading, setDebugLoading] = useState(false);
-
-  const handleTestNotification = async () => {
-    await notificationService.scheduleTestNotification('Teste de Notificação');
-    Alert.alert('Teste Enviado', 'Uma notificação será enviada em 5 segundos!');
-  };
-
-  const handleDebugNotifications = async () => {
-    setDebugLoading(true);
-    const scheduled = await notificationService.getAllScheduledNotifications();
-    setDebugLoading(false);
-
-    if (scheduled.length === 0) {
-      Alert.alert('Debug', 'Nenhuma notificação agendada no momento.');
-      return;
-    }
-
-    const message = `Total: ${scheduled.length} notificações agendadas\n\n` +
-      scheduled.slice(0, 5).map((n, i) => 
-        `${i + 1}. ${n.content.title}\n   ID: ${n.identifier.slice(0, 8)}...`
-      ).join('\n');
-
-    Alert.alert('Notificações Agendadas', message);
-  };
 
   const handleClearAllNotifications = () => {
     Alert.alert(
@@ -452,48 +428,6 @@ export default function NotificationSettingsScreen() {
           Todos os Lembretes
         </Text>
         <AllRemindersView />
-
-        {/* Testes e Debug */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
-          Testes e Debug
-        </Text>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { 
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border 
-          }]}
-          onPress={handleTestNotification}
-          disabled={!settings.enabled}
-        >
-          <Icon name="activity" size={18} color={settings.enabled ? colors.textPrimary : colors.textDisabled} />
-          <Text style={[
-            styles.actionButtonText,
-            { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-          ]}>
-            Testar Notificação
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { 
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border 
-          }]}
-          onPress={handleDebugNotifications}
-          disabled={debugLoading}
-        >
-          {debugLoading ? (
-            <ActivityIndicator size="small" color={colors.textSecondary} />
-          ) : (
-            <>
-              <Icon name="file" size={18} color={colors.textPrimary} />
-              <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-                Ver Notificações Agendadas
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.actionButton, { 

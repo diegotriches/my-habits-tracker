@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { useAdvancedStats } from '@/hooks/useAdvancedStats';
 import { useStats } from '@/hooks/useStats';
+import { usePenalties } from '@/hooks/usePenalties';
 import { hapticFeedback } from '@/utils/haptics';
 import { router } from 'expo-router';
 import React from 'react';
@@ -19,6 +20,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +37,9 @@ export default function StatsScreen() {
     loading, 
     refresh 
   } = useStats();
+
+  // Hook de penalidades
+  const { stats: penaltyStats } = usePenalties();
 
   // Hook de estatísticas avançadas
   const {
@@ -146,6 +151,36 @@ export default function StatsScreen() {
       {/* Card de Nível */}
       <LevelProgressCard />
 
+      {/* 🆕 BOTÃO DE PENALIDADES */}
+      {penaltyStats.totalPenalties > 0 && (
+        <TouchableOpacity
+          style={[styles.penaltiesButton, { 
+            backgroundColor: colors.surface,
+            borderColor: colors.danger + '40',
+          }]}
+          onPress={() => {
+            hapticFeedback.light();
+            router.push('/stats/penalties' as any);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.penaltiesLeft}>
+            <View style={[styles.penaltyIconCircle, { backgroundColor: colors.dangerLight }]}>
+              <Icon name="alertTriangle" size={24} color={colors.danger} />
+            </View>
+            <View style={styles.penaltiesInfo}>
+              <Text style={[styles.penaltiesTitle, { color: colors.textPrimary }]}>
+                Penalidades
+              </Text>
+              <Text style={[styles.penaltiesSubtitle, { color: colors.textSecondary }]}>
+                {penaltyStats.totalPenalties} {penaltyStats.totalPenalties === 1 ? 'penalidade' : 'penalidades'} • {penaltyStats.totalPointsLost} pontos perdidos
+              </Text>
+            </View>
+          </View>
+          <Icon name="chevronRight" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      )}
+
       {/* 🎯 NOVO: Insights Personalizados */}
       {insights.length > 0 && <InsightsCard insights={insights} />}
 
@@ -207,6 +242,45 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
+  },
+  // 🆕 Estilos do botão de penalidades
+  penaltiesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  penaltiesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  penaltyIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  penaltiesInfo: {
+    flex: 1,
+  },
+  penaltiesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  penaltiesSubtitle: {
+    fontSize: 13,
   },
   motivationalCard: {
     borderRadius: 16,

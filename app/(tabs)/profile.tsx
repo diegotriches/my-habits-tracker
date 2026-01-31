@@ -1,5 +1,4 @@
 // app/(tabs)/profile.tsx
-import { PenaltyHistory } from '@/components/penalties/PenaltyHistory';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import StatsCard from '@/components/profile/StatsCard';
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
@@ -7,7 +6,6 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/hooks/useAuth';
-import { usePenalties } from '@/hooks/usePenalties';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { router } from 'expo-router';
@@ -28,7 +26,6 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
   const { stats, loading: statsLoading, refetch: refetchStats } = useProfileStats();
-  const { penaltyHistory, stats: penaltyStats } = usePenalties();
   const { colors, themeMode, setThemeMode } = useTheme();
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -131,39 +128,6 @@ export default function ProfileScreen() {
               },
             ]}
           />
-        </View>
-
-        {/* Seção de Penalidades */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
-            Penalidades
-          </Text>
-
-          {/* Card de Estatísticas de Penalidades */}
-          <View style={[styles.penaltyStatsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.penaltyStatItem}>
-              <Icon name="alert" size={24} color={colors.warning} />
-              <Text style={[styles.penaltyStatValue, { color: colors.textPrimary }]}>
-                {penaltyStats.totalPenalties}
-              </Text>
-              <Text style={[styles.penaltyStatLabel, { color: colors.textSecondary }]}>Total</Text>
-            </View>
-            <View style={[styles.penaltyDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.penaltyStatItem}>
-              <Icon name="alert" size={24} color={colors.danger} />
-              <Text style={[styles.penaltyStatValue, { color: colors.danger }]}>
-                {penaltyStats.totalPointsLost}
-              </Text>
-              <Text style={[styles.penaltyStatLabel, { color: colors.textSecondary }]}>
-                Pontos Perdidos
-              </Text>
-            </View>
-          </View>
-
-          {/* Histórico */}
-          <View style={styles.historyContainer}>
-            <PenaltyHistory penalties={penaltyHistory} />
-          </View>
         </View>
 
         {/* Informações da Conta */}
@@ -361,39 +325,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  penaltyStatsCard: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  penaltyStatItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  penaltyStatValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  penaltyStatLabel: {
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  penaltyDivider: {
-    width: 1,
-    marginHorizontal: 20,
-  },
-  historyContainer: {
-    marginHorizontal: 20,
-  },
   infoCard: {
     borderRadius: 12,
     marginHorizontal: 20,
@@ -473,7 +404,6 @@ const styles = StyleSheet.create({
   settingText: {
     fontSize: 16,
   },
-  // 🆕 Estilos para o botão de debug
   devBadge: {
     fontSize: 11,
     marginTop: 2,

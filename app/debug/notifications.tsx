@@ -92,49 +92,6 @@ export default function NotificationTestScreen() {
     }
   };
 
-  const testNotificationWithButtons = async () => {
-    setLoading(true);
-
-    if (isExpoGo) {
-      addResult('⚠️ Notificação SEM botões (Expo Go)', 'info');
-      addResult('📦 Mock enviará notificação básica', 'info');
-    } else {
-      addResult('🧪 Agendando notificação com botões...', 'info');
-    }
-
-    try {
-      await notificationService.testNotificationWithActions();
-
-      addResult('✅ Notificação agendada para 3s!', 'success');
-      addResult('', 'info');
-      addResult('📍 AGUARDE 3 SEGUNDOS', 'info');
-
-      if (!isExpoGo) {
-        addResult('👇 Quando aparecer, EXPANDA a notificação', 'info');
-        addResult('✨ Os botões [ADIAR] e [COMPLETAR] vão aparecer!', 'success');
-      } else {
-        addResult('ℹ️ Notificação básica (sem botões no Expo Go)', 'info');
-        addResult('🏗️ Para botões: eas build --profile preview', 'info');
-      }
-
-      setTimeout(() => {
-        addResult('⏰ DEVE TER CHEGADO AGORA!', 'success');
-        Alert.alert(
-          '📱 Verifique a Notificação',
-          isExpoGo
-            ? 'A notificação foi enviada!\n\n⚠️ No Expo Go os botões não aparecem.\n\nPara testar botões, faça uma build standalone.'
-            : 'A notificação acabou de ser enviada!\n\nExpanda para ver os BOTÕES:\n• [⏰ ADIAR]\n• [✅ COMPLETAR]',
-          [{ text: 'OK' }]
-        );
-      }, 3500);
-
-    } catch (error) {
-      addResult(`Erro: ${error}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 🆕 TESTE IMEDIATO
   const testImmediateNotification = async () => {
     setLoading(true);
@@ -405,23 +362,10 @@ export default function NotificationTestScreen() {
           colors={colors}
         />
 
-        <TestButton
-          title={isExpoGo ? "2. Teste Básico 📦" : "2. Teste de BOTÕES 🎯"}
-          subtitle={isExpoGo
-            ? "Notificação básica (sem botões)"
-            : "Notificação com [ADIAR] e [COMPLETAR]"
-          }
-          icon="target"
-          onPress={testNotificationWithButtons}
-          loading={loading}
-          colors={colors}
-          highlight
-        />
-
         {/* 🆕 NOVO */}
         {!isExpoGo && (
           <TestButton
-            title="🚨 TESTE IMEDIATO (3s)"
+            title="2. Teste Imediato (3s)"
             subtitle="Notificação agora + 3 segundos"
             icon="zap"
             onPress={testImmediateNotification}
@@ -434,7 +378,7 @@ export default function NotificationTestScreen() {
         {/* 🆕 NOVO */}
         {!isExpoGo && (
           <TestButton
-            title="🔍 Debug Canal Notifee"
+            title="3. Debug Canal Notifee"
             subtitle="Verificar configuração do canal"
             icon="settings"
             onPress={debugNotifeeChannel}
@@ -444,7 +388,7 @@ export default function NotificationTestScreen() {
         )}
 
         <TestButton
-          title="3. Listar Agendadas"
+          title="4. Listar Agendadas"
           subtitle="Mostra todas as notificações"
           icon="list"
           onPress={listScheduledNotifications}
@@ -453,7 +397,7 @@ export default function NotificationTestScreen() {
         />
 
         <TestButton
-          title="4. Cancelar Todas"
+          title="5. Cancelar Todas"
           subtitle="Remove todos os lembretes"
           icon="alertCircle"
           onPress={cancelAllNotifications}
