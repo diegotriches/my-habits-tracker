@@ -11,12 +11,7 @@ interface HabitData {
   frequency_days: number[] | null;
   has_target: boolean;
   target_value: number | null;
-}
-
-interface StreakData {
-  habit_id: string;
-  current_streak: number;
-  last_completion_date: string | null;
+  created_at: string;
 }
 
 interface PenaltyResult {
@@ -45,7 +40,8 @@ function getExpectedDaysPerWeek(habit: HabitData): number {
 }
 
 /**
- * Verifica se o hábito atingiu a meta semanal
+ * ✅ CORRIGIDO: Verifica se o hábito atingiu a meta semanal
+ * Considera apenas dias APÓS a criação do hábito
  */
 async function checkWeeklyGoal(habitId: string): Promise<{
   completed: number;
@@ -56,22 +52,64 @@ async function checkWeeklyGoal(habitId: string): Promise<{
   const weekStart = startOfWeek(now, { weekStartsOn: 0 }); // Domingo
   const weekEnd = endOfWeek(now, { weekStartsOn: 0 }); // Sábado
 
-  // Buscar conclusões desta semana
-  const { data: completions } = await completionsTable()
-    .select('id')
-    .eq('habit_id', habitId)
-    .gte('completed_at', weekStart.toISOString())
-    .lte('completed_at', weekEnd.toISOString());
-
-  // Buscar dados do hábito
+  // 🆕 Buscar data de criação do hábito
   const { data: habit } = await habitsTable()
-    .select('frequency_type, frequency_days')
+    .select('frequency_type, frequency_days, created_at')
     .eq('id', habitId)
     .single();
 
+  if (!habit) {
+    return { completed: 0, expected: 0, metGoal: false };
+  }
+
+  const habitCreatedAt = new Date(habit.created_at);
+  
+  // 🆕 Determinar data de início real (o mais recente entre início da semana e criação do hábito)
+  const effectiveStartDate = habitCreatedAt > weekStart ? habitCreatedAt : weekStart;
+
+  // Buscar conclusões desta semana (apenas APÓS a criação do hábito)
+  const { data: completions } = await completionsTable()
+    .select('id, completed_at')
+    .eq('habit_id', habitId)
+    .gte('completed_at', effectiveStartDate.toISOString())
+    .lte('completed_at', weekEnd.toISOString());
+
   const completed = completions?.length || 0;
-  const expected = habit ? getExpectedDaysPerWeek(habit) : 7;
+
+  // 🆕 Calcular dias esperados apenas para dias válidos (após criação)
+  let expected = 0;
+  
+  if (habit.frequency_type === 'daily') {
+    // Para hábitos diários, conta quantos dias válidos existem
+    const effectiveStart = startOfDay(effectiveStartDate);
+    const end = startOfDay(weekEnd);
+    const totalDaysInWeek = Math.ceil((end.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    expected = Math.min(totalDaysInWeek, 7);
+  } else if (habit.frequency_type === 'weekly' && habit.frequency_days) {
+    // Para hábitos semanais, conta apenas dias da semana que são >= data de criação
+    const validDays = habit.frequency_days.filter((dayOfWeek: number) => {
+      // Encontrar a data desse dia da semana nesta semana
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(weekStart.getDate() + dayOfWeek);
+      
+      // Só conta se for após ou no mesmo dia da criação do hábito
+      return startOfDay(dayDate) >= startOfDay(habitCreatedAt);
+    });
+    expected = validDays.length;
+  } else {
+    expected = getExpectedDaysPerWeek(habit);
+  }
+
   const metGoal = completed >= expected;
+
+  console.log(`📊 checkWeeklyGoal para hábito ${habitId}:`, {
+    habitCreatedAt: habitCreatedAt.toLocaleDateString(),
+    weekStart: weekStart.toLocaleDateString(),
+    effectiveStartDate: effectiveStartDate.toLocaleDateString(),
+    completed,
+    expected,
+    metGoal,
+  });
 
   return { completed, expected, metGoal };
 }
@@ -184,6 +222,20 @@ export const penaltyService = {
 
       // 🆕 LÓGICA PARA HÁBITOS DIÁRIOS
       if (habit.frequency_type === 'daily') {
+        // ✅ CORRIGIDO: Verificar se o hábito já existia ontem
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const habitCreatedAt = new Date(habit.created_at);
+
+        if (startOfDay(yesterday) < startOfDay(habitCreatedAt)) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Hábito criado recentemente, sem penalidades ainda',
+          };
+        }
+
         // Se completou nas últimas 24h, está ok
         if (hoursSinceLastCompletion < 24) {
           return {
@@ -263,8 +315,21 @@ export const penaltyService = {
           };
         }
 
-        // Verificar se já aplicou penalidade esta semana
+        // ✅ CORRIGIDO: Verificar se o hábito foi criado esta semana
         const weekStart = startOfWeek(now, { weekStartsOn: 0 });
+        const habitCreatedAt = new Date(habit.created_at);
+
+        // Se o hábito foi criado NESTA semana, não aplica penalidade ainda
+        if (habitCreatedAt >= weekStart) {
+          return {
+            penaltyApplied: false,
+            pointsLost: 0,
+            reason: null,
+            message: 'Hábito criado esta semana, sem penalidades ainda',
+          };
+        }
+
+        // Verificar se já aplicou penalidade esta semana
         const { data: existingPenalty } = await penaltiesTable()
           .select('id')
           .eq('habit_id', habitId)
@@ -280,7 +345,7 @@ export const penaltyService = {
           };
         }
 
-        // Verificar meta semanal
+        // Verificar meta semanal (agora com lógica corrigida)
         const { completed, expected, metGoal } = await checkWeeklyGoal(habitId);
 
         if (metGoal) {
@@ -316,6 +381,7 @@ export const penaltyService = {
         message: 'Hábitos customizados não têm penalidades',
       };
     } catch (error) {
+      console.error('Erro ao verificar penalidades:', error);
       return {
         penaltyApplied: false,
         pointsLost: 0,
@@ -359,6 +425,7 @@ export const penaltyService = {
         .update({ current_streak: 0 })
         .eq('habit_id', habitId);
     } catch (error) {
+      console.error('Erro ao aplicar penalidade:', error);
       throw error;
     }
   },
@@ -384,6 +451,7 @@ export const penaltyService = {
 
       return results;
     } catch (error) {
+      console.error('Erro ao verificar todos os hábitos:', error);
       return [];
     }
   },
@@ -407,6 +475,7 @@ export const penaltyService = {
 
       return { data, error: null };
     } catch (error) {
+      console.error('Erro ao buscar histórico de penalidades:', error);
       return { data: null, error };
     }
   },
@@ -442,6 +511,7 @@ export const penaltyService = {
         byReason,
       };
     } catch (error) {
+      console.error('Erro ao buscar estatísticas de penalidades:', error);
       return {
         totalPenalties: 0,
         totalPointsLost: 0,
