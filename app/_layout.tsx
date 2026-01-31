@@ -5,18 +5,16 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
-
-// ✅ IMPORTS DOS SERVIÇOS DE NOTIFICAÇÃO
 import { exactAlarmService } from '@/services/exactAlarmService';
 import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
 
-// ✅ REGISTRAR HeadlessJS Task (só executa uma vez)
+// REGISTRAR HeadlessJS Task (só executa uma vez)
 if (__DEV__) {
   console.log('📝 Registrando HeadlessJS task...');
 }
 exactAlarmService.registerHeadlessTask();
 
-// ✅ CONFIGURAR Event Handlers do Notifee (só executa uma vez)
+// CONFIGURAR Event Handlers do Notifee (só executa uma vez)
 if (__DEV__) {
   console.log('🔔 Configurando event handlers do Notifee...');
 }

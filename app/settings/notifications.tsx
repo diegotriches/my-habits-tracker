@@ -1,5 +1,4 @@
 // app/settings/notifications.tsx
-import { AllRemindersView } from '@/components/notifications/AllRemindersView';
 import { Icon } from '@/components/ui/Icon';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { notificationService, NotificationSound } from '@/services/notifications';
@@ -198,9 +197,9 @@ export default function NotificationSettingsScreen() {
 
         {/* Som Padrão */}
         <TouchableOpacity
-          style={[styles.settingItem, { 
+          style={[styles.settingItem, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}
           onPress={() => setShowSoundPicker(!showSoundPicker)}
           disabled={!settings.enabled}
@@ -226,9 +225,9 @@ export default function NotificationSettingsScreen() {
         </TouchableOpacity>
 
         {showSoundPicker && settings.enabled && (
-          <View style={[styles.pickerContainer, { 
+          <View style={[styles.pickerContainer, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}>
             {SOUND_OPTIONS.map((option) => (
               <TouchableOpacity
@@ -252,9 +251,9 @@ export default function NotificationSettingsScreen() {
         )}
 
         {/* Vibração */}
-        <View style={[styles.settingItem, { 
+        <View style={[styles.settingItem, {
           backgroundColor: colors.background,
-          borderBottomColor: colors.border 
+          borderBottomColor: colors.border
         }]}>
           <View style={styles.settingLeft}>
             <Icon name="vibrate" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
@@ -275,9 +274,9 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {/* Notificações Inteligentes */}
-        <View style={[styles.settingItem, { 
+        <View style={[styles.settingItem, {
           backgroundColor: colors.background,
-          borderBottomColor: colors.border 
+          borderBottomColor: colors.border
         }]}>
           <View style={styles.settingLeft}>
             <Icon name="brain" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
@@ -307,9 +306,9 @@ export default function NotificationSettingsScreen() {
           Horário de Silêncio
         </Text>
 
-        <View style={[styles.settingItem, { 
+        <View style={[styles.settingItem, {
           backgroundColor: colors.background,
-          borderBottomColor: colors.border 
+          borderBottomColor: colors.border
         }]}>
           <View style={styles.settingLeft}>
             <Icon name="moon" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
@@ -330,16 +329,16 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {settings.quiet_hours_enabled && settings.enabled && (
-          <View style={[styles.quietHoursContainer, { 
+          <View style={[styles.quietHoursContainer, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}>
             <View style={styles.quietHoursRow}>
               <Text style={[styles.quietHoursLabel, { color: colors.textSecondary }]}>De:</Text>
               <TouchableOpacity
-                style={[styles.timeButton, { 
+                style={[styles.timeButton, {
                   backgroundColor: colors.surface,
-                  borderColor: colors.border 
+                  borderColor: colors.border
                 }]}
                 onPress={() => setShowStartTimePicker(true)}
               >
@@ -353,9 +352,9 @@ export default function NotificationSettingsScreen() {
             <View style={styles.quietHoursRow}>
               <Text style={[styles.quietHoursLabel, { color: colors.textSecondary }]}>Até:</Text>
               <TouchableOpacity
-                style={[styles.timeButton, { 
+                style={[styles.timeButton, {
                   backgroundColor: colors.surface,
-                  borderColor: colors.border 
+                  borderColor: colors.border
                 }]}
                 onPress={() => setShowEndTimePicker(true)}
               >
@@ -374,9 +373,9 @@ export default function NotificationSettingsScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[styles.settingItem, { 
+          style={[styles.settingItem, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}
           onPress={() => setShowSnoozePicker(!showSnoozePicker)}
           disabled={!settings.enabled}
@@ -399,9 +398,9 @@ export default function NotificationSettingsScreen() {
         </TouchableOpacity>
 
         {showSnoozePicker && settings.enabled && (
-          <View style={[styles.pickerContainer, { 
+          <View style={[styles.pickerContainer, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}>
             {SNOOZE_OPTIONS.map((option) => (
               <TouchableOpacity
@@ -423,16 +422,15 @@ export default function NotificationSettingsScreen() {
           </View>
         )}
 
-        {/* Todos os Lembretes */}
+        {/* Snooze */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
-          Todos os Lembretes
+          Configurações
         </Text>
-        <AllRemindersView />
 
         <TouchableOpacity
-          style={[styles.actionButton, { 
+          style={[styles.actionButton, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}
           onPress={handleClearAllNotifications}
         >
@@ -443,9 +441,9 @@ export default function NotificationSettingsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, { 
+          style={[styles.actionButton, {
             backgroundColor: colors.background,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.border
           }]}
           onPress={handleResetSettings}
         >

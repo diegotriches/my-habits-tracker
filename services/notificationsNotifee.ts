@@ -1,14 +1,11 @@
 // services/notificationsNotifee.ts - VERSÃO FINAL CORRIGIDA
 import notifee, {
   AndroidImportance,
-  AndroidCategory,
   TriggerType,
-  RepeatFrequency,
   TimestampTrigger,
   EventType,
   AuthorizationStatus,
   AndroidStyle,
-  AndroidVisibility,
 } from '@notifee/react-native';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
@@ -141,8 +138,6 @@ class NotificationNotifeeService {
         if (Platform.OS === 'android' && Platform.Version >= 31) {
           try {
             console.log('⏰ Verificando permissão de alarmes exatos...');
-            await notifee.openAlarmPermissionSettings();
-            console.log('📱 Abrindo configurações de alarmes. POR FAVOR, ATIVE "Permitir agendamento de alarmes e lembretes"');
           } catch (alarmError) {
             console.warn('⚠️ Erro ao abrir configurações de alarmes:', alarmError);
           }
