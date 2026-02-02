@@ -1,11 +1,9 @@
 // app/(tabs)/index.tsx
 import HabitCard from '@/components/habits/HabitCard';
-import { HabitCompactRow } from '@/components/habits/HabitCompactRow';
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { HabitMonthlyCalendar } from '@/components/habits/HabitMonthlyCalendar';
 import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
-import { DayViewToggle, DayViewMode } from '@/components/habits/DayViewToggle';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
 import { MonthlyStatsCard } from '@/components/habits/MonthlyStatsCard';
 import { PenaltyNotification } from '@/components/penalties/PenaltyNotification';
@@ -29,7 +27,7 @@ import { retroactiveCompletionService } from '@/services/retroactiveCompletionSe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { subMonths } from 'date-fns'; // 🆕 ADICIONAR
+import { subMonths } from 'date-fns';
 import {
   FlatList,
   RefreshControl,
@@ -42,37 +40,33 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 
 const PERIOD_STORAGE_KEY = '@habitTimePeriod';
-const DAY_VIEW_STORAGE_KEY = '@habitDayViewMode';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
-  
+
   // 🆕 Estado para navegação de mês
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  
-  const { 
-    completions, 
-    loading: completionsLoading, 
-    completeHabit, 
+
+  const {
+    completions,
+    loading: completionsLoading,
+    completeHabit,
     uncompleteHabit,
     isCompletedToday,
     getCompletion,
-    getTodayPoints,
-    refetch: refetchCompletions 
+    refetch: refetchCompletions
   } = useCompletions();
-  
+
   const {
     completions: weeklyCompletions,
-    loading: weeklyLoading,
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
 
   // 🆕 Usar currentMonth em vez de new Date()
   const {
     completions: monthlyCompletions,
-    loading: monthlyLoading,
     refetch: refetchMonthlyCompletions,
   } = useMonthlyCompletions(currentMonth);
 
@@ -81,21 +75,20 @@ export default function HomeScreen() {
   const {
     completions: previousMonthCompletions,
   } = useMonthlyCompletions(previousMonth);
-  
+
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
-  const { profile, refetch: refetchProfile } = useProfile();
+  const { refetch: refetchProfile } = useProfile();
   const { checkPenalties } = usePenalties();
-  const { 
-    celebrationData, 
-    isVisible: showCelebration, 
+  const {
+    celebrationData,
+    isVisible: showCelebration,
     checkStreakMilestone,
     checkTargetAchievement,
     checkPointsMilestone,
-    closeCelebration 
+    closeCelebration
   } = useCelebration();
-  
+
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
-  const [dayViewMode, setDayViewMode] = useState<DayViewMode>('detailed');
   const [pendingPenalties, setPendingPenalties] = useState<any[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -103,7 +96,7 @@ export default function HomeScreen() {
   const [selectedHabitId, setSelectedHabitId] = useState('');
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
-  
+
   const loading = habitsLoading || completionsLoading;
 
   useEffect(() => {
@@ -122,7 +115,6 @@ export default function HomeScreen() {
     checkForPenalties();
   }, []);
 
-  // 🆕 Atualizar completions quando o mês mudar
   useEffect(() => {
     if (timePeriod === 'month') {
       refetchMonthlyCompletions();
@@ -131,18 +123,14 @@ export default function HomeScreen() {
 
   const loadViewPreferences = async () => {
     try {
-      const [savedPeriod, savedDayView] = await Promise.all([
+      const [savedPeriod] = await Promise.all([
         AsyncStorage.getItem(PERIOD_STORAGE_KEY),
-        AsyncStorage.getItem(DAY_VIEW_STORAGE_KEY),
       ]);
 
       if (savedPeriod === 'day' || savedPeriod === 'week' || savedPeriod === 'month') {
         setTimePeriod(savedPeriod);
       }
 
-      if (savedDayView === 'detailed' || savedDayView === 'compact') {
-        setDayViewMode(savedDayView);
-      }
     } catch (error) {
       console.error('Erro ao carregar preferências:', error);
     }
@@ -158,15 +146,6 @@ export default function HomeScreen() {
       await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
     } catch (error) {
       console.error('Erro ao salvar período:', error);
-    }
-  };
-
-  const handleDayViewModeChange = async (mode: DayViewMode) => {
-    setDayViewMode(mode);
-    try {
-      await AsyncStorage.setItem(DAY_VIEW_STORAGE_KEY, mode);
-    } catch (error) {
-      console.error('Erro ao salvar modo de visualização:', error);
     }
   };
 
@@ -199,7 +178,7 @@ export default function HomeScreen() {
   const handleEditProgress = (habitId: string) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || !habit.has_target) return;
-    
+
     setSelectedHabit(habit);
     setShowProgressModal(true);
   };
@@ -220,7 +199,7 @@ export default function HomeScreen() {
       if (result.success) {
         await retroactiveCompletionService.recalculateStreak(selectedHabit.id);
         await fetchStreaks([selectedHabit.id]);
-        
+
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
@@ -240,18 +219,18 @@ export default function HomeScreen() {
 
     const streak = getStreak(selectedHabit.id);
     const { data, error } = await completeHabit(
-      selectedHabit, 
-      streak, 
+      selectedHabit,
+      streak,
       value,
       mode
     );
-    
+
     if (!error && data) {
       await updateStreakWithFrequency(selectedHabit.id, selectedHabit, true);
-      
+
       const finalValue = data.achievedValue || 0;
-      const percentage = selectedHabit.target_value 
-        ? (finalValue / selectedHabit.target_value) * 100 
+      const percentage = selectedHabit.target_value
+        ? (finalValue / selectedHabit.target_value) * 100
         : 0;
 
       const isUpdate = 'wasUpdate' in data && data.wasUpdate;
@@ -299,7 +278,7 @@ export default function HomeScreen() {
     if (result.success) {
       await retroactiveCompletionService.recalculateStreak(habit.id);
       await fetchStreaks([habit.id]);
-      
+
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
       await refetchCompletions();
@@ -313,7 +292,7 @@ export default function HomeScreen() {
   };
 
   const handleComplete = async (
-    habitId: string, 
+    habitId: string,
     achievedValue?: number,
     mode?: 'add' | 'replace'
   ) => {
@@ -321,7 +300,6 @@ export default function HomeScreen() {
     if (!habit) return;
 
     const isCompleted = isCompletedToday(habitId);
-    const completion = getCompletion(habitId);
 
     if (habit.has_target) {
       return;
@@ -335,19 +313,19 @@ export default function HomeScreen() {
 
     const streak = getStreak(habitId);
     const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
-    
+
     if (error) {
       setSuccessMessage('Erro ao completar hábito');
       setShowSuccessToast(true);
     } else if (data) {
       const streakResult = await updateStreakWithFrequency(habitId, habit, true);
       const updatedStreak = streakResult.data;
-      
-      const streakBonus = updatedStreak && updatedStreak.current_streak >= 7 
-        ? ` ${updatedStreak.current_streak} dias!` 
+
+      const streakBonus = updatedStreak && updatedStreak.current_streak >= 7
+        ? ` ${updatedStreak.current_streak} dias!`
         : '';
       setSuccessMessage(`+${data.pointsEarned} pontos ganhos!${streakBonus}`);
-      
+
       setShowSuccessToast(true);
 
       if (updatedStreak?.current_streak) {
@@ -355,7 +333,7 @@ export default function HomeScreen() {
           updatedStreak.current_streak,
           data.pointsEarned
         );
-        
+
         if (!hasMilestone) {
           refetchProfile();
         } else {
@@ -382,14 +360,14 @@ export default function HomeScreen() {
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
     const isPast = date < today && !isToday;
-    
+
     // Determinar qual array de completions usar baseado no período
-    const completionsToCheck = timePeriod === 'month' 
-      ? monthlyCompletions 
+    const completionsToCheck = timePeriod === 'month'
+      ? monthlyCompletions
       : timePeriod === 'week'
         ? weeklyCompletions
         : completions;
-    
+
     if (isPast && user) {
       const completion = completionsToCheck.find(c => {
         const compDate = new Date(c.completed_at);
@@ -411,7 +389,7 @@ export default function HomeScreen() {
       }
       return;
     }
-    
+
     if (isToday) {
       if (habit.has_target) {
         handleEditProgress(habit.id);
@@ -424,7 +402,7 @@ export default function HomeScreen() {
   const handleConfirmUncomplete = async () => {
     const habit = habits.find(h => h.id === selectedHabitId);
     const completion = getCompletion(selectedHabitId);
-    
+
     if (!habit || !user) {
       setShowUncompleteConfirm(false);
       setSelectedHabitId('');
@@ -432,7 +410,7 @@ export default function HomeScreen() {
     }
 
     const retroDate = (window as any).__tempRetroDate;
-    
+
     if (retroDate) {
       const result = await retroactiveCompletionService.uncompleteRetroactively(
         habit,
@@ -443,7 +421,7 @@ export default function HomeScreen() {
       if (result.success) {
         await retroactiveCompletionService.recalculateStreak(habit.id);
         await fetchStreaks([habit.id]);
-        
+
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
@@ -470,7 +448,7 @@ export default function HomeScreen() {
     const pointsToDeduct = completion.points_earned;
 
     const { error } = await uncompleteHabit(selectedHabitId);
-    
+
     if (error) {
       setSuccessMessage('Erro ao desmarcar hábito');
       setShowSuccessToast(true);
@@ -478,14 +456,14 @@ export default function HomeScreen() {
       if (habit) {
         await updateStreakWithFrequency(selectedHabitId, habit, false);
       }
-      
+
       setSuccessMessage(`Hábito desmarcado (-${pointsToDeduct} pontos)`);
       setShowSuccessToast(true);
       await refetchWeeklyCompletions();
       await refetchMonthlyCompletions();
       refetchProfile();
     }
-    
+
     setShowUncompleteConfirm(false);
     setSelectedHabitId('');
   };
@@ -500,9 +478,6 @@ export default function HomeScreen() {
     ]);
     await checkForPenalties();
   };
-
-  const todaysHabits = habits.filter(habit => isHabitDueToday(habit));
-  const todayCompletions = completions.length;
 
   if (habitsLoading && habits.length === 0) {
     return (
@@ -520,36 +495,21 @@ export default function HomeScreen() {
 
   const renderHabit = (item: Habit) => {
     const isDueToday = isHabitDueToday(item);
-    
+
     if (timePeriod === 'day') {
-      if (dayViewMode === 'detailed') {
-        return (
-          <HabitCard
-            habit={item}
-            onPress={() => handleHabitPress(item.id)}
-            onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
-            isCompleted={isCompletedToday(item.id)}
-            streak={getStreak(item.id)}
-            completion={getCompletion(item.id)}
-            isDueToday={isDueToday}
-          />
-        );
-      } else {
-        return (
-          <HabitCompactRow
-            habit={item}
-            streak={getStreak(item.id)}
-            completion={getCompletion(item.id)}
-            isCompleted={isCompletedToday(item.id)}
-            isDueToday={isDueToday}
-            onPress={() => handleHabitPress(item.id)}
-            onEditProgress={() => handleEditProgress(item.id)}
-            onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
-          />
-        );
-      }
+      return (
+        <HabitCard
+          habit={item}
+          onPress={() => handleHabitPress(item.id)}
+          onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
+          isCompleted={isCompletedToday(item.id)}
+          streak={getStreak(item.id)}
+          completion={getCompletion(item.id)}
+          isDueToday={isDueToday}
+        />
+      );
     }
-    
+
     if (timePeriod === 'week') {
       return (
         <HabitWeeklyRow
@@ -562,7 +522,7 @@ export default function HomeScreen() {
         />
       );
     }
-    
+
     return null;
   };
 
@@ -631,8 +591,8 @@ export default function HomeScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.addButton, { backgroundColor: colors.primary }]} 
+        <TouchableOpacity
+          style={[styles.addButton, { backgroundColor: colors.primary }]}
           onPress={handleCreateHabit}
         >
           <Icon name="add" size={24} color="#FFFFFF" />
@@ -641,19 +601,10 @@ export default function HomeScreen() {
 
       {habits.length > 0 && (
         <View style={[styles.viewModeContainer, { backgroundColor: colors.background }]}>
-          <TimePeriodSelector 
-            period={timePeriod} 
+          <TimePeriodSelector
+            period={timePeriod}
             onChange={handleTimePeriodChange}
           />
-          
-          {timePeriod === 'day' && (
-            <View style={styles.dayViewToggleContainer}>
-              <DayViewToggle
-                mode={dayViewMode}
-                onChange={handleDayViewModeChange}
-              />
-            </View>
-          )}
         </View>
       )}
 
@@ -671,7 +622,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.key}
           renderItem={() => (
             <View style={styles.monthViewContainer}>
-              {/* 🆕 Props atualizadas com navegação e comparação */}
+              {/* Props atualizadas com navegação e comparação */}
               <MonthlyStatsCard
                 habits={habits}
                 completions={monthlyCompletions}
@@ -692,8 +643,8 @@ export default function HomeScreen() {
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl 
-              refreshing={loading} 
+            <RefreshControl
+              refreshing={loading}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
@@ -706,8 +657,8 @@ export default function HomeScreen() {
           renderItem={({ item }) => renderHabit(item)}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl 
-              refreshing={loading} 
+            <RefreshControl
+              refreshing={loading}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
@@ -722,27 +673,6 @@ export default function HomeScreen() {
             ) : null
           }
         />
-      )}
-
-      {habits.length > 0 && (
-        <View style={[styles.statsFooter, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{todaysHabits.length}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Para Hoje</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{todayCompletions}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completos</Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {profile?.total_points || 0}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pontos</Text>
-          </View>
-        </View>
       )}
     </View>
   );
@@ -777,28 +707,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  dayViewToggleContainer: {
-    marginTop: 8,
-  },
   monthViewContainer: {
     padding: 20,
   },
-  listContent: { 
-    padding: 20, 
+  listContent: {
+    padding: 20,
     paddingBottom: 100,
   },
-  statsFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
-  statLabel: { fontSize: 12 },
-  divider: { width: 1 },
 });
