@@ -1,14 +1,14 @@
-// app/_layout.tsx (VERSÃO CORRIGIDA)
+// app/_layout.tsx
 import { NotificationHandler } from '@/components/notifications/NotificationHandler';
 import { useAuth } from '@/hooks/useAuth';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
-import { exactAlarmService } from '@/services/exactAlarmService';
-import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
 import { supabase } from '@/services/supabase';
 import * as Linking from 'expo-linking';
+import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
+ import { exactAlarmService } from '@/services/exactAlarmService';
 
 // ✅ FUNÇÃO PARA PROCESSAR OAUTH CALLBACK
 const processOAuthCallback = async (url: string) => {
@@ -93,11 +93,10 @@ const processOAuthCallback = async (url: string) => {
 
     console.log('✅ ============ LOGIN COMPLETO ============');
 
-    // O useAuth vai detectar a mudança de sessão e redirecionar automaticamente
-    // Mas podemos forçar para garantir
-    setTimeout(() => {
-      console.log('🏠 Navegação para home será feita pelo useAuth');
-    }, 500);
+    // Forçar navegação imediata
+    const { useRouter } = require('expo-router');
+    const router = useRouter();
+    router.replace('/(tabs)');
 
   } catch (error) {
     console.error('❌ Erro ao processar OAuth:', error);
@@ -150,13 +149,6 @@ function RootLayoutNav() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inAuthCallback = segments[1] === 'callback';
-
-    // Não redirecionar se estiver processando callback
-    if (inAuthCallback) {
-      console.log('ℹ️ Processando callback, não redirecionar ainda');
-      return;
-    }
 
     if (!isAuthenticated && !inAuthGroup) {
       // Usuário não autenticado, redirecionar para login
