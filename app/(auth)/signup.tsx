@@ -1,4 +1,4 @@
-// app/(auth)/login.tsx
+// app/(auth)/signup.tsx
 import { Icon } from '@/components/ui/Icon';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,25 +17,41 @@ import {
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { signInWithEmail, signInWithGoogle, loading } = useAuth();
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { signUpWithEmail, signInWithGoogle, loading } = useAuth();
 
-  const handleEmailLogin = async () => {
-    if (!email || !password) {
+  const handleEmailSignup = async () => {
+    if (!email || !password || !confirmPassword) {
       Alert.alert('Erro', 'Preencha todos os campos');
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem');
+      return;
+    }
+
     try {
-      const { error } = await signInWithEmail(email, password);
+      const { error } = await signUpWithEmail(email, password);
       if (error) {
-        Alert.alert('Erro no Login', error.message);
+        Alert.alert('Erro no Cadastro', error.message);
       } else {
-        router.replace('/(tabs)');
+        Alert.alert(
+          'Sucesso! 🎉',
+          'Conta criada com sucesso! Você já pode começar a usar o app.',
+          [{ text: 'Começar', onPress: () => router.replace('/(tabs)') }]
+        );
       }
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro inesperado');
@@ -59,8 +75,8 @@ export default function LoginScreen() {
     }
   };
 
-  const goToSignup = () => {
-    router.push('/(auth)/signup');
+  const goToLogin = () => {
+    router.back();
   };
 
   return (
@@ -78,7 +94,7 @@ export default function LoginScreen() {
             My Habits Tracker
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Entre na sua conta
+            Crie sua conta
           </Text>
         </View>
 
@@ -130,7 +146,7 @@ export default function LoginScreen() {
                 borderColor: colors.border,
                 color: colors.textPrimary 
               }]}
-              placeholder="Senha"
+              placeholder="Senha (mínimo 6 caracteres)"
               placeholderTextColor={colors.textTertiary}
               value={password}
               onChangeText={setPassword}
@@ -149,10 +165,40 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Confirm Password Input */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputIconContainer}>
+              <Icon name="lock" size={20} color={colors.textTertiary} />
+            </View>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.textPrimary 
+              }]}
+              placeholder="Confirmar senha"
+              placeholderTextColor={colors.textTertiary}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Icon 
+                name={showConfirmPassword ? "eye" : "eyeOff"} 
+                size={20} 
+                color={colors.textTertiary} 
+              />
+            </TouchableOpacity>
+          </View>
+
           {/* Submit Button */}
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
-            onPress={handleEmailLogin}
+            onPress={handleEmailSignup}
             disabled={loading}
           >
             {loading ? (
@@ -160,27 +206,27 @@ export default function LoginScreen() {
             ) : (
               <>
                 <Icon 
-                  name="login" 
+                  name="userPlus" 
                   size={20} 
                   color={colors.textInverse} 
                 />
                 <Text style={[styles.buttonText, { color: colors.textInverse }]}>
-                  Entrar
+                  Cadastrar
                 </Text>
               </>
             )}
           </TouchableOpacity>
 
-          {/* Ir para Cadastro */}
+          {/* Voltar para Login */}
           <TouchableOpacity
             style={styles.toggleButton}
-            onPress={goToSignup}
+            onPress={goToLogin}
             disabled={loading}
           >
             <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
-              Não tem conta?{' '}
+              Já tem conta?{' '}
               <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                Cadastre-se
+                Faça login
               </Text>
             </Text>
           </TouchableOpacity>
