@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "415553001701",
+    "project_id": "my-habits-tracker-71cda",
+    "storage_bucket": "my-habits-tracker-71cda.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415553001701:android:32f48e031985c9fa2ddc0c",
+        "android_client_info": {
+          "package_name": "com.dtriches.myhabitstracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhH1f1b4Zeue_z-4y8U4MixlumAVoyPl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415553001701:android:b00fec911f216cb82ddc0c",
+        "android_client_info": {
+          "package_name": "com.yourcompany.myhabitstracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhH1f1b4Zeue_z-4y8U4MixlumAVoyPl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

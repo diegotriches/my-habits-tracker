@@ -1,6 +1,6 @@
-// app/habits/[id].tsx
+// app/habits/[id].tsx - ATUALIZADO
 import { ConsistencyChart } from '@/components/habits/ConsistencyChart';
-import { HabitHeatMap } from '@/components/habits/HabitHeatMap';
+import { HabitStreakTracker } from '@/components/habits/HabitStreakTracker'; // 🆕 NOVO
 import { PeriodStatsCard } from '@/components/habits/PeriodStatsCard';
 import { ReminderSetup } from '@/components/habits/ReminderSetup';
 import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
@@ -37,7 +37,7 @@ export default function HabitDetailsScreen() {
   const { deleteHabit } = useHabits();
   const [deleting, setDeleting] = useState(false);
 
-  // 🆕 Estados para notificações de progresso
+  // Estados para notificações de progresso
   const [hasPermission, setHasPermission] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
@@ -66,7 +66,7 @@ export default function HabitDetailsScreen() {
     refetch,
   } = useHabitDetails(id as string);
 
-  // 🆕 Carregar permissões e configurações de notificação
+  // Carregar permissões e configurações de notificação
   useEffect(() => {
     checkNotificationPermission();
   }, []);
@@ -91,7 +91,6 @@ export default function HabitDetailsScreen() {
     }
   };
 
-  // 🆕 Carregar configurações de notificações de progresso
   const loadProgressNotificationSettings = async (habitId: string) => {
     try {
       const { data, error } = await supabase
@@ -122,7 +121,6 @@ export default function HabitDetailsScreen() {
     }
   };
 
-  // 🆕 Salvar configurações de notificações (auto-save)
   const handleProgressNotificationChange = async (newConfig: ProgressNotificationConfig) => {
     setProgressNotificationConfig(newConfig);
 
@@ -139,7 +137,6 @@ export default function HabitDetailsScreen() {
         .maybeSingle();
 
       if (existingConfig) {
-        // Atualizar configuração existente
         await (supabase.from('habit_progress_notifications') as any)
           .update({
             enabled: newConfig.enabled,
@@ -158,7 +155,6 @@ export default function HabitDetailsScreen() {
           await progressNotificationScheduler.disableProgressNotifications(habit.id);
         }
       } else {
-        // Criar nova configuração
         await (supabase.from('habit_progress_notifications') as any)
           .insert({
             habit_id: habit.id,
@@ -442,12 +438,12 @@ export default function HabitDetailsScreen() {
           </View>
         </View>
 
-        {/* Gráfico de Consistência */}
+        {/* 🆕 Gráfico de Consistência Semanal */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Icon name="trendingUp" size={16} color={colors.textPrimary} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Consistência (Últimos 30 dias)
+              Evolução Semanal
             </Text>
           </View>
           <ConsistencyChart 
@@ -456,22 +452,22 @@ export default function HabitDetailsScreen() {
           />
         </View>
 
-        {/* Heat Map */}
+        {/* 🆕 Streak Tracker (substitui HeatMap) */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Icon name="calendar" size={16} color={colors.textPrimary} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Calendário de Atividade
+              Calendário & Sequências
             </Text>
           </View>
-          <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Últimos 90 dias</Text>
-          <HabitHeatMap 
+          <HabitStreakTracker 
             data={last90DaysData} 
             habitColor={isNegative ? colors.warning : habit.color} 
+            hasTarget={habit.has_target}
           />
         </View>
 
-        {/* 🆕 SEÇÃO DE NOTIFICAÇÕES (AGRUPADAS) */}
+        {/* SEÇÃO DE NOTIFICAÇÕES (AGRUPADAS) */}
         <View style={styles.section}>
           <View style={[styles.notificationsHeader, { borderBottomColor: colors.border }]}>
             <Icon name="bell" size={18} color={colors.primary} />
@@ -485,7 +481,7 @@ export default function HabitDetailsScreen() {
             <ReminderSetup habitId={id as string} habitName={habit.name} />
           </View>
 
-          {/* 🆕 Alertas de Progresso/Motivação/Urgência */}
+          {/* Alertas de Progresso/Motivação/Urgência */}
           <View style={styles.notificationBlock}>
             <ProgressNotificationSettings
               config={progressNotificationConfig}
@@ -585,7 +581,7 @@ export default function HabitDetailsScreen() {
               </Text>
             </View>
             <View style={[styles.completionsList, { backgroundColor: colors.background }]}>
-              {completions.slice(0, 10).map((completion) => {
+              {completions.slice(0, 5).map((completion) => {
                 const date = new Date((completion as any).completed_at);
                 const dateStr = date.toLocaleDateString('pt-BR', {
                   day: '2-digit',
@@ -697,7 +693,7 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 12, marginBottom: 12 },
   periodCardsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   
-  // 🆕 Estilos da seção de notificações
+  // Estilos da seção de notificações
   notificationsHeader: {
     flexDirection: 'row',
     alignItems: 'center',

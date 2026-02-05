@@ -2,21 +2,23 @@
 import { NotificationHandler } from '@/components/notifications/NotificationHandler';
 import { useAuth } from '@/hooks/useAuth';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { supabase } from '@/services/supabase';
 import * as Linking from 'expo-linking';
 import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
- import { exactAlarmService } from '@/services/exactAlarmService';
+import { exactAlarmService } from '@/services/exactAlarmService';
 
 // ✅ FUNÇÃO PARA PROCESSAR OAUTH CALLBACK
-const processOAuthCallback = async (url: string) => {
+const processOAuthCallback = async (
+  url: string, 
+  router: any
+) => {
   try {
     console.log('🔐 ============ PROCESSANDO OAUTH ============');
     console.log('📍 URL Completa:', url);
 
-    // Verificar se é callback do OAuth
     if (!url.includes('auth/callback')) {
       console.log('ℹ️ Não é callback OAuth, ignorando');
       return;
@@ -24,7 +26,6 @@ const processOAuthCallback = async (url: string) => {
 
     console.log('✅ É callback OAuth, processando...');
 
-    // Extrair tokens do hash fragment
     const hashIndex = url.indexOf('#');
     if (hashIndex === -1) {
       console.error('❌ Hash não encontrado na URL');
@@ -73,7 +74,6 @@ const processOAuthCallback = async (url: string) => {
 
       if (!existingProfile) {
         console.log('📝 Criando perfil...');
-
         const displayName = data.user.email?.split('@')[0] || 'Usuário';
 
         await supabase
@@ -92,10 +92,9 @@ const processOAuthCallback = async (url: string) => {
     }
 
     console.log('✅ ============ LOGIN COMPLETO ============');
-
-    // Forçar navegação imediata
-    const { useRouter } = require('expo-router');
-    const router = useRouter();
+    console.log('🚀 Navegando para /(tabs)...');
+    
+    // FORÇAR navegação IMEDIATAMENTE
     router.replace('/(tabs)');
 
   } catch (error) {
@@ -128,7 +127,7 @@ function RootLayoutNav() {
     Linking.getInitialURL().then(url => {
       console.log('📍 URL Inicial:', url);
       if (url) {
-        processOAuthCallback(url);
+        processOAuthCallback(url, router);
       }
     });
 
@@ -136,26 +135,37 @@ function RootLayoutNav() {
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('📍 ✨ NOVA URL RECEBIDA:', url);
       console.log('📍 ✨ Timestamp:', new Date().toISOString());
-      processOAuthCallback(url);
+      processOAuthCallback(url, router);
     });
 
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [router]);
 
   // 🔧 Controle de autenticação e navegação
   useEffect(() => {
-    if (loading) return;
+    console.log('🔄 Navigation Check:', { 
+      isAuthenticated, 
+      loading, 
+      segments: segments.join('/') 
+    });
+
+    if (loading) {
+      console.log('⏳ Still loading...');
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Usuário não autenticado, redirecionar para login
+      console.log('➡️ Redirecting to login');
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Usuário autenticado, redirecionar para home
+      console.log('➡️ Redirecting to tabs');
       router.replace('/(tabs)');
+    } else {
+      console.log('✅ Already in correct place');
     }
   }, [isAuthenticated, loading, segments]);
 

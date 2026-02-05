@@ -3,7 +3,6 @@ import { supabase } from '@/services/supabase';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -33,7 +32,7 @@ export const useAuth = () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
-
+        
         setAuthState({
           user: session?.user ?? null,
           session,
@@ -56,12 +55,12 @@ export const useAuth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event);
-
+        
         // Se for um novo usuário logado, garantir que perfil existe
         if (event === 'SIGNED_IN' && session?.user) {
           await ensureProfileExists(session.user.id, session.user.email || '');
         }
-
+        
         setAuthState({
           user: session?.user ?? null,
           session,
@@ -100,7 +99,7 @@ export const useAuth = () => {
 
       // Se não existe, criar usando insert direto com bypass de tipagem
       const displayName = email.split('@')[0] || 'Usuário';
-
+      
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
@@ -141,7 +140,7 @@ export const useAuth = () => {
   const signInWithEmail = async (email: string, password: string): Promise<AuthResult> => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
-
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -152,7 +151,7 @@ export const useAuth = () => {
           ...error,
           message: translateError(error),
         } as AuthError;
-
+        
         setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
@@ -171,7 +170,7 @@ export const useAuth = () => {
         ...authError,
         message: translateError(authError),
       } as AuthError;
-
+      
       setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
@@ -199,7 +198,7 @@ export const useAuth = () => {
           ...error,
           message: translateError(error),
         } as AuthError;
-
+        
         setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
@@ -223,7 +222,7 @@ export const useAuth = () => {
         ...authError,
         message: translateError(authError),
       } as AuthError;
-
+      
       setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
@@ -234,16 +233,12 @@ export const useAuth = () => {
     try {
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
-      // Detectar se está no Expo Go ou build nativo
-      const isExpoGo = Constants.appOwnership === 'expo';
-
       const redirectUrl = makeRedirectUri({
-        scheme: isExpoGo ? 'exp' : 'habittracker',
+        scheme: 'habittracker',
         path: 'auth/callback',
       });
 
-      console.log('🔗 Redirect URL:', redirectUrl);
-      console.log('📱 Ambiente:', isExpoGo ? 'Expo Go' : 'Build Nativo');
+      console.log('Redirect URL:', redirectUrl);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -258,39 +253,30 @@ export const useAuth = () => {
           ...error,
           message: translateError(error),
         } as AuthError;
-
+        
         setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
 
       // Abrir navegador para autenticação
       if (data?.url) {
-        console.log('🌐 Abrindo navegador com URL:', data.url);
-
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
           redirectUrl
         );
 
-        console.log('🌐 Resultado do navegador:', JSON.stringify(result, null, 2));
-
         if (result.type === 'success') {
-          console.log('✅ Login bem-sucedido!');
-          console.log('🔗 URL de retorno:', result.url);
           // A sessão será atualizada pelo onAuthStateChange
           return { data: result, error: null };
-        } else if (result.type === 'cancel') {
-          console.log('❌ Usuário cancelou o login');
+        } else {
           const cancelError = {
             message: 'Login cancelado',
             name: 'AuthError',
             status: 400,
           } as AuthError;
-
+          
           setAuthState(prev => ({ ...prev, loading: false, error: cancelError }));
           return { data: null, error: cancelError };
-        } else {
-          console.log('⚠️ Resultado inesperado:', result.type);
         }
       }
 
@@ -302,7 +288,7 @@ export const useAuth = () => {
         ...authError,
         message: translateError(authError),
       } as AuthError;
-
+      
       setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
@@ -330,7 +316,7 @@ export const useAuth = () => {
         ...authError,
         message: translateError(authError),
       } as AuthError;
-
+      
       setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
       return { error: translatedError };
     }

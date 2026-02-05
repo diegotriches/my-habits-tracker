@@ -56,9 +56,12 @@
       "intentFilters": [
         {
           "action": "VIEW",
+          "autoVerify": true,
           "data": [
             {
-              "scheme": "habittracker"
+              "scheme": "habittracker",
+              "host": "auth",
+              "pathPrefix": "/callback"
             }
           ],
           "category": [

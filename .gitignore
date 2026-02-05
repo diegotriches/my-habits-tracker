@@ -46,7 +46,7 @@ expo-env.d.ts
 # Native Folders (Gerados por expo prebuild)
 # ============================================
 /ios
-/android
+#/android
 .kotlin/
 
 # ============================================
