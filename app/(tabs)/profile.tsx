@@ -5,6 +5,7 @@ import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Icon } from '@/components/ui/Icon';
+import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
@@ -255,6 +256,25 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* 🆕 Dados e Privacidade */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+            Dados e Privacidade
+          </Text>
+          
+          {/* Zona de Perigo */}
+          <View style={[styles.dangerZone, { backgroundColor: colors.surface, borderColor: '#fee2e2' }]}>
+            <View style={styles.dangerZoneHeader}>
+              <Icon name="alertTriangle" size={18} color="#ef4444" />
+              <Text style={styles.dangerZoneTitle}>Zona de Perigo</Text>
+            </View>
+            <Text style={[styles.dangerZoneDescription, { color: colors.textSecondary }]}>
+              Esta ação é permanente e não pode ser desfeita. Todos os seus dados serão apagados.
+            </Text>
+            <DeleteAccountButton />
+          </View>
+        </View>
+
         {/* Ações */}
         <View style={styles.section}>
           <TouchableOpacity 
@@ -418,6 +438,29 @@ const styles = StyleSheet.create({
   devModeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  // 🆕 Estilos da Zona de Perigo
+  dangerZone: {
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+  },
+  dangerZoneHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  dangerZoneTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  dangerZoneDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 4,
   },
   logoutButton: {
     flexDirection: 'row',
