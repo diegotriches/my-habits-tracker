@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import * as Linking from 'expo-linking';
+import * as Updates from 'expo-updates';
 import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
 import { exactAlarmService } from '@/services/exactAlarmService';
 
@@ -142,17 +143,25 @@ function RootLayoutNav() {
           
           // Limpar flags antes do reload
           await AsyncStorage.removeItem(processedKey);
-          await AsyncStorage.removeItem('oauth_processing');
+          globalOAuthProcessing = false;
           
           // ✅ Marcar que estamos recarregando após OAuth
           await AsyncStorage.setItem('oauth_reload_in_progress', 'true');
           
-          const { DevSettings } = require('react-native');
-          DevSettings.reload();
+          // ✅ Usar Updates.reloadAsync para funcionar em produção
+          if (__DEV__) {
+            // Em desenvolvimento, usar DevSettings (mais rápido)
+            const { DevSettings } = require('react-native');
+            DevSettings.reload();
+          } else {
+            // Em produção, usar Updates.reloadAsync
+            await Updates.reloadAsync();
+          }
           
         } catch (err) {
           console.error('❌ Error processing OAuth:', err);
           console.error('❌ Error details:', JSON.stringify(err, null, 2));
+          globalOAuthProcessing = false;
         }
       }
     };
@@ -226,7 +235,6 @@ function RootLayoutNav() {
   );
 }
 
-// ✅ AuthProvider FORA do Expo Router - nunca será remontado
 export default function RootLayout() {
   return (
     <AuthProvider>
