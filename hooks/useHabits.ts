@@ -196,11 +196,9 @@ export const useHabits = () => {
       if (isActive) {
         const { data } = await getHabit(habitId);
         if (data) {
-          // 🔧 FIX: Usar forma funcional
           setHabits(prevHabits => [data as Habit, ...prevHabits]);
         }
       } else {
-        // 🔧 FIX: Usar forma funcional
         setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
       }
 

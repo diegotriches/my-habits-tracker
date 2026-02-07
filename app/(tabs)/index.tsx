@@ -302,6 +302,56 @@ export default function HomeScreen() {
     const isCompleted = isCompletedToday(habitId);
 
     if (habit.has_target) {
+      if (achievedValue !== undefined && achievedValue > 0 && mode) {
+        const streak = getStreak(habitId);
+        const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
+
+        if (!error && data) {
+          await updateStreakWithFrequency(habitId, habit, true);
+
+          const finalValue = data.achievedValue || 0;
+          const percentage = habit.target_value
+            ? (finalValue / habit.target_value) * 100
+            : 0;
+
+          const isUpdate = 'wasUpdate' in data && data.wasUpdate;
+
+          if (isUpdate && mode === 'add') {
+            setSuccessMessage(
+              `Adicionado ${achievedValue} ${habit.target_unit}! Total: ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
+            );
+          } else if (isUpdate && mode === 'replace') {
+            setSuccessMessage(
+              `Atualizado para ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
+            );
+          } else {
+            setSuccessMessage(
+              `Registrado ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
+            );
+          }
+
+          setShowSuccessToast(true);
+
+          if (percentage >= 100 && data.pointsEarned > 0) {
+            setTimeout(() => {
+              checkTargetAchievement(habit.name, data.pointsEarned);
+            }, 1000);
+          }
+
+          if (data.totalPoints) {
+            setTimeout(() => {
+              checkPointsMilestone(data.totalPoints);
+            }, 500);
+          }
+
+          await refetchWeeklyCompletions();
+          await refetchMonthlyCompletions();
+          refetchProfile();
+        } else if (error) {
+          setSuccessMessage('Erro ao registrar progresso');
+          setShowSuccessToast(true);
+        }
+      }
       return;
     }
 

@@ -529,7 +529,7 @@ export const useCompletions = () => {
     isCompletedToday,
     getCompletion,
     getTodayPoints,
-    getProgressStatus, // 🆕 Novo método
+    getProgressStatus,
     refetch: fetchTodayCompletions,
   };
 };
