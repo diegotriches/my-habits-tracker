@@ -6,17 +6,18 @@ import {
   startOfMonth, 
   endOfMonth, 
   eachDayOfInterval, 
-  isSameMonth, 
   isSameDay,
   addMonths,
   subMonths,
   parseISO,
   differenceInDays,
-  isToday
+  isToday,
+  isFuture,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
+import { hapticFeedback } from '@/utils/haptics';
 
 interface DayData {
   date: string;
@@ -29,6 +30,7 @@ interface HabitStreakTrackerProps {
   data: DayData[];
   habitColor: string;
   hasTarget?: boolean;
+  onDayPress?: (date: Date, isCompleted: boolean) => void;
 }
 
 interface Streak {
@@ -40,7 +42,8 @@ interface Streak {
 export function HabitStreakTracker({ 
   data, 
   habitColor,
-  hasTarget = false 
+  hasTarget = false,
+  onDayPress,
 }: HabitStreakTrackerProps) {
   const { colors } = useTheme();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -49,7 +52,6 @@ export function HabitStreakTracker({
   const calculateStreaks = useMemo(() => {
     if (!data || data.length === 0) return { streaks: [], currentStreak: 0, bestStreak: 0 };
 
-    // Ordenar por data (mais antigo → mais recente)
     const sortedData = [...data].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -64,14 +66,11 @@ export function HabitStreakTracker({
 
       if (day.completed) {
         if (currentStreakLength === 0) {
-          // Início de uma nova sequência
           currentStreakStart = day.date;
           currentStreakLength = 1;
         } else if (lastDate && differenceInDays(currentDate, lastDate) === 1) {
-          // Continua a sequência (dia consecutivo)
           currentStreakLength++;
         } else {
-          // Quebra na sequência (dia não consecutivo)
           if (currentStreakLength > 0) {
             streaks.push({
               length: currentStreakLength,
@@ -84,7 +83,6 @@ export function HabitStreakTracker({
         }
         lastDate = currentDate;
       } else {
-        // Dia não completado - encerra sequência atual
         if (currentStreakLength > 0) {
           streaks.push({
             length: currentStreakLength,
@@ -97,7 +95,6 @@ export function HabitStreakTracker({
       }
     }
 
-    // Adicionar sequência final se existir
     if (currentStreakLength > 0) {
       streaks.push({
         length: currentStreakLength,
@@ -106,7 +103,6 @@ export function HabitStreakTracker({
       });
     }
 
-    // Calcular sequência atual (do último dia até hoje)
     const today = new Date();
     let currentStreak = 0;
     
@@ -125,7 +121,7 @@ export function HabitStreakTracker({
     const bestStreak = streaks.length > 0 ? Math.max(...streaks.map(s => s.length)) : 0;
 
     return {
-      streaks: streaks.sort((a, b) => b.length - a.length).slice(0, 10), // Top 10
+      streaks: streaks.sort((a, b) => b.length - a.length).slice(0, 10),
       currentStreak,
       bestStreak,
     };
@@ -154,7 +150,6 @@ export function HabitStreakTracker({
     const monthEnd = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    // Adicionar dias vazios no início para alinhar com dia da semana
     const firstDayOfWeek = monthStart.getDay();
     const emptyDays = Array(firstDayOfWeek).fill(null);
 
@@ -198,6 +193,18 @@ export function HabitStreakTracker({
     return nextMonth <= new Date();
   };
 
+  const handleDayPress = (day: Date) => {
+    if (!onDayPress) return;
+    if (isFuture(day) && !isToday(day)) return;
+
+    hapticFeedback.light();
+
+    const status = getDayStatus(day);
+    const isCompleted = status === 'completed';
+
+    onDayPress(day, isCompleted);
+  };
+
   // ========== RENDER VAZIO ==========
   if (!data || data.length === 0) {
     return (
@@ -225,9 +232,16 @@ export function HabitStreakTracker({
             <Icon name="chevronLeft" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          <Text style={[styles.monthTitle, { color: colors.text }]}>
-            {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
-          </Text>
+          <View style={styles.monthHeaderCenter}>
+            <Text style={[styles.monthTitle, { color: colors.text }]}>
+              {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+            </Text>
+            {monthStats.total > 0 && (
+              <Text style={[styles.monthStatsText, { color: colors.textSecondary }]}>
+                {monthStats.completed}/{monthStats.total} dias • {monthStats.percentage}%
+              </Text>
+            )}
+          </View>
 
           <TouchableOpacity 
             onPress={goToNextMonth} 
@@ -241,6 +255,16 @@ export function HabitStreakTracker({
             />
           </TouchableOpacity>
         </View>
+
+        {/* Dica de interação */}
+        {onDayPress && (
+          <View style={[styles.hintContainer, { backgroundColor: colors.primaryLight }]}>
+            <Icon name="info" size={14} color={colors.primary} />
+            <Text style={[styles.hintText, { color: colors.primary }]}>
+              Toque em um dia para marcar ou desmarcar
+            </Text>
+          </View>
+        )}
 
         {/* Dias da semana */}
         <View style={styles.weekDaysRow}>
@@ -258,34 +282,52 @@ export function HabitStreakTracker({
           {calendarDays.map((day, index) => {
             const status = getDayStatus(day);
             const isCurrentDay = day && isToday(day);
+            const isFutureDay = day && isFuture(day) && !isCurrentDay;
+            const isClickable = !!onDayPress && !!day && !isFutureDay;
+
+            const dayContent = (
+              <View
+                style={[
+                  styles.dayCircle,
+                  { 
+                    backgroundColor: isFutureDay 
+                      ? colors.border + '40'
+                      : getDayColor(status),
+                    borderWidth: isCurrentDay ? 2 : 0,
+                    borderColor: colors.primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dayText,
+                    {
+                      color: isFutureDay
+                        ? colors.textTertiary
+                        : status === 'completed' || status === 'missed' 
+                          ? '#FFFFFF' 
+                          : colors.text,
+                    },
+                  ]}
+                >
+                  {day ? format(day, 'd') : ''}
+                </Text>
+              </View>
+            );
 
             return (
               <View key={index} style={styles.dayCell}>
-                {day && (
-                  <View
-                    style={[
-                      styles.dayCircle,
-                      { 
-                        backgroundColor: getDayColor(status),
-                        borderWidth: isCurrentDay ? 2 : 0,
-                        borderColor: colors.primary,
-                      },
-                    ]}
+                {day && isClickable ? (
+                  <TouchableOpacity
+                    style={styles.dayTouchable}
+                    onPress={() => handleDayPress(day)}
+                    activeOpacity={0.6}
                   >
-                    <Text
-                      style={[
-                        styles.dayText,
-                        {
-                          color: status === 'completed' || status === 'missed' 
-                            ? '#FFFFFF' 
-                            : colors.text,
-                        },
-                      ]}
-                    >
-                      {format(day, 'd')}
-                    </Text>
-                  </View>
-                )}
+                    {dayContent}
+                  </TouchableOpacity>
+                ) : day ? (
+                  dayContent
+                ) : null}
               </View>
             );
           })}
@@ -366,6 +408,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  monthHeaderCenter: {
+    alignItems: 'center',
+  },
   navButton: {
     padding: 8,
   },
@@ -373,6 +418,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  monthStatsText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   weekDaysRow: {
     flexDirection: 'row',
@@ -391,9 +454,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: '14.28%', // 100% / 7 dias
+    width: '14.28%',
     aspectRatio: 1,
     padding: 2,
+  },
+  dayTouchable: {
+    flex: 1,
   },
   dayCircle: {
     flex: 1,
@@ -430,7 +496,7 @@ const styles = StyleSheet.create({
   streakBar: {
     height: '100%',
     borderRadius: 6,
-    minWidth: 28, // Mostrar pelo menos algo visual
+    minWidth: 28,
   },
   streakValue: {
     fontSize: 12,

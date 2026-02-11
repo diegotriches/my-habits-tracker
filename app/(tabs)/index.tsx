@@ -2,10 +2,8 @@
 import HabitCard from '@/components/habits/HabitCard';
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
-import { HabitMonthlyCalendar } from '@/components/habits/HabitMonthlyCalendar';
 import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
-import { MonthlyStatsCard } from '@/components/habits/MonthlyStatsCard';
 import { PenaltyNotification } from '@/components/penalties/PenaltyNotification';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
@@ -16,7 +14,6 @@ import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
 import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
-import { useMonthlyCompletions } from '@/hooks/useMonthlyCompletions';
 import { useHabits } from '@/hooks/useHabits';
 import { usePenalties } from '@/hooks/usePenalties';
 import { useProfile } from '@/hooks/useProfile';
@@ -27,7 +24,6 @@ import { retroactiveCompletionService } from '@/services/retroactiveCompletionSe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { subMonths } from 'date-fns';
 import {
   FlatList,
   RefreshControl,
@@ -46,9 +42,6 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
 
-  // 🆕 Estado para navegação de mês
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
   const {
     completions,
     loading: completionsLoading,
@@ -63,18 +56,6 @@ export default function HomeScreen() {
     completions: weeklyCompletions,
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
-
-  // 🆕 Usar currentMonth em vez de new Date()
-  const {
-    completions: monthlyCompletions,
-    refetch: refetchMonthlyCompletions,
-  } = useMonthlyCompletions(currentMonth);
-
-  // 🆕 Buscar completions do mês anterior para comparação
-  const previousMonth = subMonths(currentMonth, 1);
-  const {
-    completions: previousMonthCompletions,
-  } = useMonthlyCompletions(previousMonth);
 
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { refetch: refetchProfile } = useProfile();
@@ -115,22 +96,13 @@ export default function HomeScreen() {
     checkForPenalties();
   }, []);
 
-  useEffect(() => {
-    if (timePeriod === 'month') {
-      refetchMonthlyCompletions();
-    }
-  }, [currentMonth, timePeriod]);
-
   const loadViewPreferences = async () => {
     try {
-      const [savedPeriod] = await Promise.all([
-        AsyncStorage.getItem(PERIOD_STORAGE_KEY),
-      ]);
+      const savedPeriod = await AsyncStorage.getItem(PERIOD_STORAGE_KEY);
 
-      if (savedPeriod === 'day' || savedPeriod === 'week' || savedPeriod === 'month') {
+      if (savedPeriod === 'day' || savedPeriod === 'week') {
         setTimePeriod(savedPeriod);
       }
-
     } catch (error) {
       console.error('Erro ao carregar preferências:', error);
     }
@@ -138,10 +110,6 @@ export default function HomeScreen() {
 
   const handleTimePeriodChange = async (period: TimePeriod) => {
     setTimePeriod(period);
-    // 🆕 Resetar para mês atual ao mudar de período
-    if (period === 'month') {
-      setCurrentMonth(new Date());
-    }
     try {
       await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
     } catch (error) {
@@ -204,7 +172,6 @@ export default function HomeScreen() {
         setShowSuccessToast(true);
         await refetchCompletions();
         await refetchWeeklyCompletions();
-        await refetchMonthlyCompletions();
         await refetchProfile();
       } else {
         setSuccessMessage(result.message);
@@ -258,7 +225,6 @@ export default function HomeScreen() {
       }
 
       await refetchWeeklyCompletions();
-      await refetchMonthlyCompletions();
       refetchProfile();
     }
 
@@ -283,7 +249,6 @@ export default function HomeScreen() {
       setShowSuccessToast(true);
       await refetchCompletions();
       await refetchWeeklyCompletions();
-      await refetchMonthlyCompletions();
       await refetchProfile();
     } else {
       setSuccessMessage(result.message);
@@ -345,7 +310,6 @@ export default function HomeScreen() {
           }
 
           await refetchWeeklyCompletions();
-          await refetchMonthlyCompletions();
           refetchProfile();
         } else if (error) {
           setSuccessMessage('Erro ao registrar progresso');
@@ -402,7 +366,6 @@ export default function HomeScreen() {
       }
 
       await refetchWeeklyCompletions();
-      await refetchMonthlyCompletions();
     }
   };
 
@@ -411,12 +374,9 @@ export default function HomeScreen() {
     const isToday = date.toDateString() === today.toDateString();
     const isPast = date < today && !isToday;
 
-    // Determinar qual array de completions usar baseado no período
-    const completionsToCheck = timePeriod === 'month'
-      ? monthlyCompletions
-      : timePeriod === 'week'
-        ? weeklyCompletions
-        : completions;
+    const completionsToCheck = timePeriod === 'week'
+      ? weeklyCompletions
+      : completions;
 
     if (isPast && user) {
       const completion = completionsToCheck.find(c => {
@@ -476,7 +436,6 @@ export default function HomeScreen() {
         setShowSuccessToast(true);
         await refetchCompletions();
         await refetchWeeklyCompletions();
-        await refetchMonthlyCompletions();
         await refetchProfile();
       } else {
         setSuccessMessage(result.message);
@@ -510,7 +469,6 @@ export default function HomeScreen() {
       setSuccessMessage(`Hábito desmarcado (-${pointsToDeduct} pontos)`);
       setShowSuccessToast(true);
       await refetchWeeklyCompletions();
-      await refetchMonthlyCompletions();
       refetchProfile();
     }
 
@@ -523,7 +481,6 @@ export default function HomeScreen() {
       refetchHabits(),
       refetchCompletions(),
       refetchWeeklyCompletions(),
-      refetchMonthlyCompletions(),
       refetchProfile(),
     ]);
     await checkForPenalties();
@@ -666,40 +623,6 @@ export default function HomeScreen() {
           buttonText="Criar Primeiro Hábito"
           onButtonPress={handleCreateHabit}
         />
-      ) : timePeriod === 'month' ? (
-        <FlatList
-          data={[{ key: 'calendar' }]}
-          keyExtractor={(item) => item.key}
-          renderItem={() => (
-            <View style={styles.monthViewContainer}>
-              {/* Props atualizadas com navegação e comparação */}
-              <MonthlyStatsCard
-                habits={habits}
-                completions={monthlyCompletions}
-                streaks={streaks}
-                month={currentMonth}
-                previousMonthCompletions={previousMonthCompletions}
-                monthlyGoal={80}
-                onMonthChange={setCurrentMonth}
-              />
-              <HabitMonthlyCalendar
-                habits={habits}
-                completions={monthlyCompletions}
-                month={currentMonth}
-                onDayPress={handleDayPress}
-                onHabitPress={handleHabitPress}
-              />
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
-            />
-          }
-        />
       ) : (
         <FlatList
           data={habits}
@@ -756,9 +679,6 @@ const styles = StyleSheet.create({
   viewModeContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-  },
-  monthViewContainer: {
-    padding: 20,
   },
   listContent: {
     padding: 20,

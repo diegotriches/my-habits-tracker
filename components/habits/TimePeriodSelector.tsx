@@ -5,7 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
 
-export type TimePeriod = 'day' | 'week' | 'month';
+export type TimePeriod = 'day' | 'week';
 
 interface Props {
   period: TimePeriod;
@@ -25,7 +25,6 @@ export const TimePeriodSelector: React.FC<Props> = ({ period, onChange }) => {
   const periods: Array<{ key: TimePeriod; icon: any; label: string }> = [
     { key: 'day', icon: 'sunrise', label: 'Dia' },
     { key: 'week', icon: 'calendar', label: 'Semana' },
-    { key: 'month', icon: 'activity', label: 'Mês' },
   ];
 
   return (

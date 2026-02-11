@@ -1,9 +1,12 @@
 // app/habits/[id].tsx - ATUALIZADO
 import { ConsistencyChart } from '@/components/habits/ConsistencyChart';
-import { HabitStreakTracker } from '@/components/habits/HabitStreakTracker'; // 🆕 NOVO
+import { HabitStreakTracker } from '@/components/habits/HabitStreakTracker';
+import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { PeriodStatsCard } from '@/components/habits/PeriodStatsCard';
 import { ReminderSetup } from '@/components/habits/ReminderSetup';
 import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SuccessToast } from '@/components/ui/SuccessToast';
 import { Icon } from '@/components/ui/Icon';
 import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
 import { useHabitDetails } from '@/hooks/useHabitDetails';
@@ -11,6 +14,7 @@ import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
+import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 import { supabase } from '@/services/supabase';
 import { ProgressNotification } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
@@ -49,6 +53,14 @@ export default function HabitDetailsScreen() {
     eveningEnabled: true,
     eveningTime: '21:00:00',
   });
+
+  // Estados para marcar/desmarcar via calendário
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
+  const [pendingUncompleteDate, setPendingUncompleteDate] = useState<Date | null>(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
 
   const {
     habit,
@@ -183,6 +195,128 @@ export default function HabitDetailsScreen() {
     }
   };
 
+  // ========== HANDLERS DO CALENDÁRIO ==========
+
+  const handleCalendarDayPress = async (date: Date, isCompleted: boolean) => {
+    if (!habit || !user) return;
+
+    if (isCompleted) {
+      // Dia já completado → confirmar desmarcar
+      setPendingUncompleteDate(date);
+      setShowUncompleteConfirm(true);
+      return;
+    }
+
+    // Dia não completado → marcar
+    if (habit.has_target) {
+      // Hábito com meta numérica → abrir modal de progresso
+      setPendingProgressDate(date);
+      setShowProgressModal(true);
+      return;
+    }
+
+    // Hábito binário → completar direto
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+
+    if (isToday) {
+      // Hoje: usar completeHabit normal via retroactiveCompletionService
+      const result = await retroactiveCompletionService.completeRetroactively(
+        habit,
+        date,
+        user.id
+      );
+
+      if (result.success) {
+        await retroactiveCompletionService.recalculateStreak(habit.id);
+        hapticFeedback.success();
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+        await refetch();
+      } else {
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+      }
+    } else {
+      // Dia passado: completar retroativamente
+      const result = await retroactiveCompletionService.completeRetroactively(
+        habit,
+        date,
+        user.id
+      );
+
+      if (result.success) {
+        await retroactiveCompletionService.recalculateStreak(habit.id);
+        hapticFeedback.success();
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+        await refetch();
+      } else {
+        setSuccessMessage(result.message);
+        setShowSuccessToast(true);
+      }
+    }
+  };
+
+  const handleConfirmUncomplete = async () => {
+    if (!habit || !user || !pendingUncompleteDate) {
+      setShowUncompleteConfirm(false);
+      setPendingUncompleteDate(null);
+      return;
+    }
+
+    const result = await retroactiveCompletionService.uncompleteRetroactively(
+      habit,
+      pendingUncompleteDate,
+      user.id
+    );
+
+    if (result.success) {
+      await retroactiveCompletionService.recalculateStreak(habit.id);
+      hapticFeedback.success();
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+      await refetch();
+    } else {
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+    }
+
+    setShowUncompleteConfirm(false);
+    setPendingUncompleteDate(null);
+  };
+
+  const handleProgressConfirm = async (value: number, mode: 'add' | 'replace') => {
+    if (!habit || !user || !pendingProgressDate) {
+      setShowProgressModal(false);
+      setPendingProgressDate(null);
+      return;
+    }
+
+    const result = await retroactiveCompletionService.completeRetroactively(
+      habit,
+      pendingProgressDate,
+      user.id,
+      value
+    );
+
+    if (result.success) {
+      await retroactiveCompletionService.recalculateStreak(habit.id);
+      hapticFeedback.success();
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+      await refetch();
+    } else {
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+    }
+
+    setShowProgressModal(false);
+    setPendingProgressDate(null);
+  };
+
+  // ========== HANDLERS ORIGINAIS ==========
+
   const handleEdit = () => {
     hapticFeedback.light();
     router.push(`/habits/edit/${id}` as any);
@@ -267,6 +401,43 @@ export default function HabitDetailsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Toasts e Modais */}
+      <SuccessToast
+        visible={showSuccessToast}
+        message={successMessage}
+        duration={3000}
+        onHide={() => setShowSuccessToast(false)}
+      />
+
+      <ConfirmDialog
+        visible={showUncompleteConfirm}
+        title="Desmarcar hábito?"
+        message="Isso removerá os pontos ganhos neste dia."
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        confirmColor="danger"
+        onConfirm={handleConfirmUncomplete}
+        onCancel={() => {
+          setShowUncompleteConfirm(false);
+          setPendingUncompleteDate(null);
+        }}
+      />
+
+      {habit.has_target && (
+        <HabitProgressInput
+          visible={showProgressModal}
+          habitName={habit.name}
+          targetValue={habit.target_value || 0}
+          targetUnit={habit.target_unit || ''}
+          currentValue={0}
+          onConfirm={handleProgressConfirm}
+          onCancel={() => {
+            setShowProgressModal(false);
+            setPendingProgressDate(null);
+          }}
+        />
+      )}
+
       {/* Header */}
       <View style={[styles.header, { 
         backgroundColor: colors.background, 
@@ -438,7 +609,7 @@ export default function HabitDetailsScreen() {
           </View>
         </View>
 
-        {/* 🆕 Gráfico de Consistência Semanal */}
+        {/* Gráfico de Consistência Semanal */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Icon name="trendingUp" size={16} color={colors.textPrimary} />
@@ -452,7 +623,7 @@ export default function HabitDetailsScreen() {
           />
         </View>
 
-        {/* 🆕 Streak Tracker (substitui HeatMap) */}
+        {/* Streak Tracker com calendário interativo */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Icon name="calendar" size={16} color={colors.textPrimary} />
@@ -464,6 +635,7 @@ export default function HabitDetailsScreen() {
             data={last90DaysData} 
             habitColor={isNegative ? colors.warning : habit.color} 
             hasTarget={habit.has_target}
+            onDayPress={handleCalendarDayPress}
           />
         </View>
 
@@ -693,7 +865,6 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 12, marginBottom: 12 },
   periodCardsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   
-  // Estilos da seção de notificações
   notificationsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -725,7 +896,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // Estatísticas
   statsCard: { borderRadius: 12, padding: 16, borderWidth: 1 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1 },
   statLabel: { fontSize: 14 },
