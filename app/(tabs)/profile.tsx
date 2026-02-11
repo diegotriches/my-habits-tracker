@@ -5,7 +5,6 @@ import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Icon } from '@/components/ui/Icon';
-import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useProfileStats } from '@/hooks/useProfileStats';
@@ -64,12 +63,10 @@ export default function ProfileScreen() {
     setThemeMode(mode);
   };
 
-  // Loading inicial com skeleton
   if (loading && !profile) {
     return <ProfileSkeleton />;
   }
 
-  // Erro ao carregar perfil
   if (!profile) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -171,7 +168,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            {/* Light Mode */}
             <TouchableOpacity
               onPress={() => handleThemeChange('light')}
               style={[styles.themeOption, { borderBottomColor: colors.border }]}
@@ -185,7 +181,6 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Dark Mode */}
             <TouchableOpacity
               onPress={() => handleThemeChange('dark')}
               style={[styles.themeOption, { borderBottomColor: colors.border }]}
@@ -199,7 +194,6 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity>
 
-            {/* System Mode */}
             <TouchableOpacity
               onPress={() => handleThemeChange('system')}
               style={styles.themeOption}
@@ -226,7 +220,19 @@ export default function ProfileScreen() {
             <Icon name="chevronRight" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
 
-          {/* 🆕 Botão de Testes Avançados (apenas em DEV) */}
+          {/* Dados e Privacidade */}
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+            onPress={() => router.push('/settings/privacy' as any)}
+          >
+            <View style={styles.settingLeft}>
+              <Icon name="shield" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>Dados e Privacidade</Text>
+            </View>
+            <Icon name="chevronRight" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          {/* Testes Avançados (apenas em DEV) */}
           {__DEV__ && (
             <TouchableOpacity
               style={[
@@ -256,25 +262,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* 🆕 Dados e Privacidade */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
-            Dados e Privacidade
-          </Text>
-          
-          {/* Zona de Perigo */}
-          <View style={[styles.dangerZone, { backgroundColor: colors.surface, borderColor: '#fee2e2' }]}>
-            <View style={styles.dangerZoneHeader}>
-              <Icon name="alertTriangle" size={18} color="#ef4444" />
-              <Text style={styles.dangerZoneTitle}>Zona de Perigo</Text>
-            </View>
-            <Text style={[styles.dangerZoneDescription, { color: colors.textSecondary }]}>
-              Esta ação é permanente e não pode ser desfeita. Todos os seus dados serão apagados.
-            </Text>
-            <DeleteAccountButton />
-          </View>
-        </View>
-
         {/* Ações */}
         <View style={styles.section}>
           <TouchableOpacity 
@@ -294,7 +281,6 @@ export default function ProfileScreen() {
           <Text style={[styles.copyrightText, { color: colors.textTertiary }]}>
             Feito com ❤️ para seu crescimento
           </Text>
-          {/* 🆕 Badge de Modo DEV */}
           {__DEV__ && (
             <View style={[styles.devModeBadge, { backgroundColor: colors.infoLight }]}>
               <Text style={[styles.devModeText, { color: colors.info }]}>
@@ -438,29 +424,6 @@ const styles = StyleSheet.create({
   devModeText: {
     fontSize: 11,
     fontWeight: '600',
-  },
-  // 🆕 Estilos da Zona de Perigo
-  dangerZone: {
-    marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-  },
-  dangerZoneHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  dangerZoneTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-  dangerZoneDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 4,
   },
   logoutButton: {
     flexDirection: 'row',
