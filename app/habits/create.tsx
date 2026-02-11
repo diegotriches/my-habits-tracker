@@ -1,19 +1,18 @@
-// app/habits/create.tsx - CORRIGIDO
+// app/habits/create.tsx - ATUALIZADO COM META DE FREQUÊNCIA INTEGRADA
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
 import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
-// ❌ REMOVIDO: import { HabitPreviewCard } from '@/components/habits/HabitPreviewCard';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
 import { useHabits } from '@/hooks/useHabits';
-// ✅ CORRIGIDO: Usar wrapper que escolhe Notifee/Expo automaticamente
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { supabase } from '@/services/supabase';
+import { FrequencyGoalPeriod } from '@/types/database';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -54,6 +53,10 @@ export default function CreateHabitScreen() {
   const [targetUnit, setTargetUnit] = useState('');
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
   const [frequencyDays, setFrequencyDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [hasFrequencyGoal, setHasFrequencyGoal] = useState(false);
+  const [frequencyGoalValue, setFrequencyGoalValue] = useState(0);
+  const [frequencyGoalPeriod, setFrequencyGoalPeriod] = useState<FrequencyGoalPeriod>('week');
+  const [frequencyGoalCustomDays, setFrequencyGoalCustomDays] = useState(0);
   const [hasPermission, setHasPermission] = useState(false);
   const [reminders, setReminders] = useState<Array<{ id: string; time: Date }>>([]);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -93,6 +96,14 @@ export default function CreateHabitScreen() {
     }
   };
 
+  const getMaxForPeriod = (): number => {
+    switch (frequencyGoalPeriod) {
+      case 'week': return 7;
+      case 'month': return 31;
+      case 'custom': return frequencyGoalCustomDays || 9999;
+    }
+  };
+
   const validateForm = (): string | null => {
     const trimmedName = name.trim();
     if (!trimmedName) return 'Digite um nome para o hábito';
@@ -108,7 +119,17 @@ export default function CreateHabitScreen() {
       if (!targetUnit.trim()) return 'Selecione uma unidade para a meta';
     }
 
-    if (frequencyType === 'weekly' && frequencyDays.length === 0) {
+    if (hasFrequencyGoal) {
+      if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
+      if (frequencyGoalValue > getMaxForPeriod()) {
+        return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
+      }
+      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) {
+        return 'Digite o número de dias para a meta personalizada';
+      }
+    }
+
+    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) {
       return 'Selecione pelo menos um dia da semana';
     }
 
@@ -187,6 +208,11 @@ export default function CreateHabitScreen() {
       has_target: hasTarget,
       target_value: hasTarget ? parseFloat(targetValue) : null,
       target_unit: hasTarget ? targetUnit.trim() : null,
+      frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
+      frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
+      frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom' 
+        ? frequencyGoalCustomDays 
+        : null,
       difficulty,
       points_base: DIFFICULTY_CONFIG[difficulty].points,
       color: selectedColor,
@@ -203,31 +229,25 @@ export default function CreateHabitScreen() {
       return;
     }
 
-    // ✅ CORRIGIDO: Criar lembretes usando Notifee
+    // Criar lembretes
     if (reminders.length > 0) {
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
         try {
-          console.log('🔔 Agendando lembrete:', { habitName: habit.name, time: timeString });
-
-          // Usar scheduleWeeklyReminder para todos os dias (compatível com Notifee)
           const notificationIds = await notificationService.scheduleWeeklyReminder(
             habit.id,
             habit.name,
             timeString,
-            [0, 1, 2, 3, 4, 5, 6], // Todos os dias
+            [0, 1, 2, 3, 4, 5, 6],
             reminder.id
           );
 
-          console.log('✅ Lembrete agendado:', notificationIds);
-
-          // Salvar no banco
           await remindersTable().insert({
             habit_id: habit.id,
             time: timeString,
             days_of_week: [0, 1, 2, 3, 4, 5, 6],
             is_active: true,
-            notification_ids: notificationIds, // Array de IDs
+            notification_ids: notificationIds,
           });
         } catch (reminderError) {
           console.error('❌ Erro ao criar lembrete:', reminderError);
@@ -361,8 +381,6 @@ export default function CreateHabitScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* ❌ PREVIEW REMOVIDO */}
-
         {/* TIPO DE HÁBITO */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
@@ -483,7 +501,7 @@ export default function CreateHabitScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Meta Numérica</Text>
               <Text style={styles.helperText}>
-                {hasTarget ? 'Registre valores' : 'Apenas check/uncheck'}
+                {hasTarget ? 'Registre valores diários' : 'Ex: Beber 2L de água por dia'}
               </Text>
             </View>
             <Switch
@@ -507,7 +525,7 @@ export default function CreateHabitScreen() {
           )}
         </View>
 
-        {/* FREQUÊNCIA */}
+        {/* FREQUÊNCIA (UNIFICADA) */}
         <View style={styles.section}>
           <Text style={styles.label}>Frequência</Text>
           <FrequencySelector
@@ -515,6 +533,14 @@ export default function CreateHabitScreen() {
             selectedDays={frequencyDays}
             onFrequencyTypeChange={setFrequencyType}
             onDaysChange={setFrequencyDays}
+            hasFrequencyGoal={hasFrequencyGoal}
+            frequencyGoalValue={frequencyGoalValue}
+            frequencyGoalPeriod={frequencyGoalPeriod}
+            frequencyGoalCustomDays={frequencyGoalCustomDays}
+            onFrequencyGoalToggle={setHasFrequencyGoal}
+            onFrequencyGoalValueChange={setFrequencyGoalValue}
+            onFrequencyGoalPeriodChange={setFrequencyGoalPeriod}
+            onFrequencyGoalCustomDaysChange={setFrequencyGoalCustomDays}
           />
         </View>
 

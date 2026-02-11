@@ -54,6 +54,9 @@ export interface Database {
           has_target: boolean
           target_value: number | null
           target_unit: string | null
+          frequency_goal_value: number | null
+          frequency_goal_period: 'week' | 'month' | 'custom' | null
+          frequency_goal_custom_days: number | null
           difficulty: 'easy' | 'medium' | 'hard'
           points_base: number
           color: string
@@ -73,6 +76,9 @@ export interface Database {
           has_target?: boolean
           target_value?: number | null
           target_unit?: string | null
+          frequency_goal_value?: number | null
+          frequency_goal_period?: 'week' | 'month' | 'custom' | null
+          frequency_goal_custom_days?: number | null
           difficulty: 'easy' | 'medium' | 'hard'
           points_base: number
           color?: string
@@ -92,6 +98,9 @@ export interface Database {
           has_target?: boolean
           target_value?: number | null
           target_unit?: string | null
+          frequency_goal_value?: number | null
+          frequency_goal_period?: 'week' | 'month' | 'custom' | null
+          frequency_goal_custom_days?: number | null
           difficulty?: 'easy' | 'medium' | 'hard'
           points_base?: number
           color?: string
@@ -307,7 +316,6 @@ export interface Database {
           updated_at?: string
         }
       }
-      // 🆕 TABELA DE NOTIFICAÇÕES DE PROGRESSO
       habit_progress_notifications: {
         Row: {
           id: string
@@ -414,7 +422,6 @@ export type Penalty = Database['public']['Tables']['penalties']['Row']
 export type Level = Database['public']['Tables']['levels']['Row']
 export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
 
-// 🆕 TIPOS PARA NOTIFICAÇÕES DE PROGRESSO
 export type ProgressNotification = Database['public']['Tables']['habit_progress_notifications']['Row']
 export type ProgressNotificationInsert = Database['public']['Tables']['habit_progress_notifications']['Insert']
 export type ProgressNotificationUpdate = Database['public']['Tables']['habit_progress_notifications']['Update']
@@ -430,25 +437,25 @@ export type HabitUpdate = Database['public']['Tables']['habits']['Update']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type NotificationSettingsUpdate = Database['public']['Tables']['notification_settings']['Update']
 
-// 🆕 TIPOS AUXILIARES PARA NOTIFICAÇÕES DE PROGRESSO
+// Tipos para meta de frequência
+export type FrequencyGoalPeriod = 'week' | 'month' | 'custom'
 
-/**
- * Período do dia para notificação
- */
+export interface FrequencyGoalConfig {
+  enabled: boolean
+  value: number
+  period: FrequencyGoalPeriod
+  customDays?: number
+}
+
+// Tipos auxiliares para notificações de progresso
 export type NotificationPeriod = 'morning' | 'afternoon' | 'evening'
 
-/**
- * Configuração de notificação por período
- */
 export interface PeriodNotificationConfig {
   enabled: boolean
   time: string
   notificationId: string | null
 }
 
-/**
- * Status do progresso do hábito
- */
 export interface ProgressStatus {
   habitId: string
   habitName: string
@@ -459,19 +466,13 @@ export interface ProgressStatus {
   isCompleted: boolean
 }
 
-/**
- * Tipo de mensagem de notificação baseado no progresso
- */
 export type ProgressMessageType = 
-  | 'no_progress'      // 0%
-  | 'low_progress'     // 1-29%
-  | 'moderate_progress' // 30-69%
-  | 'high_progress'    // 70-99%
-  | 'completed'        // 100%+
+  | 'no_progress'
+  | 'low_progress'
+  | 'moderate_progress'
+  | 'high_progress'
+  | 'completed'
 
-/**
- * Template de mensagem de notificação
- */
 export interface NotificationMessage {
   title: string
   body: string

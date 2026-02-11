@@ -117,6 +117,10 @@ export const styles = (colors: any) => StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  metaSeparator: {
+    borderTopWidth: 1,
+    marginVertical: 16,
+  },
   difficultyContainer: {
     flexDirection: 'row',
     gap: 8,
