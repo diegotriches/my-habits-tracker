@@ -92,7 +92,7 @@ export default function NotificationTestScreen() {
     }
   };
 
-  // 🆕 TESTE IMEDIATO
+  // TESTE IMEDIATO
   const testImmediateNotification = async () => {
     setLoading(true);
     addResult('🧪 Teste IMEDIATO (3s)...', 'info');
@@ -109,7 +109,6 @@ export default function NotificationTestScreen() {
       addResult('✅ Permissão OK', 'success');
       addResult('🔔 Usando testNotificationWithActions...', 'info');
 
-      // ✅ USAR O MESMO MÉTODO QUE FUNCIONA!
       await notificationService.testNotificationWithActions();
 
       addResult('✅ Notificação agendada para 3s!', 'success');
@@ -134,7 +133,7 @@ export default function NotificationTestScreen() {
     }
   };
 
-  // 🆕 DEBUG CANAL NOTIFEE
+  // DEBUG CANAL NOTIFEE
   const debugNotifeeChannel = async () => {
     setLoading(true);
     addResult('🔍 Verificando canal Notifee...', 'info');
@@ -223,6 +222,125 @@ export default function NotificationTestScreen() {
 
     } catch (error) {
       addResult(`❌ Erro: ${error}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // TESTE DIRETO - displayNotification com botões (sem trigger)
+  const testDirectNotification = async () => {
+    setLoading(true);
+    addResult('🧪 Disparando notificação DIRETA...', 'info');
+
+    try {
+      const notifee = require('@notifee/react-native').default;
+      const { AndroidImportance } = require('@notifee/react-native');
+
+      await notifee.displayNotification({
+        title: '🧪 TESTE DIRETO',
+        body: 'Toque nos botões abaixo',
+        data: {
+          habitId: 'test-direto-123',
+          habitName: 'Teste Direto',
+        },
+        android: {
+          channelId: 'habits',
+          importance: AndroidImportance.HIGH,
+          smallIcon: 'ic_launcher',
+          actions: [
+            {
+              title: '⏰ Adiar',
+              pressAction: { id: 'snooze' },
+            },
+            {
+              title: '✅ Feito',
+              pressAction: { id: 'complete' },
+            },
+          ],
+          pressAction: { id: 'default' },
+        },
+      });
+
+      addResult('✅ Notificação disparada!', 'success');
+      addResult('👆 Toque nos botões e veja o console', 'info');
+      addResult('📋 Procure por logs: 🔔 [FOREGROUND]', 'info');
+    } catch (error) {
+      addResult(`❌ Erro: ${error}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 DIAGNÓSTICO NOTIFEE - Verifica se o módulo nativo está funcional
+  const testNotifeeDiagnostic = async () => {
+    setLoading(true);
+    addResult('🔬 Iniciando diagnóstico Notifee...', 'info');
+
+    try {
+      const notifee = require('@notifee/react-native').default;
+      const { EventType } = require('@notifee/react-native');
+
+      // Teste 1: Módulo nativo responde?
+      addResult('', 'info');
+      addResult('--- Teste 1: Módulo nativo ---', 'info');
+      const initial = await notifee.getInitialNotification();
+      addResult(`getInitialNotification: ${initial ? 'tem dados' : 'null (ok)'}`, 'success');
+
+      // Teste 2: EventType disponível?
+      addResult('', 'info');
+      addResult('--- Teste 2: EventType ---', 'info');
+      addResult(`DISMISSED: ${EventType.DISMISSED}`, 'info');
+      addResult(`PRESS: ${EventType.PRESS}`, 'info');
+      addResult(`ACTION_PRESS: ${EventType.ACTION_PRESS}`, 'info');
+      addResult(`DELIVERED: ${EventType.DELIVERED}`, 'info');
+      console.log('🧪 EVENT TYPES:', JSON.stringify(EventType));
+
+      // Teste 3: onForegroundEvent é função?
+      addResult('', 'info');
+      addResult('--- Teste 3: API disponível ---', 'info');
+      addResult(`onForegroundEvent: ${typeof notifee.onForegroundEvent}`, 'info');
+      addResult(`onBackgroundEvent: ${typeof notifee.onBackgroundEvent}`, 'info');
+      addResult(`displayNotification: ${typeof notifee.displayNotification}`, 'info');
+
+      // Teste 4: Canais
+      addResult('', 'info');
+      addResult('--- Teste 4: Canais ---', 'info');
+      const channels = await notifee.getChannels();
+      addResult(`Total de canais: ${channels.length}`, 'info');
+      channels.forEach((ch: any) => {
+        addResult(`  - ${ch.id} (importance: ${ch.importance})`, 'info');
+      });
+
+      // Teste 5: Notificações pendentes
+      addResult('', 'info');
+      addResult('--- Teste 5: Notificações ---', 'info');
+      const displayed = await notifee.getDisplayedNotifications();
+      addResult(`Exibidas agora: ${displayed.length}`, 'info');
+      const triggered = await notifee.getTriggerNotifications();
+      addResult(`Agendadas: ${triggered.length}`, 'info');
+
+      // Teste 6: Registrar listener AGORA e confirmar
+      addResult('', 'info');
+      addResult('--- Teste 6: Listener ao vivo ---', 'info');
+      addResult('Registrando onForegroundEvent AGORA...', 'info');
+      
+      const unsubscribe = notifee.onForegroundEvent(({ type, detail }: any) => {
+        const msg = `🔔 EVENTO CAPTURADO! type=${type} action=${detail?.pressAction?.id || 'none'}`;
+        console.log(msg);
+        addResult(msg, 'success');
+      });
+
+      addResult('✅ Listener registrado!', 'success');
+      addResult('', 'info');
+      addResult('📌 AGORA dispare o "Teste DIRETO" e clique nos botões', 'info');
+      addResult('📌 Os eventos devem aparecer AQUI no log', 'info');
+
+      // Guardar unsubscribe para limpar depois (opcional)
+      console.log('🧪 Unsubscribe function:', typeof unsubscribe);
+
+    } catch (error) {
+      addResult(`❌ Erro diagnóstico: ${error}`, 'error');
+      console.error('Erro completo:', error);
     } finally {
       setLoading(false);
     }
@@ -362,30 +480,48 @@ export default function NotificationTestScreen() {
           colors={colors}
         />
 
-        {/* 🆕 NOVO */}
-        {!isExpoGo && (
-          <TestButton
-            title="2. Teste Imediato (3s)"
-            subtitle="Notificação agora + 3 segundos"
-            icon="zap"
-            onPress={testImmediateNotification}
-            loading={loading}
-            colors={colors}
-            highlight
-          />
-        )}
+        {/* TESTE IMEDIATO */}
+        <TestButton
+          title="2. Teste Imediato (3s)"
+          subtitle="Notificação agora + 3 segundos"
+          icon="zap"
+          onPress={testImmediateNotification}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
 
-        {/* 🆕 NOVO */}
-        {!isExpoGo && (
-          <TestButton
-            title="3. Debug Canal Notifee"
-            subtitle="Verificar configuração do canal"
-            icon="settings"
-            onPress={debugNotifeeChannel}
-            loading={loading}
-            colors={colors}
-          />
-        )}
+        {/* DEBUG CANAL */}
+        <TestButton
+          title="3. Debug Canal Notifee"
+          subtitle="Verificar configuração do canal"
+          icon="settings"
+          onPress={debugNotifeeChannel}
+          loading={loading}
+          colors={colors}
+        />
+
+        {/* TESTE DIRETO - SEM TRIGGER */}
+        <TestButton
+          title="🧪 Teste DIRETO (sem trigger)"
+          subtitle="displayNotification com botões - teste foreground"
+          icon="bell"
+          onPress={testDirectNotification}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
+
+        {/* 🆕 DIAGNÓSTICO NOTIFEE */}
+        <TestButton
+          title="🔬 Diagnóstico Notifee"
+          subtitle="Verifica módulo nativo + registra listener ao vivo"
+          icon="activity"
+          onPress={testNotifeeDiagnostic}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
 
         <TestButton
           title="4. Listar Agendadas"

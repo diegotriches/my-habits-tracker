@@ -24,41 +24,7 @@ class NotificationNotifeeService {
 
   constructor() {
     console.log('🔔 Constructor Notifee executado');
-
-    // Background listener
-    notifee.onBackgroundEvent(async ({ type, detail }) => {
-      console.log('🔔 [BACKGROUND] Event type:', type);
-      console.log('🔔 [BACKGROUND] Detail:', JSON.stringify(detail, null, 2));
-
-      if (type !== EventType.PRESS) return;
-
-      const { notification, pressAction } = detail;
-      const data = notification?.data;
-
-      console.log('🔔 [BACKGROUND] Press action ID:', pressAction?.id);
-      console.log('🔔 [BACKGROUND] Notification data:', data);
-
-      if (!data?.habitId) {
-        console.warn('⚠️ [BACKGROUND] Sem habitId nos dados');
-        return;
-      }
-
-      if (pressAction?.id === 'snooze') {
-        console.log('⏰ [BACKGROUND] Executando SNOOZE');
-        await this.handleSnooze(
-          data.habitId as string,
-          data.habitName as string
-        );
-      } else if (pressAction?.id === 'complete') {
-        console.log('✅ [BACKGROUND] Executando COMPLETE');
-        await this.handleQuickComplete(data.habitId as string);
-      } else {
-        console.log('📱 [BACKGROUND] Click na notificação (sem action)');
-        if (this.navigationCallback) {
-          this.navigationCallback(data.habitId as string);
-        }
-      }
-    });
+    // Event handlers são gerenciados pelo notifeeEventHandlers.ts
   }
 
   async initialize(navigationCallback: (habitId: string) => void): Promise<void> {
@@ -70,29 +36,7 @@ class NotificationNotifeeService {
     console.log('🔔 Inicializando Notifee...');
     this.navigationCallback = navigationCallback;
 
-    // Foreground listener
-    notifee.onForegroundEvent(({ type, detail }) => {
-      console.log('🔔 [FOREGROUND] Event type:', type);
-      console.log('🔔 [FOREGROUND] Detail:', JSON.stringify(detail, null, 2));
-
-      if (type === EventType.PRESS) {
-        const { notification, pressAction } = detail;
-        const data = notification?.data;
-
-        console.log('🔔 [FOREGROUND] Press action ID:', pressAction?.id);
-
-        if (pressAction?.id === 'snooze') {
-          console.log('⏰ [FOREGROUND] Snooze');
-          this.handleSnooze(data?.habitId as string, data?.habitName as string);
-        } else if (pressAction?.id === 'complete') {
-          console.log('✅ [FOREGROUND] Complete');
-          this.handleQuickComplete(data?.habitId as string);
-        } else if (data?.habitId) {
-          console.log('📱 [FOREGROUND] Navegação');
-          this.navigationCallback?.(data.habitId as string);
-        }
-      }
-    });
+    // Event handlers são gerenciados pelo notifeeEventHandlers.ts
 
     await this.createChannels();
     this.isInitialized = true;

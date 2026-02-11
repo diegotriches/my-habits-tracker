@@ -10,8 +10,8 @@ import { startOfDay, endOfDay } from 'date-fns';
 class NotifeeEventHandlers {
   
   /**
-   * Configura todos os listeners de eventos
-   * DEVE ser chamado uma vez no início do app
+   * Configura o listener de FOREGROUND
+   * BACKGROUND é registrado no nível do módulo (requisito Notifee)
    */
   setupEventHandlers(): void {
     console.log('🔔 Configurando event handlers do Notifee...');
@@ -21,19 +21,13 @@ class NotifeeEventHandlers {
       await this.handleEvent(event, 'FOREGROUND');
     });
 
-    // BACKGROUND: App em background ou fechado
-    notifee.onBackgroundEvent(async (event) => {
-      await this.handleEvent(event, 'BACKGROUND');
-      return Promise.resolve();
-    });
-
     console.log('✅ Event handlers configurados');
   }
 
   /**
-   * Handler principal de eventos
+   * Handler principal de eventos (público para acesso do background handler)
    */
-  private async handleEvent(event: Event, context: 'FOREGROUND' | 'BACKGROUND'): Promise<void> {
+  async handleEvent(event: Event, context: 'FOREGROUND' | 'BACKGROUND'): Promise<void> {
     const { type, detail } = event;
 
     console.log(`🔔 [${context}] Event type: ${type}`);
@@ -75,8 +69,6 @@ class NotifeeEventHandlers {
     // EVENT TYPE 2 = PRESS (usuário clicou na notificação)
     if (type === EventType.PRESS) {
       console.log('👆 Notificação clicada (corpo)');
-      // Aqui você pode abrir o app em uma tela específica
-      // Por enquanto só logamos
     }
   }
 
@@ -87,7 +79,7 @@ class NotifeeEventHandlers {
     try {
       console.log('⏰ Adiando notificação:', habitName);
 
-      const snoozeTime = Date.now() + 10 * 60 * 1000; // 10 minutos
+      const snoozeTime = Date.now() + 10 * 60 * 1000;
 
       await notifee.displayNotification({
         title: '⏰ Lembrete adiado',
@@ -108,7 +100,6 @@ class NotifeeEventHandlers {
 
       console.log(`✅ Notificação de snooze criada para ${new Date(snoozeTime).toLocaleTimeString()}`);
 
-      // Opcional: Agendar outra notificação para daqui a 10 minutos
       await notifee.createTriggerNotification(
         {
           title: '⏰ Hora do seu hábito!',
@@ -153,7 +144,6 @@ class NotifeeEventHandlers {
     try {
       console.log('✅ Completando hábito:', habitName);
 
-      // 1. Buscar dados do hábito
       const habit = await this.getHabitData(habitId);
 
       if (!habit) {
@@ -171,7 +161,6 @@ class NotifeeEventHandlers {
         return;
       }
 
-      // 2. Verificar se tem meta numérica
       if (habit.has_target) {
         console.log('📊 Hábito tem meta numérica - precisa abrir o app');
         
@@ -192,7 +181,6 @@ class NotifeeEventHandlers {
         return;
       }
 
-      // 3. Verificar se já foi completado hoje
       const today = new Date();
       const startOfToday = startOfDay(today).toISOString();
       const endOfToday = endOfDay(today).toISOString();
@@ -221,7 +209,6 @@ class NotifeeEventHandlers {
         return;
       }
 
-      // 4. Registrar conclusão
       const { error: insertError } = await (supabase
         .from('completions') as any)
         .insert({
@@ -237,7 +224,6 @@ class NotifeeEventHandlers {
 
       console.log('✅ Conclusão registrada no banco');
 
-      // 5. Atualizar pontos do usuário
       const { error: rpcError } = await (supabase.rpc as any)('increment_points', {
         user_id_param: habit.user_id,
         points_param: habit.points_base,
@@ -249,7 +235,6 @@ class NotifeeEventHandlers {
         console.log(`✅ +${habit.points_base} pontos adicionados`);
       }
 
-      // 6. Mostrar notificação de sucesso
       await notifee.displayNotification({
         title: '🎉 Hábito completado!',
         body: `${habitName}\n+${habit.points_base} pontos ganhos! 🌟`,

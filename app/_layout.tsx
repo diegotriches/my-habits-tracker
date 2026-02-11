@@ -7,7 +7,6 @@ import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import * as Linking from 'expo-linking';
 import * as Updates from 'expo-updates';
-import { notifeeEventHandlers } from '@/services/notifeeEventHandlers';
 import { exactAlarmService } from '@/services/exactAlarmService';
 
 // REGISTRAR HeadlessJS Task (só executa uma vez)
@@ -16,11 +15,7 @@ if (__DEV__) {
 }
 exactAlarmService.registerHeadlessTask();
 
-// CONFIGURAR Event Handlers do Notifee (só executa uma vez)
-if (__DEV__) {
-  console.log('🔔 Configurando event handlers do Notifee...');
-}
-notifeeEventHandlers.setupEventHandlers();
+// Foreground + Background handlers do Notifee são registrados no index.js
 
 // ✅ Estado global para OAuth processing (fora do componente)
 let globalOAuthProcessing = false;
