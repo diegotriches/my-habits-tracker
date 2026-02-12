@@ -54,9 +54,9 @@ export const useHabits = () => {
 
       return { data, error: null };
     } catch (err) {
-      return { 
-        data: null, 
-        error: err instanceof Error ? err.message : 'Erro ao buscar hábito' 
+      return {
+        data: null,
+        error: err instanceof Error ? err.message : 'Erro ao buscar hábito',
       };
     }
   };
@@ -70,9 +70,7 @@ export const useHabits = () => {
     has_target?: boolean;
     target_value?: number | null;
     target_unit?: string | null;
-    difficulty: 'easy' | 'medium' | 'hard';
     color: string;
-    points_base: number;
     icon?: string;
   }) => {
     if (!user?.id) {
@@ -90,14 +88,10 @@ export const useHabits = () => {
         has_target: habitData.has_target || false,
         target_value: habitData.target_value || null,
         target_unit: habitData.target_unit || null,
-        difficulty: habitData.difficulty,
         color: habitData.color,
-        points_base: habitData.points_base,
         icon: habitData.icon || 'star',
         is_active: true,
       };
-
-      console.log('📤 Enviando para Supabase:', dataToInsert);
 
       const { data, error: insertError } = await habitsTable()
         .insert(dataToInsert)
@@ -105,33 +99,26 @@ export const useHabits = () => {
         .single();
 
       if (insertError) {
-        console.error('❌ Erro do Supabase:', insertError);
         return { data: null, error: insertError.message };
       }
 
-      console.log('✅ Hábito criado no banco:', data);
-
-      // 🔧 FIX: Usar forma funcional para atualizar o estado
       setHabits(prevHabits => [data as Habit, ...prevHabits]);
 
       return { data, error: null };
     } catch (err) {
-      console.error('❌ Erro catch:', err);
-      return { 
-        data: null, 
-        error: err instanceof Error ? err.message : 'Erro ao criar hábito' 
+      return {
+        data: null,
+        error: err instanceof Error ? err.message : 'Erro ao criar hábito',
       };
     }
   };
 
   const updateHabit = async (
-    habitId: string, 
+    habitId: string,
     updates: {
       name?: string;
       description?: string | null;
-      difficulty?: 'easy' | 'medium' | 'hard';
       color?: string;
-      points_base?: number;
       has_target?: boolean;
       target_value?: number | null;
       target_unit?: string | null;
@@ -148,16 +135,15 @@ export const useHabits = () => {
         return { data: null, error: updateError.message };
       }
 
-      // 🔧 FIX: Usar forma funcional
-      setHabits(prevHabits => 
+      setHabits(prevHabits =>
         prevHabits.map(h => h.id === habitId ? data as Habit : h)
       );
 
       return { data, error: null };
     } catch (err) {
-      return { 
-        data: null, 
-        error: err instanceof Error ? err.message : 'Erro ao atualizar hábito' 
+      return {
+        data: null,
+        error: err instanceof Error ? err.message : 'Erro ao atualizar hábito',
       };
     }
   };
@@ -172,13 +158,12 @@ export const useHabits = () => {
         return { error: deleteError.message };
       }
 
-      // 🔧 FIX: Usar forma funcional
       setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
 
       return { error: null };
     } catch (err) {
-      return { 
-        error: err instanceof Error ? err.message : 'Erro ao deletar hábito' 
+      return {
+        error: err instanceof Error ? err.message : 'Erro ao deletar hábito',
       };
     }
   };
@@ -204,8 +189,8 @@ export const useHabits = () => {
 
       return { error: null };
     } catch (err) {
-      return { 
-        error: err instanceof Error ? err.message : 'Erro ao atualizar status' 
+      return {
+        error: err instanceof Error ? err.message : 'Erro ao atualizar status',
       };
     }
   };

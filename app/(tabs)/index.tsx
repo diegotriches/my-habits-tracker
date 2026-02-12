@@ -4,7 +4,6 @@ import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
-import { PenaltyNotification } from '@/components/penalties/PenaltyNotification';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -15,7 +14,6 @@ import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
 import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
 import { useHabits } from '@/hooks/useHabits';
-import { usePenalties } from '@/hooks/usePenalties';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { Habit } from '@/types/database';
@@ -59,18 +57,15 @@ export default function HomeScreen() {
 
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { refetch: refetchProfile } = useProfile();
-  const { checkPenalties } = usePenalties();
   const {
     celebrationData,
     isVisible: showCelebration,
     checkStreakMilestone,
     checkTargetAchievement,
-    checkPointsMilestone,
     closeCelebration
   } = useCelebration();
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
-  const [pendingPenalties, setPendingPenalties] = useState<any[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
@@ -92,19 +87,14 @@ export default function HomeScreen() {
     }
   }, [habits]);
 
-  useEffect(() => {
-    checkForPenalties();
-  }, []);
-
   const loadViewPreferences = async () => {
     try {
       const savedPeriod = await AsyncStorage.getItem(PERIOD_STORAGE_KEY);
-
       if (savedPeriod === 'day' || savedPeriod === 'week') {
         setTimePeriod(savedPeriod);
       }
     } catch (error) {
-      console.error('Erro ao carregar preferências:', error);
+      // Erro silencioso
     }
   };
 
@@ -113,26 +103,8 @@ export default function HomeScreen() {
     try {
       await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
     } catch (error) {
-      console.error('Erro ao salvar período:', error);
-    }
-  };
-
-  const checkForPenalties = async () => {
-    try {
-      const results = await checkPenalties(false);
-      if (results && results.length > 0) {
-        const appliedPenalties = results.filter((r: any) => r.penaltyApplied);
-        if (appliedPenalties.length > 0) {
-          setPendingPenalties(appliedPenalties);
-        }
-      }
-    } catch (error) {
       // Erro silencioso
     }
-  };
-
-  const dismissPenalty = (index: number) => {
-    setPendingPenalties(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateHabit = () => {
@@ -146,7 +118,6 @@ export default function HomeScreen() {
   const handleEditProgress = (habitId: string) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || !habit.has_target) return;
-
     setSelectedHabit(habit);
     setShowProgressModal(true);
   };
@@ -172,7 +143,6 @@ export default function HomeScreen() {
         setShowSuccessToast(true);
         await refetchCompletions();
         await refetchWeeklyCompletions();
-        await refetchProfile();
       } else {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
@@ -218,14 +188,13 @@ export default function HomeScreen() {
 
       setShowSuccessToast(true);
 
-      if (percentage >= 100 && 'pointsDifference' in data && data.pointsDifference && data.pointsDifference > 0) {
+      if (percentage >= 100) {
         setTimeout(() => {
-          checkTargetAchievement(selectedHabit.name, data.pointsDifference);
+          checkTargetAchievement(selectedHabit.name);
         }, 1000);
       }
 
       await refetchWeeklyCompletions();
-      refetchProfile();
     }
 
     setShowProgressModal(false);
@@ -249,7 +218,6 @@ export default function HomeScreen() {
       setShowSuccessToast(true);
       await refetchCompletions();
       await refetchWeeklyCompletions();
-      await refetchProfile();
     } else {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
@@ -297,20 +265,13 @@ export default function HomeScreen() {
 
           setShowSuccessToast(true);
 
-          if (percentage >= 100 && data.pointsEarned > 0) {
+          if (percentage >= 100) {
             setTimeout(() => {
-              checkTargetAchievement(habit.name, data.pointsEarned);
+              checkTargetAchievement(habit.name);
             }, 1000);
           }
 
-          if (data.totalPoints) {
-            setTimeout(() => {
-              checkPointsMilestone(data.totalPoints);
-            }, 500);
-          }
-
           await refetchWeeklyCompletions();
-          refetchProfile();
         } else if (error) {
           setSuccessMessage('Erro ao registrar progresso');
           setShowSuccessToast(true);
@@ -335,34 +296,17 @@ export default function HomeScreen() {
       const streakResult = await updateStreakWithFrequency(habitId, habit, true);
       const updatedStreak = streakResult.data;
 
-      const streakBonus = updatedStreak && updatedStreak.current_streak >= 7
-        ? ` ${updatedStreak.current_streak} dias!`
-        : '';
-      setSuccessMessage(`+${data.pointsEarned} pontos ganhos!${streakBonus}`);
+      const streakDays = updatedStreak?.current_streak || 0;
+      if (streakDays > 1) {
+        setSuccessMessage(`Completado! ${streakDays} dias seguidos!`);
+      } else {
+        setSuccessMessage('Completado!');
+      }
 
       setShowSuccessToast(true);
 
       if (updatedStreak?.current_streak) {
-        const hasMilestone = checkStreakMilestone(
-          updatedStreak.current_streak,
-          data.pointsEarned
-        );
-
-        if (!hasMilestone) {
-          refetchProfile();
-        } else {
-          setTimeout(() => {
-            refetchProfile();
-          }, 3000);
-        }
-      } else {
-        refetchProfile();
-      }
-
-      if (data.totalPoints) {
-        setTimeout(() => {
-          checkPointsMilestone(data.totalPoints);
-        }, 500);
+        checkStreakMilestone(updatedStreak.current_streak);
       }
 
       await refetchWeeklyCompletions();
@@ -411,7 +355,6 @@ export default function HomeScreen() {
 
   const handleConfirmUncomplete = async () => {
     const habit = habits.find(h => h.id === selectedHabitId);
-    const completion = getCompletion(selectedHabitId);
 
     if (!habit || !user) {
       setShowUncompleteConfirm(false);
@@ -436,7 +379,6 @@ export default function HomeScreen() {
         setShowSuccessToast(true);
         await refetchCompletions();
         await refetchWeeklyCompletions();
-        await refetchProfile();
       } else {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
@@ -448,14 +390,6 @@ export default function HomeScreen() {
       return;
     }
 
-    if (!completion) {
-      setShowUncompleteConfirm(false);
-      setSelectedHabitId('');
-      return;
-    }
-
-    const pointsToDeduct = completion.points_earned;
-
     const { error } = await uncompleteHabit(selectedHabitId);
 
     if (error) {
@@ -466,10 +400,9 @@ export default function HomeScreen() {
         await updateStreakWithFrequency(selectedHabitId, habit, false);
       }
 
-      setSuccessMessage(`Hábito desmarcado (-${pointsToDeduct} pontos)`);
+      setSuccessMessage('Hábito desmarcado');
       setShowSuccessToast(true);
       await refetchWeeklyCompletions();
-      refetchProfile();
     }
 
     setShowUncompleteConfirm(false);
@@ -483,7 +416,6 @@ export default function HomeScreen() {
       refetchWeeklyCompletions(),
       refetchProfile(),
     ]);
-    await checkForPenalties();
   };
 
   if (habitsLoading && habits.length === 0) {
@@ -543,7 +475,6 @@ export default function HomeScreen() {
           message={celebrationData.message}
           icon={celebrationData.icon}
           streak={celebrationData.streak}
-          points={celebrationData.points}
         />
       )}
 
@@ -557,7 +488,7 @@ export default function HomeScreen() {
       <ConfirmDialog
         visible={showUncompleteConfirm}
         title="Desmarcar hábito?"
-        message="Isso removerá os pontos ganhos com este hábito."
+        message="Isso removerá o registro de conclusão deste dia."
         confirmText="Confirmar"
         cancelText="Cancelar"
         confirmColor="danger"
@@ -582,15 +513,6 @@ export default function HomeScreen() {
           }}
         />
       )}
-
-      {pendingPenalties.map((penalty, index) => (
-        <PenaltyNotification
-          key={index}
-          pointsLost={penalty.pointsLost}
-          reason={penalty.reason}
-          onDismiss={() => dismissPenalty(index)}
-        />
-      ))}
 
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View>

@@ -14,17 +14,12 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
-import { DIFFICULTY_CONFIG, HABIT_COLORS } from '@/constants/GameConfig';
+import { HABIT_COLORS } from '@/constants/GameConfig';
 import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
 import { Habit } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
-import { 
-  recalculateCompletionPoints, 
-  updateProfilePoints,
-  calculateTargetChangeImpact 
-} from '@/utils/supabaseHelpers';
 
 export default function EditHabitScreen() {
   const { colors } = useTheme();
@@ -39,15 +34,12 @@ export default function EditHabitScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
   
   // Estados de meta numérica
   const [hasTarget, setHasTarget] = useState(false);
   const [targetValue, setTargetValue] = useState('');
   const [targetUnit, setTargetUnit] = useState('');
-  const [originalHasTarget, setOriginalHasTarget] = useState(false);
-  const [originalTargetValue, setOriginalTargetValue] = useState<number | null>(null);
 
   useEffect(() => {
     loadHabit();
@@ -67,13 +59,10 @@ export default function EditHabitScreen() {
     setName(habitData.name);
     setDescription(habitData.description || '');
     setHabitType(habitData.type);
-    setDifficulty(habitData.difficulty);
     setSelectedColor(habitData.color);
     
     // Carregar dados de meta
     setHasTarget(habitData.has_target);
-    setOriginalHasTarget(habitData.has_target);
-    setOriginalTargetValue(habitData.target_value);
     
     if (habitData.has_target) {
       setTargetValue(habitData.target_value?.toString() || '');
@@ -81,44 +70,6 @@ export default function EditHabitScreen() {
     }
 
     setLoading(false);
-  };
-
-  const confirmTargetChange = async (
-    newTargetValue: number
-  ): Promise<boolean> => {
-    return new Promise(async (resolve) => {
-      const oldValue = originalTargetValue || 0;
-      const isIncrease = newTargetValue > oldValue;
-      const percentChange = Math.abs(((newTargetValue - oldValue) / oldValue) * 100);
-
-      const impact = await calculateTargetChangeImpact(
-        id as string,
-        oldValue,
-        newTargetValue
-      );
-
-      Alert.alert(
-        '⚠️ Alterar Meta',
-        `Você está ${isIncrease ? 'aumentando' : 'diminuindo'} sua meta de ${oldValue} para ${newTargetValue} ${targetUnit} (${percentChange.toFixed(0)}% de mudança).\n\n` +
-        `📊 Impacto em ${impact.totalCompletions} registros:\n` +
-        `✅ ${impact.willKeepPoints} mantêm pontos\n` +
-        `${isIncrease ? '📉' : '📈'} ${isIncrease ? impact.willLosePoints : impact.willGainPoints} dias afetados\n\n` +
-        `Isso irá recalcular os pontos de todos os registros anteriores.\n\n` +
-        `Deseja continuar?`,
-        [
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-            onPress: () => resolve(false),
-          },
-          {
-            text: 'Confirmar',
-            style: 'default',
-            onPress: () => resolve(true),
-          },
-        ]
-      );
-    });
   };
 
   const handleSubmit = async () => {
@@ -143,14 +94,6 @@ export default function EditHabitScreen() {
       return;
     }
 
-    const newTargetValue = parseFloat(targetValue);
-    const targetChanged = hasTarget && originalHasTarget && newTargetValue !== originalTargetValue;
-
-    if (targetChanged) {
-      const confirmed = await confirmTargetChange(newTargetValue);
-      if (!confirmed) return;
-    }
-
     hapticFeedback.medium();
     setSaving(true);
 
@@ -158,11 +101,9 @@ export default function EditHabitScreen() {
       const updates: any = {
         name: name.trim(),
         description: description.trim() || null,
-        difficulty,
-        points_base: DIFFICULTY_CONFIG[difficulty].points,
         color: selectedColor,
         has_target: hasTarget,
-        target_value: hasTarget ? newTargetValue : null,
+        target_value: hasTarget ? parseFloat(targetValue) : null,
         target_unit: hasTarget ? targetUnit.trim() : null,
       };
 
@@ -174,44 +115,10 @@ export default function EditHabitScreen() {
         return;
       }
 
-      let pointsDifference = 0;
-      if (targetChanged && originalTargetValue) {
-        try {
-          const pointsConfig = {
-            easy: DIFFICULTY_CONFIG.easy.points,
-            medium: DIFFICULTY_CONFIG.medium.points,
-            hard: DIFFICULTY_CONFIG.hard.points,
-          };
-
-          pointsDifference = await recalculateCompletionPoints(
-            id as string,
-            newTargetValue,
-            difficulty,
-            pointsConfig
-          );
-
-          if (pointsDifference !== 0) {
-            await updateProfilePoints(user.id, pointsDifference);
-          }
-        } catch (recalcError) {
-          console.error('Erro ao recalcular:', recalcError);
-          Alert.alert(
-            'Aviso',
-            'Hábito atualizado, mas houve um erro ao recalcular pontos. Tente novamente.'
-          );
-        }
-      }
-
       setSaving(false);
       hapticFeedback.success();
 
-      const successMessage = targetChanged
-        ? `Hábito atualizado!\n\n${pointsDifference >= 0 
-            ? `+${pointsDifference} pontos adicionados` 
-            : `${pointsDifference} pontos removidos`} após recálculo.`
-        : 'Hábito atualizado com sucesso!';
-
-      Alert.alert('Sucesso!', successMessage, [
+      Alert.alert('Sucesso!', 'Hábito atualizado com sucesso!', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
@@ -393,55 +300,6 @@ export default function EditHabitScreen() {
               </View>
             </View>
           )}
-
-          {hasTarget && originalHasTarget && parseFloat(targetValue) !== originalTargetValue && targetValue !== '' && (
-            <View style={[styles.warningCard, { backgroundColor: colors.warningLight, borderColor: colors.warning }]}>
-              <Icon name="alertTriangle" size={16} color={colors.warning} />
-              <Text style={[styles.warningText, { color: colors.warning }]}>
-                Alterar a meta irá recalcular os pontos de todos os registros anteriores
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Dificuldade */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>Dificuldade</Text>
-          <View style={styles.difficultyContainer}>
-            {(Object.keys(DIFFICULTY_CONFIG) as Array<'easy' | 'medium' | 'hard'>).map((key) => {
-              const config = DIFFICULTY_CONFIG[key];
-              const isSelected = difficulty === key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.difficultyOption,
-                    { 
-                      borderColor: isSelected ? config.color : colors.border,
-                      backgroundColor: isSelected ? config.color + '15' : colors.surface,
-                    },
-                  ]}
-                  onPress={() => {
-                    hapticFeedback.selection();
-                    setDifficulty(key);
-                  }}
-                >
-                  <Text style={[
-                    styles.difficultyLabel,
-                    { color: isSelected ? config.color : colors.textSecondary },
-                  ]}>
-                    {config.label}
-                  </Text>
-                  <Text style={[
-                    styles.difficultyPoints,
-                    { color: isSelected ? config.color : colors.textTertiary },
-                  ]}>
-                    +{config.points}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
         {/* Cor Compacta */}
@@ -455,27 +313,7 @@ export default function EditHabitScreen() {
           />
         </View>
 
-        {/* ✅ Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: colors.infoLight }]}>
-          <Icon name="info" size={16} color={colors.info} />
-          <Text style={[styles.infoText, { color: colors.info }]}>
-            {hasTarget ? (
-              <>
-                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> quando atingir <Text style={styles.infoBold}>{targetValue || '?'} {targetUnit || '?'}</Text> por dia!
-              </>
-            ) : isNegative ? (
-              <>
-                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que resistir e evitar este hábito!
-              </>
-            ) : (
-              <>
-                Você ganhará <Text style={styles.infoBold}>+{DIFFICULTY_CONFIG[difficulty].points} pontos</Text> toda vez que completar este hábito!
-              </>
-            )}
-          </Text>
-        </View>
-
-        {/* 💡 Dica sobre notificações */}
+        {/* Dica sobre notificações */}
         <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
           <Icon name="bell" size={16} color={colors.primary} />
           <Text style={[styles.tipText, { color: colors.primary }]}>
@@ -545,37 +383,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
   },
-  warningCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-  warningText: { flex: 1, fontSize: 12, lineHeight: 18 },
-  difficultyContainer: { flexDirection: 'row', gap: 8 },
-  difficultyOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 2,
-    alignItems: 'center',
-  },
-  difficultyLabel: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
-  difficultyPoints: { fontSize: 11, fontWeight: '700' },
-  infoCard: {
-    flexDirection: 'row',
-    gap: 8,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  infoText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  infoBold: { fontWeight: '600' },
   tipCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',

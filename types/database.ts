@@ -15,9 +15,6 @@ export interface Database {
           id: string
           display_name: string | null
           avatar_url: string | null
-          level: number
-          total_points: number
-          current_rank: number | null
           created_at: string
           updated_at: string
         }
@@ -25,9 +22,6 @@ export interface Database {
           id: string
           display_name?: string | null
           avatar_url?: string | null
-          level?: number
-          total_points?: number
-          current_rank?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -35,9 +29,6 @@ export interface Database {
           id?: string
           display_name?: string | null
           avatar_url?: string | null
-          level?: number
-          total_points?: number
-          current_rank?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -57,8 +48,6 @@ export interface Database {
           frequency_goal_value: number | null
           frequency_goal_period: 'week' | 'month' | 'custom' | null
           frequency_goal_custom_days: number | null
-          difficulty: 'easy' | 'medium' | 'hard'
-          points_base: number
           color: string
           icon: string
           is_active: boolean
@@ -79,8 +68,6 @@ export interface Database {
           frequency_goal_value?: number | null
           frequency_goal_period?: 'week' | 'month' | 'custom' | null
           frequency_goal_custom_days?: number | null
-          difficulty: 'easy' | 'medium' | 'hard'
-          points_base: number
           color?: string
           icon?: string
           is_active?: boolean
@@ -101,8 +88,6 @@ export interface Database {
           frequency_goal_value?: number | null
           frequency_goal_period?: 'week' | 'month' | 'custom' | null
           frequency_goal_custom_days?: number | null
-          difficulty?: 'easy' | 'medium' | 'hard'
-          points_base?: number
           color?: string
           icon?: string
           is_active?: boolean
@@ -116,7 +101,6 @@ export interface Database {
           habit_id: string
           completed_at: string
           value_achieved: number | null
-          points_earned: number
           was_synced: boolean
           created_at: string
         }
@@ -125,7 +109,6 @@ export interface Database {
           habit_id: string
           completed_at: string
           value_achieved?: number | null
-          points_earned: number
           was_synced?: boolean
           created_at?: string
         }
@@ -134,7 +117,6 @@ export interface Database {
           habit_id?: string
           completed_at?: string
           value_achieved?: number | null
-          points_earned?: number
           was_synced?: boolean
           created_at?: string
         }
@@ -195,49 +177,6 @@ export interface Database {
           notification_ids?: string[] | null
           sound?: string | null
           created_at?: string
-        }
-      }
-      penalties: {
-        Row: {
-          id: string
-          habit_id: string
-          missed_date: string
-          points_deducted: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          habit_id: string
-          missed_date: string
-          points_deducted: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          habit_id?: string
-          missed_date?: string
-          points_deducted?: number
-          created_at?: string
-        }
-      }
-      levels: {
-        Row: {
-          level: number
-          points_required: number
-          title: string
-          badge_icon: string | null
-        }
-        Insert: {
-          level: number
-          points_required: number
-          title: string
-          badge_icon?: string | null
-        }
-        Update: {
-          level?: number
-          points_required?: number
-          title?: string
-          badge_icon?: string | null
         }
       }
       sync_queue: {
@@ -377,31 +316,7 @@ export interface Database {
       }
     }
     Views: {
-      user_rankings: {
-        Row: {
-          id: string | null
-          display_name: string | null
-          avatar_url: string | null
-          level: number | null
-          total_points: number | null
-          level_title: string | null
-          badge_icon: string | null
-          rank: number | null
-        }
-      }
-      habit_stats: {
-        Row: {
-          habit_id: string | null
-          user_id: string | null
-          name: string | null
-          difficulty: string | null
-          total_completions: number | null
-          current_streak: number | null
-          best_streak: number | null
-          total_points_earned: number | null
-          last_completed_at: string | null
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
@@ -412,14 +327,12 @@ export interface Database {
   }
 }
 
-// Tipos auxiliares para facilitar o uso
+// Tipos auxiliares
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Habit = Database['public']['Tables']['habits']['Row']
 export type Completion = Database['public']['Tables']['completions']['Row']
 export type Streak = Database['public']['Tables']['streaks']['Row']
 export type Reminder = Database['public']['Tables']['reminders']['Row']
-export type Penalty = Database['public']['Tables']['penalties']['Row']
-export type Level = Database['public']['Tables']['levels']['Row']
 export type NotificationSettings = Database['public']['Tables']['notification_settings']['Row']
 
 export type ProgressNotification = Database['public']['Tables']['habit_progress_notifications']['Row']

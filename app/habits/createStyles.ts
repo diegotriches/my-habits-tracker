@@ -121,31 +121,6 @@ export const styles = (colors: any) => StyleSheet.create({
     borderTopWidth: 1,
     marginVertical: 16,
   },
-  difficultyContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  difficultyOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-  },
-  difficultyLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  difficultyPoints: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    fontWeight: '700',
-  },
   collapsibleHeader: {
     flexDirection: 'row',
     alignItems: 'center',

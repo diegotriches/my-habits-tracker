@@ -30,13 +30,8 @@ interface CelebrationModalProps {
   message: string;
   icon?: 'flame' | 'trophy' | 'star' | 'crown' | 'rocket' | 'sparkles';
   streak?: number;
-  points?: number;
 }
 
-/**
- * Modal de celebração para milestones importantes
- * Mostra confetti, animações e informações do achievement
- */
 export function CelebrationModal({
   visible,
   onClose,
@@ -44,7 +39,6 @@ export function CelebrationModal({
   message,
   icon = 'trophy',
   streak,
-  points,
 }: CelebrationModalProps) {
   const { colors } = useTheme();
   const scale = useSharedValue(0);
@@ -53,15 +47,10 @@ export function CelebrationModal({
 
   useEffect(() => {
     if (visible) {
-      // Trigger haptic feedback
       hapticFeedback.success();
 
-      // Animate in
       opacity.value = withTiming(1, { duration: 200 });
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 150,
-      });
+      scale.value = withSpring(1, { damping: 15, stiffness: 150 });
       iconScale.value = withSequence(
         withDelay(200, withSpring(1.2, { damping: 10 })),
         withSpring(1, { damping: 15 })
@@ -86,7 +75,6 @@ export function CelebrationModal({
   }));
 
   const handleClose = () => {
-    // Animate out
     opacity.value = withTiming(0, { duration: 200 });
     scale.value = withTiming(0, { duration: 200 }, (finished) => {
       if (finished) {
@@ -96,100 +84,39 @@ export function CelebrationModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
       <Animated.View style={[styles.backdrop, backdropStyle]}>
         <Pressable style={styles.backdropPressable} onPress={handleClose} />
-        
-        <Animated.View
-          style={[
-            styles.container,
-            { backgroundColor: colors.surface },
-            containerStyle,
-          ]}
-        >
-          {/* Icon Circle */}
-          <Animated.View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: colors.primaryLight },
-              iconStyle,
-            ]}
-          >
+
+        <Animated.View style={[styles.container, { backgroundColor: colors.surface }, containerStyle]}>
+          {/* Icon */}
+          <Animated.View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }, iconStyle]}>
             <Icon name={icon} size={48} color={colors.primary} />
           </Animated.View>
 
           {/* Title */}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {title}
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
 
           {/* Message */}
-          <Text style={[styles.message, { color: colors.textSecondary }]}>
-            {message}
-          </Text>
+          <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
 
-          {/* Stats */}
-          {(streak !== undefined || points !== undefined) && (
+          {/* Streak stat */}
+          {streak !== undefined && (
             <View style={styles.stats}>
-              {streak !== undefined && (
-                <View
-                  style={[
-                    styles.statItem,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Icon name="flame" size={20} color={colors.streak} />
-                  <Text
-                    style={[styles.statValue, { color: colors.textPrimary }]}
-                  >
-                    {streak}
-                  </Text>
-                  <Text
-                    style={[styles.statLabel, { color: colors.textSecondary }]}
-                  >
-                    dias
-                  </Text>
-                </View>
-              )}
-
-              {points !== undefined && (
-                <View
-                  style={[
-                    styles.statItem,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Icon name="star" size={20} color={colors.points} />
-                  <Text
-                    style={[styles.statValue, { color: colors.textPrimary }]}
-                  >
-                    +{points}
-                  </Text>
-                  <Text
-                    style={[styles.statLabel, { color: colors.textSecondary }]}
-                  >
-                    pontos
-                  </Text>
-                </View>
-              )}
+              <View style={[styles.statItem, { backgroundColor: colors.background }]}>
+                <Icon name="flame" size={20} color={colors.streak} />
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>{streak}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>dias</Text>
+              </View>
             </View>
           )}
 
           {/* Close Button */}
-          <Pressable
-            style={[styles.button, { backgroundColor: colors.primary }]}
-            onPress={handleClose}
-          >
+          <Pressable style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleClose}>
             <Text style={styles.buttonText}>Continuar</Text>
           </Pressable>
         </Animated.View>
 
-        {/* Confetti */}
         <Confetti visible={visible} particleCount={60} />
       </Animated.View>
     </Modal>

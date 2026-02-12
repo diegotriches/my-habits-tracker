@@ -1,13 +1,12 @@
 // components/habits/HabitCard.tsx
 import { Icon } from '@/components/ui/Icon';
 import { AnimatedPressableComponent } from '@/components/ui/AnimatedPressable';
-import { DIFFICULTY_CONFIG } from '@/constants/GameConfig';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Completion, Habit, Streak } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
 import { hapticFeedback } from '@/utils/haptics';
-import React, { useRef, useState } from 'react';
-import { Animated, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { HabitProgressInput } from './HabitProgressInput';
 import { habitCardStyles } from './HabitCardStyles';
@@ -36,19 +35,13 @@ export default function HabitCard({
   const cardColor = isNegative ? colors.warning : habit.color;
   const successColor = isNegative ? colors.warning : colors.success;
   const styles = habitCardStyles(colors, cardColor);
-  const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const hasStreak = (streak?.current_streak || 0) > 0;
 
   const [showProgressInput, setShowProgressInput] = useState(false);
-  const [showAnimation, setShowAnimation] = useState(false);
-  const pointsAnim = useRef(new Animated.Value(0)).current;
-  const pointsOpacity = useRef(new Animated.Value(0)).current;
 
   const handleComplete = (e: any) => {
     e.stopPropagation();
-    
     if (!onComplete) return;
-
     hapticFeedback.light();
 
     if (habit.has_target && habit.target_value && habit.target_unit) {
@@ -57,35 +50,6 @@ export default function HabitCard({
     }
 
     hapticFeedback.success();
-
-    if (!isCompleted) {
-      setShowAnimation(true);
-      Animated.parallel([
-        Animated.timing(pointsAnim, {
-          toValue: -30,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.sequence([
-          Animated.timing(pointsOpacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pointsOpacity, {
-            toValue: 0,
-            duration: 400,
-            delay: 200,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start(() => {
-        setShowAnimation(false);
-        pointsAnim.setValue(0);
-        pointsOpacity.setValue(0);
-      });
-    }
-
     onComplete();
   };
 
@@ -101,16 +65,12 @@ export default function HabitCard({
   };
 
   const getProgressPercentage = () => {
-    if (!habit.has_target || !completion?.value_achieved || !habit.target_value) {
-      return 0;
-    }
+    if (!habit.has_target || !completion?.value_achieved || !habit.target_value) return 0;
     return Math.min((completion.value_achieved / habit.target_value) * 100, 100);
   };
 
   const isFullyCompleted = () => {
-    if (!habit.has_target) {
-      return isCompleted;
-    }
+    if (!habit.has_target) return isCompleted;
     return getProgressPercentage() >= 100;
   };
 
@@ -118,18 +78,11 @@ export default function HabitCard({
     if (!habit.has_target) {
       return (
         <TouchableOpacity
-          style={[
-            styles.checkButton,
-            { backgroundColor: isCompleted ? successColor : colors.surface },
-          ]}
+          style={[styles.checkButton, { backgroundColor: isCompleted ? successColor : colors.surface }]}
           onPress={handleComplete}
         >
           {isCompleted ? (
-            <Icon 
-              name={isNegative ? "shield" : "check"} 
-              size={24} 
-              color={colors.textInverse} 
-            />
+            <Icon name={isNegative ? "shield" : "check"} size={24} color={colors.textInverse} />
           ) : (
             <View style={[styles.checkCircle, { borderColor: cardColor + '60' }]} />
           )}
@@ -139,55 +92,23 @@ export default function HabitCard({
 
     const percentage = getProgressPercentage();
     const fullyCompleted = percentage >= 100;
-
     let backgroundColor = colors.surface;
-    if (fullyCompleted) {
-      backgroundColor = successColor;
-    } else if (percentage > 0) {
-      backgroundColor = colors.primaryLight;
-    }
+    if (fullyCompleted) backgroundColor = successColor;
+    else if (percentage > 0) backgroundColor = colors.primaryLight;
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.checkButton,
-          { backgroundColor },
-        ]}
-        onPress={handleComplete}
-      >
+      <TouchableOpacity style={[styles.checkButton, { backgroundColor }]} onPress={handleComplete}>
         {fullyCompleted ? (
-          <Icon 
-            name={isNegative ? "shield" : "check"} 
-            size={24} 
-            color={colors.textInverse} 
-          />
+          <Icon name={isNegative ? "shield" : "check"} size={24} color={colors.textInverse} />
         ) : percentage > 0 ? (
           <View style={styles.partialCheckContainer}>
             <Svg width={24} height={24} viewBox="0 0 24 24">
-              <Circle
-                cx={12}
-                cy={12}
-                r={10}
-                fill="none"
-                stroke={colors.border}
-                strokeWidth={2}
-              />
-              <Circle
-                cx={12}
-                cy={12}
-                r={10}
-                fill="none"
-                stroke={cardColor}
-                strokeWidth={2}
+              <Circle cx={12} cy={12} r={10} fill="none" stroke={colors.border} strokeWidth={2} />
+              <Circle cx={12} cy={12} r={10} fill="none" stroke={cardColor} strokeWidth={2}
                 strokeDasharray={`${(percentage / 100) * 62.83} 62.83`}
-                strokeLinecap="round"
-                rotation="-90"
-                origin="12, 12"
-              />
+                strokeLinecap="round" rotation="-90" origin="12, 12" />
             </Svg>
-            <Text style={[styles.partialCheckText, { color: cardColor }]}>
-              {percentage.toFixed(0)}
-            </Text>
+            <Text style={[styles.partialCheckText, { color: cardColor }]}>{percentage.toFixed(0)}</Text>
           </View>
         ) : (
           <View style={[styles.checkCircle, { borderColor: cardColor + '60' }]} />
@@ -212,24 +133,12 @@ export default function HabitCard({
 
           <View style={styles.info}>
             <View style={styles.nameRow}>
-              {isNegative && (
-                <Icon name="xCircle" size={16} color={colors.warning} />
-              )}
+              {isNegative && <Icon name="xCircle" size={16} color={colors.warning} />}
               <Text style={styles.name}>{habit.name}</Text>
               {hasStreak && (
-                <View style={[
-                  styles.streakBadge, 
-                  { backgroundColor: isNegative ? colors.warningLight : colors.streakLight }
-                ]}>
-                  <Icon 
-                    name="flame" 
-                    size={12} 
-                    color={isNegative ? colors.warning : colors.streak} 
-                  />
-                  <Text style={[
-                    styles.streakText, 
-                    { color: isNegative ? colors.warning : colors.streak }
-                  ]}>
+                <View style={[styles.streakBadge, { backgroundColor: isNegative ? colors.warningLight : colors.streakLight }]}>
+                  <Icon name="flame" size={12} color={isNegative ? colors.warning : colors.streak} />
+                  <Text style={[styles.streakText, { color: isNegative ? colors.warning : colors.streak }]}>
                     {streak?.current_streak}
                   </Text>
                 </View>
@@ -239,25 +148,19 @@ export default function HabitCard({
             {!isDueToday && !isCompleted && (
               <View style={styles.offDayBadge}>
                 <Icon name="info" size={11} color={colors.info} />
-                <Text style={styles.offDayText}>
-                  Fora do dia programado
-                </Text>
+                <Text style={styles.offDayText}>Fora do dia programado</Text>
               </View>
             )}
-            
+
             {habit.frequency_type === 'weekly' && habit.frequency_days && isDueToday && (
               <View style={styles.frequencyBadge}>
                 <Icon name="calendar" size={11} color={colors.info} />
-                <Text style={styles.frequencyText}>
-                  {formatSelectedDays(habit.frequency_days)}
-                </Text>
+                <Text style={styles.frequencyText}>{formatSelectedDays(habit.frequency_days)}</Text>
               </View>
             )}
-            
+
             {habit.description && (
-              <Text style={styles.description} numberOfLines={2}>
-                {habit.description}
-              </Text>
+              <Text style={styles.description} numberOfLines={2}>{habit.description}</Text>
             )}
 
             {habit.has_target && completion && habit.target_value && habit.target_unit && (
@@ -266,31 +169,18 @@ export default function HabitCard({
                   <Text style={styles.targetLabel}>
                     {completion.value_achieved || 0} / {habit.target_value} {habit.target_unit}
                   </Text>
-                  <Text style={[
-                    styles.targetPercentage,
-                    getProgressPercentage() >= 100 && { color: successColor },
-                  ]}>
+                  <Text style={[styles.targetPercentage, getProgressPercentage() >= 100 && { color: successColor }]}>
                     {getProgressPercentage().toFixed(0)}%
                   </Text>
                 </View>
-                
                 <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill,
-                      { 
-                        width: `${getProgressPercentage()}%`,
-                        backgroundColor: getProgressPercentage() >= 100 ? successColor : cardColor,
-                      }
-                    ]}
-                  />
+                  <View style={[styles.progressFill, {
+                    width: `${getProgressPercentage()}%`,
+                    backgroundColor: getProgressPercentage() >= 100 ? successColor : cardColor,
+                  }]} />
                 </View>
-
                 {getProgressPercentage() >= 100 && (
-                  <View style={[
-                    styles.achievementBadge, 
-                    { backgroundColor: isNegative ? colors.warningLight : colors.successLight }
-                  ]}>
+                  <View style={[styles.achievementBadge, { backgroundColor: isNegative ? colors.warningLight : colors.successLight }]}>
                     <Icon name="sparkles" size={11} color={successColor} />
                     <Text style={[styles.achievementText, { color: successColor }]}>
                       {isNegative ? 'Manteve-se firme!' : 'Meta atingida!'}
@@ -302,46 +192,13 @@ export default function HabitCard({
 
             {habit.has_target && !completion && (
               <View style={styles.targetHint}>
-                <Text style={styles.targetHintText}>
-                  Toque para registrar progresso
-                </Text>
+                <Text style={styles.targetHintText}>Toque para registrar progresso</Text>
               </View>
             )}
-
-            <View style={styles.footer}>
-              <View style={[styles.badge, { backgroundColor: difficultyConfig.color + '20' }]}>
-                <Text style={[styles.badgeText, { color: difficultyConfig.color }]}>
-                  {difficultyConfig.label}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Icon name="star" size={12} color={colors.primary} />
-                <Text style={styles.points}>
-                  +{habit.points_base} pts
-                </Text>
-              </View>
-            </View>
           </View>
 
           {renderCheckButton()}
         </View>
-
-        {showAnimation && (
-          <Animated.View
-            style={[
-              styles.floatingPoints,
-              {
-                transform: [{ translateY: pointsAnim }],
-                opacity: pointsOpacity,
-              },
-            ]}
-          >
-            <Text style={[styles.floatingPointsText, { color: successColor }]}>
-              +{habit.points_base} pts
-            </Text>
-          </Animated.View>
-        )}
       </AnimatedPressableComponent>
 
       {habit.has_target && habit.target_value && habit.target_unit && (

@@ -46,19 +46,6 @@ export default function ProfileScreen() {
     await Promise.all([refetchProfile(), refetchStats()]);
   };
 
-  const getLevelTitle = (level: number) => {
-    if (level >= 10) return 'Divino';
-    if (level >= 9) return 'Titã';
-    if (level >= 8) return 'Imortal';
-    if (level >= 7) return 'Lenda';
-    if (level >= 6) return 'Mestre';
-    if (level >= 5) return 'Persistente';
-    if (level >= 4) return 'Dedicado';
-    if (level >= 3) return 'Aprendiz';
-    if (level >= 2) return 'Iniciante';
-    return 'Novato';
-  };
-
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
   };
@@ -84,8 +71,8 @@ export default function ProfileScreen() {
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
-          <RefreshControl 
-            refreshing={loading} 
+          <RefreshControl
+            refreshing={loading}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
           />
@@ -96,8 +83,8 @@ export default function ProfileScreen() {
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Perfil</Text>
         </View>
 
-        {/* Profile Header com Avatar e Nível */}
-        <ProfileHeader profile={profile} levelTitle={getLevelTitle(profile.level)} />
+        {/* Profile Header com Avatar */}
+        <ProfileHeader profile={profile} />
 
         {/* Estatísticas Rápidas */}
         <View style={styles.section}>
@@ -176,9 +163,7 @@ export default function ProfileScreen() {
                 <Icon name="sun" size={20} color={colors.textSecondary} />
                 <Text style={[styles.themeText, { color: colors.textPrimary }]}>Claro</Text>
               </View>
-              {themeMode === 'light' && (
-                <Icon name="check" size={20} color={colors.primary} />
-              )}
+              {themeMode === 'light' && <Icon name="check" size={20} color={colors.primary} />}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -189,9 +174,7 @@ export default function ProfileScreen() {
                 <Icon name="moon" size={20} color={colors.textSecondary} />
                 <Text style={[styles.themeText, { color: colors.textPrimary }]}>Escuro</Text>
               </View>
-              {themeMode === 'dark' && (
-                <Icon name="check" size={20} color={colors.primary} />
-              )}
+              {themeMode === 'dark' && <Icon name="check" size={20} color={colors.primary} />}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -202,9 +185,7 @@ export default function ProfileScreen() {
                 <Icon name="palette" size={20} color={colors.textSecondary} />
                 <Text style={[styles.themeText, { color: colors.textPrimary }]}>Automático</Text>
               </View>
-              {themeMode === 'system' && (
-                <Icon name="check" size={20} color={colors.primary} />
-              )}
+              {themeMode === 'system' && <Icon name="check" size={20} color={colors.primary} />}
             </TouchableOpacity>
           </View>
 
@@ -236,13 +217,13 @@ export default function ProfileScreen() {
           {__DEV__ && (
             <TouchableOpacity
               style={[
-                styles.settingItem, 
-                { 
-                  backgroundColor: colors.surface, 
+                styles.settingItem,
+                {
+                  backgroundColor: colors.surface,
                   borderBottomColor: colors.border,
                   borderWidth: 2,
                   borderColor: colors.info + '40',
-                }
+                },
               ]}
               onPress={() => router.push('/debug/notifications' as any)}
             >
@@ -250,7 +231,7 @@ export default function ProfileScreen() {
                 <Icon name="code" size={20} color={colors.info} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.settingText, { color: colors.info, fontWeight: '600' }]}>
-                    🧪 Testes de Notificação
+                    Testes de Notificação
                   </Text>
                   <Text style={[styles.devBadge, { color: colors.info }]}>
                     Modo Desenvolvedor
@@ -264,8 +245,8 @@ export default function ProfileScreen() {
 
         {/* Ações */}
         <View style={styles.section}>
-          <TouchableOpacity 
-            style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.danger }]} 
+          <TouchableOpacity
+            style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.danger }]}
             onPress={handleLogout}
           >
             <Icon name="logout" size={20} color={colors.danger} />
@@ -278,13 +259,10 @@ export default function ProfileScreen() {
           <Text style={[styles.versionText, { color: colors.textTertiary }]}>
             My Habits Tracker v1.2.0
           </Text>
-          <Text style={[styles.copyrightText, { color: colors.textTertiary }]}>
-            Feito com ❤️ para seu crescimento
-          </Text>
           {__DEV__ && (
             <View style={[styles.devModeBadge, { backgroundColor: colors.infoLight }]}>
               <Text style={[styles.devModeText, { color: colors.info }]}>
-                🔧 Modo Desenvolvedor Ativo
+                Modo Desenvolvedor Ativo
               </Text>
             </View>
           )}
@@ -293,7 +271,6 @@ export default function ProfileScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Confirmação de Logout */}
       <ConfirmDialog
         visible={showLogoutConfirm}
         title="Sair da Conta"
@@ -309,22 +286,15 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  section: {
-    marginTop: 12,
-  },
+  headerTitle: { fontSize: 28, fontWeight: 'bold' },
+  section: { marginTop: 12 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -344,19 +314,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  infoLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    maxWidth: '60%',
-  },
+  infoLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  infoLabel: { fontSize: 14 },
+  infoValue: { fontSize: 14, fontWeight: '600', maxWidth: '60%' },
   settingGroup: {
     borderRadius: 12,
     marginHorizontal: 20,
@@ -371,10 +331,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  settingHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  settingHeaderText: { fontSize: 14, fontWeight: '600' },
   themeOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -383,14 +340,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  themeLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  themeText: {
-    fontSize: 15,
-  },
+  themeLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  themeText: { fontSize: 15 },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -401,30 +352,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  settingText: {
-    fontSize: 16,
-  },
-  devBadge: {
-    fontSize: 11,
-    marginTop: 2,
-    fontWeight: '500',
-  },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  settingText: { fontSize: 16 },
+  devBadge: { fontSize: 11, marginTop: 2, fontWeight: '500' },
   devModeBadge: {
     marginTop: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
-  devModeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
+  devModeText: { fontSize: 11, fontWeight: '600' },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -435,19 +372,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  versionText: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  copyrightText: {
-    fontSize: 11,
-  },
+  logoutButtonText: { fontSize: 16, fontWeight: '600' },
+  footer: { alignItems: 'center', paddingVertical: 20 },
+  versionText: { fontSize: 12, marginBottom: 4 },
 });

@@ -98,7 +98,7 @@ export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.c
     color: colors.textSecondary,
   },
   targetProgress: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   targetHeader: {
     flexDirection: 'row',
@@ -144,7 +144,7 @@ export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.c
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
-    marginBottom: 8,
+    marginBottom: 4,
     borderLeftWidth: 2,
     backgroundColor: colors.infoLight,
     borderLeftColor: colors.info,
@@ -153,25 +153,6 @@ export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.c
     fontSize: 12,
     fontStyle: 'italic',
     color: colors.info,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  points: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
   },
   checkButton: {
     width: 48,
@@ -201,18 +182,5 @@ export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.c
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-  },
-  floatingPoints: {
-    position: 'absolute',
-    top: 16,
-    right: 70,
-    zIndex: 10,
-  },
-  floatingPointsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
 });

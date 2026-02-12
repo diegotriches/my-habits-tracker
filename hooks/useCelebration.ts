@@ -1,3 +1,4 @@
+// hooks/useCelebration.ts
 import { useState, useCallback } from 'react';
 
 export interface CelebrationData {
@@ -5,7 +6,6 @@ export interface CelebrationData {
   message: string;
   icon: 'flame' | 'trophy' | 'star' | 'crown' | 'rocket' | 'sparkles';
   streak?: number;
-  points?: number;
 }
 
 /**
@@ -18,8 +18,7 @@ export function useCelebration() {
   /**
    * Verifica se deve mostrar celebração baseado no streak
    */
-  const checkStreakMilestone = useCallback((currentStreak: number, points: number) => {
-    // Milestones: 7, 14, 30, 60, 90, 180, 365 dias
+  const checkStreakMilestone = useCallback((currentStreak: number) => {
     const milestones = [
       { days: 7, icon: 'flame' as const, title: 'Primeira Semana!', message: 'Você manteve o hábito por 7 dias consecutivos!' },
       { days: 14, icon: 'star' as const, title: 'Duas Semanas!', message: 'Incrível! 14 dias de consistência!' },
@@ -36,7 +35,6 @@ export function useCelebration() {
       setCelebrationData({
         ...milestone,
         streak: currentStreak,
-        points,
       });
       setIsVisible(true);
       return true;
@@ -48,45 +46,17 @@ export function useCelebration() {
   /**
    * Verifica se deve mostrar celebração para meta atingida
    */
-  const checkTargetAchievement = useCallback((habitName: string, points: number) => {
+  const checkTargetAchievement = useCallback((habitName: string) => {
     setCelebrationData({
       title: 'Meta Atingida!',
       message: `Parabéns! Você completou 100% da meta de "${habitName}"!`,
       icon: 'sparkles',
-      points,
     });
     setIsVisible(true);
   }, []);
 
-  /**
-   * Verifica celebração para pontos totais
-   */
-  const checkPointsMilestone = useCallback((totalPoints: number) => {
-    const milestones = [
-      { points: 1000, title: 'Mil Pontos!', message: 'Você alcançou 1.000 pontos!' },
-      { points: 5000, title: '5 Mil Pontos!', message: 'Incrível! 5.000 pontos acumulados!' },
-      { points: 10000, title: '10 Mil Pontos!', message: 'Extraordinário! 10.000 pontos!' },
-      { points: 25000, title: '25 Mil Pontos!', message: 'Você é uma lenda! 25.000 pontos!' },
-    ];
-
-    const milestone = milestones.find(m => m.points === totalPoints);
-
-    if (milestone) {
-      setCelebrationData({
-        ...milestone,
-        icon: 'star',
-        points: totalPoints,
-      });
-      setIsVisible(true);
-      return true;
-    }
-
-    return false;
-  }, []);
-
   const closeCelebration = useCallback(() => {
     setIsVisible(false);
-    // Aguarda a animação de saída antes de limpar os dados
     setTimeout(() => {
       setCelebrationData(null);
     }, 300);
@@ -97,7 +67,6 @@ export function useCelebration() {
     isVisible,
     checkStreakMilestone,
     checkTargetAchievement,
-    checkPointsMilestone,
     closeCelebration,
   };
 }
