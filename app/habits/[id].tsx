@@ -1,4 +1,4 @@
-// app/habits/[id].tsx - ATUALIZADO
+// app/habits/[id].tsx - ATUALIZADO COM COR TEMÁTICA
 import { ConsistencyChart } from '@/components/habits/ConsistencyChart';
 import { HabitStreakTracker } from '@/components/habits/HabitStreakTracker';
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
@@ -201,60 +201,32 @@ export default function HabitDetailsScreen() {
     if (!habit || !user) return;
 
     if (isCompleted) {
-      // Dia já completado → confirmar desmarcar
       setPendingUncompleteDate(date);
       setShowUncompleteConfirm(true);
       return;
     }
 
-    // Dia não completado → marcar
     if (habit.has_target) {
-      // Hábito com meta numérica → abrir modal de progresso
       setPendingProgressDate(date);
       setShowProgressModal(true);
       return;
     }
 
-    // Hábito binário → completar direto
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
+    const result = await retroactiveCompletionService.completeRetroactively(
+      habit,
+      date,
+      user.id
+    );
 
-    if (isToday) {
-      // Hoje: usar completeHabit normal via retroactiveCompletionService
-      const result = await retroactiveCompletionService.completeRetroactively(
-        habit,
-        date,
-        user.id
-      );
-
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        hapticFeedback.success();
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-        await refetch();
-      } else {
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-      }
+    if (result.success) {
+      await retroactiveCompletionService.recalculateStreak(habit.id);
+      hapticFeedback.success();
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
+      await refetch();
     } else {
-      // Dia passado: completar retroativamente
-      const result = await retroactiveCompletionService.completeRetroactively(
-        habit,
-        date,
-        user.id
-      );
-
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        hapticFeedback.success();
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-        await refetch();
-      } else {
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-      }
+      setSuccessMessage(result.message);
+      setShowSuccessToast(true);
     }
   };
 
@@ -392,6 +364,12 @@ export default function HabitDetailsScreen() {
 
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const isNegative = habit.type === 'negative';
+  const themeColor = isNegative ? colors.warning : habit.color;
+
+  // Opacidades para tint de cor
+  const tintBg = themeColor + '0A';          // ~4% — fundo geral da scroll
+  const tintBorder = themeColor + '30';      // ~19% — bordas
+  const tintBorderLight = themeColor + '18'; // ~9% — bordas mais sutis
 
   const streakLabel = isNegative 
     ? `${streak?.current_streak || 0} ${(streak?.current_streak || 0) === 1 ? 'dia' : 'dias'} sem`
@@ -438,10 +416,10 @@ export default function HabitDetailsScreen() {
         />
       )}
 
-      {/* Header */}
+      {/* Header limpo */}
       <View style={[styles.header, { 
         backgroundColor: colors.background, 
-        borderBottomColor: colors.border,
+        borderBottomColor: tintBorder,
         paddingTop: insets.top + 16
       }]}>
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
@@ -451,16 +429,19 @@ export default function HabitDetailsScreen() {
           {habit.name}
         </Text>
         <TouchableOpacity onPress={handleEdit} style={styles.headerButton}>
-          <Icon name="edit" size={20} color={colors.primary} />
+          <Icon name="edit" size={20} color={themeColor} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={[styles.content, { backgroundColor: tintBg }]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Card Principal do Hábito */}
         <View style={[styles.habitCard, { 
-          backgroundColor: colors.background,
-          borderLeftColor: isNegative ? colors.warning : habit.color,
-          borderColor: colors.border 
+          backgroundColor: colors.surface,
+          borderLeftColor: themeColor,
+          borderColor: tintBorder,
         }]}>
           <View style={styles.habitHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
@@ -494,9 +475,9 @@ export default function HabitDetailsScreen() {
             </Text>
           )}
 
-          <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
+          <View style={[styles.habitInfo, { borderTopColor: tintBorder }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon name="calendar" size={14} color={colors.textSecondary} />
+              <Icon name="calendar" size={14} color={themeColor} />
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Frequência:</Text>
             </View>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
@@ -509,9 +490,9 @@ export default function HabitDetailsScreen() {
           </View>
 
           {habit.has_target && (
-            <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
+            <View style={[styles.habitInfo, { borderTopColor: tintBorder }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Icon name="target" size={14} color={colors.textSecondary} />
+                <Icon name="target" size={14} color={themeColor} />
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Meta diária:</Text>
               </View>
               <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
@@ -520,22 +501,22 @@ export default function HabitDetailsScreen() {
             </View>
           )}
 
-          <View style={[styles.habitInfo, { borderTopColor: colors.border }]}>
+          <View style={[styles.habitInfo, { borderTopColor: tintBorder }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon name="star" size={14} color={colors.points} />
+              <Icon name="star" size={14} color={themeColor} />
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
                 {isNegative ? 'Pontos por resistir:' : 'Pontos por conclusão:'}
               </Text>
             </View>
-            <Text style={[styles.infoValue, { color: colors.primary }]}>+{habit.points_base} pts</Text>
+            <Text style={[styles.infoValue, { color: themeColor }]}>+{habit.points_base} pts</Text>
           </View>
         </View>
 
         {/* Streak Cards */}
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, { 
-            backgroundColor: colors.background,
-            borderColor: isNegative ? colors.warning : colors.streak,
+            backgroundColor: colors.surface,
+            borderColor: tintBorder,
             ...styles.currentStreakCard 
           }]}>
             <Icon 
@@ -552,8 +533,8 @@ export default function HabitDetailsScreen() {
           </View>
 
           <View style={[styles.streakCard, { 
-            backgroundColor: colors.background,
-            borderColor: colors.warning,
+            backgroundColor: colors.surface,
+            borderColor: tintBorder,
             ...styles.bestStreakCard 
           }]}>
             <Icon name="award" size={32} color={colors.warning} />
@@ -569,7 +550,7 @@ export default function HabitDetailsScreen() {
         {/* Progresso por Período */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Icon name="stats" size={16} color={colors.textPrimary} />
+            <Icon name="stats" size={16} color={themeColor} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               Progresso por Período
             </Text>
@@ -580,14 +561,14 @@ export default function HabitDetailsScreen() {
               percentage={weekStats?.successRate || 0}
               completed={weekStats?.completed || 0}
               total={weekStats?.total || 0}
-              color="#3b82f6"
+              color={themeColor}
             />
             <PeriodStatsCard
               label="Mês"
               percentage={monthStats?.successRate || 0}
               completed={monthStats?.completed || 0}
               total={monthStats?.total || 0}
-              color="#8b5cf6"
+              color={themeColor}
             />
           </View>
 
@@ -597,14 +578,14 @@ export default function HabitDetailsScreen() {
               percentage={semesterStats?.successRate || 0}
               completed={semesterStats?.completed || 0}
               total={semesterStats?.total || 0}
-              color="#ec4899"
+              color={themeColor}
             />
             <PeriodStatsCard
               label="Ano"
               percentage={yearStats?.successRate || 0}
               completed={yearStats?.completed || 0}
               total={yearStats?.total || 0}
-              color="#f59e0b"
+              color={themeColor}
             />
           </View>
         </View>
@@ -612,28 +593,28 @@ export default function HabitDetailsScreen() {
         {/* Gráfico de Consistência Semanal */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Icon name="trendingUp" size={16} color={colors.textPrimary} />
+            <Icon name="trendingUp" size={16} color={themeColor} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               Evolução Semanal
             </Text>
           </View>
           <ConsistencyChart 
             data={last30DaysData} 
-            habitColor={isNegative ? colors.warning : habit.color} 
+            habitColor={themeColor} 
           />
         </View>
 
         {/* Streak Tracker com calendário interativo */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Icon name="calendar" size={16} color={colors.textPrimary} />
+            <Icon name="calendar" size={16} color={themeColor} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               Calendário & Sequências
             </Text>
           </View>
           <HabitStreakTracker 
             data={last90DaysData} 
-            habitColor={isNegative ? colors.warning : habit.color} 
+            habitColor={themeColor} 
             hasTarget={habit.has_target}
             onDayPress={handleCalendarDayPress}
           />
@@ -641,19 +622,17 @@ export default function HabitDetailsScreen() {
 
         {/* SEÇÃO DE NOTIFICAÇÕES (AGRUPADAS) */}
         <View style={styles.section}>
-          <View style={[styles.notificationsHeader, { borderBottomColor: colors.border }]}>
-            <Icon name="bell" size={18} color={colors.primary} />
+          <View style={[styles.notificationsHeader, { borderBottomColor: tintBorder }]}>
+            <Icon name="bell" size={18} color={themeColor} />
             <Text style={[styles.notificationsSectionTitle, { color: colors.textPrimary }]}>
               Notificações
             </Text>
           </View>
 
-          {/* Lembretes Simples */}
           <View style={styles.notificationBlock}>
             <ReminderSetup habitId={id as string} habitName={habit.name} />
           </View>
 
-          {/* Alertas de Progresso/Motivação/Urgência */}
           <View style={styles.notificationBlock}>
             <ProgressNotificationSettings
               config={progressNotificationConfig}
@@ -664,9 +643,9 @@ export default function HabitDetailsScreen() {
               habitType={habit.type}
             />
             {savingNotifications && (
-              <View style={[styles.savingIndicator, { backgroundColor: colors.primaryLight }]}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.savingText, { color: colors.primary }]}>
+              <View style={[styles.savingIndicator, { backgroundColor: colors.surface }]}>
+                <ActivityIndicator size="small" color={themeColor} />
+                <Text style={[styles.savingText, { color: themeColor }]}>
                   Salvando...
                 </Text>
               </View>
@@ -678,13 +657,16 @@ export default function HabitDetailsScreen() {
         {overallStats && (
           <View style={styles.section}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Icon name="activity" size={16} color={colors.textPrimary} />
+              <Icon name="activity" size={16} color={themeColor} />
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 Estatísticas Gerais
               </Text>
             </View>
-            <View style={[styles.statsCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
+            <View style={[styles.statsCard, { 
+              backgroundColor: colors.surface, 
+              borderColor: tintBorderLight,
+            }]}>
+              <View style={[styles.statRow, { borderBottomColor: tintBorderLight }]}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   {isNegative ? 'Vezes que resistiu' : 'Total de conclusões'}
                 </Text>
@@ -693,23 +675,23 @@ export default function HabitDetailsScreen() {
                 </Text>
               </View>
 
-              <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
+              <View style={[styles.statRow, { borderBottomColor: tintBorderLight }]}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Taxa de sucesso</Text>
                 <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                   {overallStats.successRate.toFixed(1)}%
                 </Text>
               </View>
 
-              <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
+              <View style={[styles.statRow, { borderBottomColor: tintBorderLight }]}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pontos ganhos</Text>
-                <Text style={[styles.statValue, styles.pointsValue, { color: colors.primary }]}>
+                <Text style={[styles.statValue, styles.pointsValue, { color: themeColor }]}>
                   {overallStats.totalPoints} pts
                 </Text>
               </View>
 
               {habit.has_target && overallStats.averageValue && (
                 <>
-                  <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.statRow, { borderBottomColor: tintBorderLight }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                       Valor médio alcançado
                     </Text>
@@ -718,7 +700,7 @@ export default function HabitDetailsScreen() {
                     </Text>
                   </View>
 
-                  <View style={[styles.statRow, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.statRow, { borderBottomColor: tintBorderLight }]}>
                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                       Valor máximo alcançado
                     </Text>
@@ -746,13 +728,18 @@ export default function HabitDetailsScreen() {
               <Icon 
                 name={isNegative ? "shield" : "checkCircle"} 
                 size={16} 
-                color={isNegative ? colors.warning : colors.success} 
+                color={themeColor} 
               />
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 {isNegative ? 'Últimas Vitórias' : 'Últimas Conclusões'}
               </Text>
             </View>
-            <View style={[styles.completionsList, { backgroundColor: colors.background }]}>
+            <View style={[styles.completionsList, { 
+              backgroundColor: colors.surface, 
+              borderWidth: 1,
+              borderColor: tintBorderLight,
+              borderRadius: 12,
+            }]}>
               {completions.slice(0, 5).map((completion) => {
                 const date = new Date((completion as any).completed_at);
                 const dateStr = date.toLocaleDateString('pt-BR', {
@@ -763,9 +750,9 @@ export default function HabitDetailsScreen() {
                 const points = (completion as any).points_earned;
 
                 return (
-                  <View key={(completion as any).id} style={[styles.completionItem, { borderBottomColor: colors.border }]}>
+                  <View key={(completion as any).id} style={[styles.completionItem, { borderBottomColor: tintBorderLight }]}>
                     <Text style={[styles.completionDate, { color: colors.textPrimary }]}>{dateStr}</Text>
-                    <Text style={[styles.completionPoints, { color: colors.primary }]}>+{points} pts</Text>
+                    <Text style={[styles.completionPoints, { color: themeColor }]}>+{points} pts</Text>
                   </View>
                 );
               })}
@@ -812,17 +799,17 @@ const styles = StyleSheet.create({
   },
   headerButton: { padding: 8, minWidth: 60 },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center', marginHorizontal: 8 },
-  content: { flex: 1, padding: 20 },
+  content: { flex: 1, padding: 20, paddingTop: 20 },
   habitCard: {
     borderRadius: 16,
     padding: 20,
     borderLeftWidth: 4,
-    borderWidth: 1,
+    borderWidth: 1.5,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 3,
   },
   habitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
@@ -852,12 +839,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  currentStreakCard: { borderWidth: 2 },
-  bestStreakCard: { borderWidth: 2 },
+  currentStreakCard: { borderWidth: 1.5 },
+  bestStreakCard: { borderWidth: 1.5 },
   streakValue: { fontSize: 32, fontWeight: '700', marginTop: 8, marginBottom: 4 },
   streakLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
   section: { marginBottom: 24 },
@@ -901,7 +888,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 14 },
   statValue: { fontSize: 14, fontWeight: '600' },
   pointsValue: {},
-  completionsList: { borderRadius: 12, overflow: 'hidden' },
+  completionsList: { overflow: 'hidden' },
   completionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   completionDate: { fontSize: 14 },
   completionPoints: { fontSize: 14, fontWeight: '600' },

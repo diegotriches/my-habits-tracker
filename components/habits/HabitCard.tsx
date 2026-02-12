@@ -32,14 +32,15 @@ export default function HabitCard({
   isDueToday = true,
 }: HabitCardProps) {
   const { colors } = useTheme();
-  const styles = habitCardStyles(colors);
+  const isNegative = habit.type === 'negative';
+  const cardColor = isNegative ? colors.warning : habit.color;
+  const successColor = isNegative ? colors.warning : colors.success;
+  const styles = habitCardStyles(colors, cardColor);
   const difficultyConfig = DIFFICULTY_CONFIG[habit.difficulty];
   const hasStreak = (streak?.current_streak || 0) > 0;
-  const isNegative = habit.type === 'negative';
 
   const [showProgressInput, setShowProgressInput] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
-  // ✅ REMOVIDO: checkScale (estava causando o problema de invisibilidade)
   const pointsAnim = useRef(new Animated.Value(0)).current;
   const pointsOpacity = useRef(new Animated.Value(0)).current;
 
@@ -50,20 +51,13 @@ export default function HabitCard({
 
     hapticFeedback.light();
 
-    // Se tem meta numérica, sempre abre o input (mesmo se completado)
     if (habit.has_target && habit.target_value && habit.target_unit) {
       setShowProgressInput(true);
       return;
     }
 
-    // ✅ CORREÇÃO: Removido o "if (isCompleted) return;"
-    // Para hábitos binários, sempre permite ação (marcar ou desmarcar)
-    // A lógica de confirmação para desmarcar está no index.tsx
     hapticFeedback.success();
 
-    // ✅ REMOVIDO: Animação de scale que causava invisibilidade
-
-    // Só mostra animação de pontos se NÃO estiver completado
     if (!isCompleted) {
       setShowAnimation(true);
       Animated.parallel([
@@ -120,17 +114,12 @@ export default function HabitCard({
     return getProgressPercentage() >= 100;
   };
 
-  const cardColor = isNegative ? colors.warning : habit.color;
-  const successColor = isNegative ? colors.warning : colors.success;
-
   const renderCheckButton = () => {
-    // Para hábitos SEM meta numérica (binários)
     if (!habit.has_target) {
       return (
         <TouchableOpacity
           style={[
             styles.checkButton,
-            // ✅ Sempre aplicar backgroundColor explicitamente
             { backgroundColor: isCompleted ? successColor : colors.surface },
           ]}
           onPress={handleComplete}
@@ -142,17 +131,15 @@ export default function HabitCard({
               color={colors.textInverse} 
             />
           ) : (
-            <View style={[styles.checkCircle, { borderColor: colors.border }]} />
+            <View style={[styles.checkCircle, { borderColor: cardColor + '60' }]} />
           )}
         </TouchableOpacity>
       );
     }
 
-    // Para hábitos COM meta numérica
     const percentage = getProgressPercentage();
     const fullyCompleted = percentage >= 100;
 
-    // ✅ Definir backgroundColor explicitamente
     let backgroundColor = colors.surface;
     if (fullyCompleted) {
       backgroundColor = successColor;
@@ -164,7 +151,7 @@ export default function HabitCard({
       <TouchableOpacity
         style={[
           styles.checkButton,
-          { backgroundColor }, // ✅ Sempre aplicar backgroundColor
+          { backgroundColor },
         ]}
         onPress={handleComplete}
       >
@@ -203,7 +190,7 @@ export default function HabitCard({
             </Text>
           </View>
         ) : (
-          <View style={[styles.checkCircle, { borderColor: colors.border }]} />
+          <View style={[styles.checkCircle, { borderColor: cardColor + '60' }]} />
         )}
       </TouchableOpacity>
     );
@@ -216,8 +203,7 @@ export default function HabitCard({
         onPress={handleCardPress}
         style={[
           styles.card,
-          // ✅ REMOVIDO: isFullyCompleted() && { opacity: 0.7 }
-          // Mantém opacidade normal para permitir visualizar e desmarcar
+          isFullyCompleted() && styles.cardCompleted,
           !isDueToday && !isCompleted && { opacity: 0.6 },
         ]}
       >

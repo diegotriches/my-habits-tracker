@@ -1,18 +1,21 @@
 // components/habits/HabitCardStyles.ts
 import { StyleSheet } from 'react-native';
 
-export const habitCardStyles = (colors: any) => StyleSheet.create({
+export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.create({
   card: {
     borderRadius: 16,
     marginBottom: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     backgroundColor: colors.background,
-    borderColor: colors.border,
-    shadowColor: '#000',
+    borderColor: cardColor ? cardColor + '40' : colors.border,
+    shadowColor: cardColor || '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     elevation: 3,
+  },
+  cardCompleted: {
+    borderColor: cardColor ? cardColor + '25' : colors.border,
   },
   content: {
     flexDirection: 'row',
@@ -20,13 +23,13 @@ export const habitCardStyles = (colors: any) => StyleSheet.create({
     padding: 16,
   },
   colorIndicator: {
-    width: 4,
-    height: '100%',
-    borderRadius: 2,
+    width: 5,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
     position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
+    left: -1,
+    top: -1,
+    bottom: -1,
   },
   info: {
     flex: 1,
@@ -178,7 +181,6 @@ export const habitCardStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     marginLeft: 12,
     backgroundColor: colors.surface,
-    // ✅ Garantir que sempre seja visível
     borderWidth: 2,
     borderColor: colors.border,
   },
