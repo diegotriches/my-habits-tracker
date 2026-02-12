@@ -3,7 +3,7 @@ import notifee, { EventType, AndroidImportance } from '@notifee/react-native';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-console.log('🚀🚀🚀 INDEX.JS CARREGADO');
+console.log('INDEX.JS CARREGADO');
 
 // Supabase client para headless/background execution
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -25,24 +25,24 @@ async function ensureAuthenticated() {
   try {
     const { data: { session }, error } = await headlessSupabase.auth.getSession();
     if (error) {
-      console.error('❌ [BG] Erro ao recuperar sessão:', error);
+      console.error('[BG] Erro ao recuperar sessão:', error);
       return false;
     }
     if (!session) {
-      console.warn('⚠️ [BG] Sem sessão ativa');
+      console.warn('[BG] Sem sessão ativa');
       return false;
     }
-    console.log('✅ [BG] Sessão recuperada para:', session.user?.email);
+    console.log('[BG] Sessão recuperada para:', session.user?.email);
     return true;
   } catch (err) {
-    console.error('❌ [BG] Erro auth:', err);
+    console.error('[BG] Erro auth:', err);
     return false;
   }
 }
 
-// ✅ Background handler do Notifee
+// Background handler do Notifee
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  console.log('🔔 [BG-HEADLESS] Event:', type);
+  console.log('[BG-HEADLESS] Event:', type);
 
   if (type === EventType.ACTION_PRESS) {
     const actionId = detail.pressAction?.id;
@@ -58,8 +58,8 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       const snoozeTime = Date.now() + 10 * 60 * 1000;
 
       await notifee.displayNotification({
-        title: '⏰ Lembrete adiado',
-        body: `${data.habitName} - Voltarei em 10 minutos!`,
+        title: 'Lembrete adiado',
+        body: `${data.habitName} — Voltarei em 10 minutos`,
         data: { habitId: data.habitId, habitName: data.habitName, type: 'snooze_reminder' },
         android: {
           channelId: 'habits',
@@ -70,8 +70,8 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 
       await notifee.createTriggerNotification(
         {
-          title: '⏰ Hora do seu hábito!',
-          body: `${data.habitName} - Última chance!`,
+          title: 'Hora do seu hábito',
+          body: `${data.habitName} — Última chance!`,
           data: { habitId: data.habitId, habitName: data.habitName, type: 'snooze_reminder' },
           android: {
             channelId: 'habits',
@@ -79,22 +79,21 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
             smallIcon: 'ic_launcher',
             sound: 'default',
             actions: [
-              { title: '✅ Feito', pressAction: { id: 'complete' } },
+              { title: 'Feito', pressAction: { id: 'complete' } },
             ],
           },
         },
         { type: 0, timestamp: snoozeTime }
       );
 
-      console.log('✅ [BG] Snooze OK');
+      console.log('[BG] Snooze OK');
 
     } else if (actionId === 'complete') {
       try {
-        // ✅ Recuperar sessão antes de fazer queries
         const isAuth = await ensureAuthenticated();
         if (!isAuth) {
           await notifee.displayNotification({
-            title: '⚠️ Sessão expirada',
+            title: 'Sessão expirada',
             body: 'Abra o app para completar o hábito',
             android: { channelId: 'habits', importance: AndroidImportance.HIGH, smallIcon: 'ic_launcher' },
           });
@@ -108,9 +107,9 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
           .single();
 
         if (habitError || !habit) {
-          console.error('❌ [BG] Erro ao buscar hábito:', habitError);
+          console.error('[BG] Erro ao buscar hábito:', habitError);
           await notifee.displayNotification({
-            title: '❌ Erro',
+            title: 'Erro',
             body: 'Hábito não encontrado',
             android: { channelId: 'habits', importance: AndroidImportance.HIGH, smallIcon: 'ic_launcher' },
           });
@@ -119,7 +118,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 
         if (habit.has_target) {
           await notifee.displayNotification({
-            title: '📊 Meta Numérica',
+            title: 'Meta numérica',
             body: `Abra o app para registrar "${habit.name}"`,
             android: { channelId: 'habits', importance: AndroidImportance.HIGH, smallIcon: 'ic_launcher' },
           });
@@ -141,7 +140,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 
         if (existing) {
           await notifee.displayNotification({
-            title: '✅ Já completado!',
+            title: 'Já completado',
             body: 'Você já fez isso hoje.',
             android: { channelId: 'habits', importance: AndroidImportance.LOW, smallIcon: 'ic_launcher' },
           });
@@ -157,7 +156,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
         });
 
         if (insertError) {
-          console.error('❌ [BG] Erro insert:', insertError);
+          console.error('[BG] Erro insert:', insertError);
           throw insertError;
         }
 
@@ -168,12 +167,12 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
         });
 
         if (rpcError) {
-          console.warn('⚠️ [BG] Erro ao atualizar pontos:', rpcError);
+          console.warn('[BG] Erro ao atualizar pontos:', rpcError);
         }
 
         await notifee.displayNotification({
-          title: '🎉 Completado!',
-          body: `${habit.name} — +${habit.points_base} pontos!`,
+          title: 'Completado!',
+          body: `${habit.name} — +${habit.points_base} pontos`,
           android: {
             channelId: 'habits',
             importance: AndroidImportance.HIGH,
@@ -183,11 +182,11 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
           },
         });
 
-        console.log('✅ [BG] Complete OK');
+        console.log('[BG] Complete OK');
       } catch (err) {
-        console.error('❌ [BG] Erro complete:', err);
+        console.error('[BG] Erro complete:', err);
         await notifee.displayNotification({
-          title: '❌ Erro',
+          title: 'Erro',
           body: 'Não foi possível completar o hábito',
           android: { channelId: 'habits', importance: AndroidImportance.HIGH, smallIcon: 'ic_launcher' },
         });
@@ -196,5 +195,5 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   }
 });
 
-// ✅ Carregar Expo Router
+// Carregar Expo Router
 import 'expo-router/entry';

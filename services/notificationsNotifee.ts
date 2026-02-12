@@ -23,24 +23,21 @@ class NotificationNotifeeService {
   private isInitialized = false;
 
   constructor() {
-    console.log('🔔 Constructor Notifee executado');
-    // Event handlers são gerenciados pelo notifeeEventHandlers.ts
+    console.log('Constructor Notifee executado');
   }
 
   async initialize(navigationCallback: (habitId: string) => void): Promise<void> {
     if (this.isInitialized) {
-      console.log('⚠️ Notifee já inicializado');
+      console.log('Notifee já inicializado');
       return;
     }
 
-    console.log('🔔 Inicializando Notifee...');
+    console.log('Inicializando Notifee...');
     this.navigationCallback = navigationCallback;
-
-    // Event handlers são gerenciados pelo notifeeEventHandlers.ts
 
     await this.createChannels();
     this.isInitialized = true;
-    console.log('✅ Notifee inicializado');
+    console.log('Notifee inicializado');
   }
 
   private async createChannels(): Promise<void> {
@@ -65,9 +62,9 @@ class NotificationNotifeeService {
         sound: 'default',
       });
 
-      console.log('✅ Canais criados');
+      console.log('Canais criados');
     } catch (error) {
-      console.error('❌ Erro ao criar canais:', error);
+      console.error('Erro ao criar canais:', error);
     }
   }
 
@@ -77,22 +74,22 @@ class NotificationNotifeeService {
       const granted = settings.authorizationStatus >= AuthorizationStatus.AUTHORIZED;
 
       if (granted) {
-        console.log('✅ Permissões de notificação concedidas');
+        console.log('Permissões de notificação concedidas');
 
         if (Platform.OS === 'android' && Platform.Version >= 31) {
           try {
-            console.log('⏰ Verificando permissão de alarmes exatos...');
+            console.log('Verificando permissão de alarmes exatos...');
           } catch (alarmError) {
-            console.warn('⚠️ Erro ao abrir configurações de alarmes:', alarmError);
+            console.warn('Erro ao abrir configurações de alarmes:', alarmError);
           }
         }
       } else {
-        console.log('❌ Permissões negadas');
+        console.log('Permissões negadas');
       }
 
       return granted;
     } catch (error) {
-      console.error('❌ Erro permissões:', error);
+      console.error('Erro permissões:', error);
       return false;
     }
   }
@@ -113,12 +110,11 @@ class NotificationNotifeeService {
     try {
       const hasPermission = await this.hasPermission();
       if (!hasPermission) {
-        console.log('❌ Sem permissão');
+        console.log('Sem permissão');
         return [];
       }
 
-      // ✅ USAR EXACT ALARM SERVICE
-      console.log('🔔 Usando ExactAlarmService (AlarmManager nativo)');
+      console.log('Usando ExactAlarmService (AlarmManager nativo)');
 
       const alarmIds = await exactAlarmService.scheduleWeeklyReminders(
         habitId,
@@ -128,11 +124,11 @@ class NotificationNotifeeService {
         reminderId
       );
 
-      console.log(`✅ ${alarmIds.length} alarmes agendados via AlarmManager`);
+      console.log(`${alarmIds.length} alarmes agendados via AlarmManager`);
       return alarmIds;
 
     } catch (error) {
-      console.error('❌ Erro ao agendar:', error);
+      console.error('Erro ao agendar:', error);
       return [];
     }
   }
@@ -153,7 +149,7 @@ class NotificationNotifeeService {
       daysUntil += 7;
     } else if (daysUntil === 0 && diffMs < minBuffer) {
       daysUntil += 7;
-      console.log('⚠️ Horário muito próximo! Pulando para próxima semana');
+      console.log('Horário muito próximo! Pulando para próxima semana');
     }
 
     result.setDate(result.getDate() + daysUntil);
@@ -161,7 +157,7 @@ class NotificationNotifeeService {
     const finalDiffMs = result.getTime() - now.getTime();
     const finalDiffMinutes = Math.floor(finalDiffMs / 60000);
 
-    console.log('📅 getNextOccurrence:', {
+    console.log('getNextOccurrence:', {
       dayOfWeek,
       currentDay,
       time: `${hours}:${minutes}`,
@@ -196,9 +192,9 @@ class NotificationNotifeeService {
   async cancelNotification(notificationId: string): Promise<void> {
     try {
       await notifee.cancelNotification(notificationId);
-      console.log(`✅ Cancelado: ${notificationId}`);
+      console.log(`Cancelado: ${notificationId}`);
     } catch (error) {
-      console.warn('❌ Erro ao cancelar:', error);
+      console.warn('Erro ao cancelar:', error);
     }
   }
 
@@ -220,16 +216,16 @@ class NotificationNotifeeService {
       }
 
       if (ids.length > 0) {
-        console.log(`✅ Canceladas ${ids.length} notificações`);
+        console.log(`Canceladas ${ids.length} notificações`);
       }
     } catch (error) {
-      console.warn('❌ Erro:', error);
+      console.warn('Erro:', error);
     }
   }
 
   async handleSnooze(habitId: string, habitName: string): Promise<void> {
     try {
-      console.log('⏰ Snooze:', habitName);
+      console.log('Snooze:', habitName);
 
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
@@ -238,8 +234,8 @@ class NotificationNotifeeService {
 
       await notifee.createTriggerNotification(
         {
-          title: '⏰ Lembrete adiado',
-          body: `${habitName} - Hora de fazer agora!`,
+          title: 'Lembrete adiado',
+          body: `${habitName} — Hora de fazer agora!`,
           data: { habitId, habitName, type: 'snooze_reminder' },
           android: {
             channelId: 'habits',
@@ -252,7 +248,7 @@ class NotificationNotifeeService {
       );
 
       await notifee.displayNotification({
-        title: '⏰ Adiado',
+        title: 'Adiado',
         body: 'Lembrarei em 10 minutos',
         android: {
           channelId: 'habits-progress',
@@ -261,15 +257,15 @@ class NotificationNotifeeService {
         },
       });
 
-      console.log('✅ Snooze OK');
+      console.log('Snooze OK');
     } catch (error) {
-      console.error('❌ Erro snooze:', error);
+      console.error('Erro snooze:', error);
     }
   }
 
   async handleQuickComplete(habitId: string): Promise<void> {
     try {
-      console.log('✅ Quick complete:', habitId);
+      console.log('Quick complete:', habitId);
 
       const { data: habitData, error } = await supabase
         .from('habits')
@@ -286,7 +282,7 @@ class NotificationNotifeeService {
 
       if (habit.has_target) {
         await notifee.displayNotification({
-          title: '📊 Meta Numérica',
+          title: 'Meta numérica',
           body: `Abra o app para registrar "${habit.name}"`,
           android: {
             channelId: 'habits-progress',
@@ -307,7 +303,7 @@ class NotificationNotifeeService {
 
       if (existing) {
         await notifee.displayNotification({
-          title: '✅ Já completado!',
+          title: 'Já completado',
           body: 'Você já fez isso hoje.',
           android: {
             channelId: 'habits-progress',
@@ -330,8 +326,8 @@ class NotificationNotifeeService {
       });
 
       await notifee.displayNotification({
-        title: '🎉 Completado!',
-        body: `+${habit.points_base} pontos!`,
+        title: 'Completado!',
+        body: `+${habit.points_base} pontos`,
         android: {
           channelId: 'habits-progress',
           importance: AndroidImportance.HIGH,
@@ -339,15 +335,15 @@ class NotificationNotifeeService {
         },
       });
 
-      console.log('✅ Complete OK');
+      console.log('Complete OK');
     } catch (error) {
-      console.error('❌ Erro complete:', error);
+      console.error('Erro complete:', error);
     }
   }
 
   async testNotificationWithActions(): Promise<void> {
     try {
-      console.log('🧪 TESTE: Notificação em 3 segundos...');
+      console.log('TESTE: Notificação em 3 segundos...');
 
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
@@ -356,7 +352,7 @@ class NotificationNotifeeService {
 
       await notifee.createTriggerNotification(
         {
-          title: '🎯 TESTE DE BOTÕES',
+          title: 'Teste de botões',
           body: 'Expanda para ver os botões',
           data: {
             habitId: 'test-123',
@@ -369,18 +365,18 @@ class NotificationNotifeeService {
 
             actions: [
               {
-                title: '⏰ ADIAR',
+                title: 'Adiar',
                 pressAction: { id: 'snooze' },
               },
               {
-                title: '✅ FEITO',
+                title: 'Feito',
                 pressAction: { id: 'complete' },
               },
             ],
 
             style: {
               type: AndroidStyle.BIGTEXT,
-              text: 'TESTE\n\n👇 Expanda a notificação para ver 2 botões: ADIAR e FEITO',
+              text: 'Teste — Expanda a notificação para ver 2 botões: Adiar e Feito',
             },
 
             autoCancel: false,
@@ -391,19 +387,19 @@ class NotificationNotifeeService {
         trigger
       );
 
-      console.log('✅ Teste agendado');
+      console.log('Teste agendado');
     } catch (error) {
-      console.error('❌ Erro teste:', error);
+      console.error('Erro teste:', error);
     }
   }
 
   async getAllScheduledNotifications(): Promise<any[]> {
     try {
       const notifications = await notifee.getTriggerNotifications();
-      console.log(`📋 ${notifications.length} agendadas`);
+      console.log(`${notifications.length} agendadas`);
       return notifications;
     } catch (error) {
-      console.error('❌ Erro listar:', error);
+      console.error('Erro listar:', error);
       return [];
     }
   }
@@ -411,9 +407,9 @@ class NotificationNotifeeService {
   async cancelAllNotifications(): Promise<void> {
     try {
       await notifee.cancelAllNotifications();
-      console.log('✅ Todas canceladas');
+      console.log('Todas canceladas');
     } catch (error) {
-      console.error('❌ Erro cancelar:', error);
+      console.error('Erro cancelar:', error);
     }
   }
 
@@ -447,7 +443,7 @@ class NotificationNotifeeService {
     await this.testNotificationWithActions();
   }
   async debugChannel(): Promise<void> {
-    console.log('📢 Veja configurações do Android');
+    console.log('Veja configurações do Android');
   }
   async debugScheduledNotifications(): Promise<void> {
     const n = await this.getAllScheduledNotifications();

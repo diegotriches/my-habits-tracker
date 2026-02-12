@@ -20,7 +20,7 @@ class ProgressNotificationSchedulerService {
    */
   async scheduleProgressNotifications(habitId: string, userId: string): Promise<boolean> {
     try {
-      console.log('📊 Agendando notificações de progresso para:', habitId);
+      console.log('Agendando notificações de progresso para:', habitId);
 
       // Buscar configurações
       const { data: config, error: configError } = await supabase
@@ -106,10 +106,10 @@ class ProgressNotificationSchedulerService {
         console.error('Erro ao salvar IDs:', updateError);
       }
 
-      console.log('✅ Notificações de progresso agendadas:', notificationIds);
+      console.log('Notificações de progresso agendadas:', notificationIds);
       return true;
     } catch (error) {
-      console.error('❌ Erro ao agendar notificações de progresso:', error);
+      console.error('Erro ao agendar notificações de progresso:', error);
       return false;
     }
   }
@@ -125,7 +125,7 @@ class ProgressNotificationSchedulerService {
     try {
       const [hours, minutes] = time.split(':').map(Number);
 
-      console.log(`📊 Agendando notificação de progresso: ${period} às ${time}`);
+      console.log(`Agendando notificação de progresso: ${period} às ${time}`);
 
       // Calcular próxima ocorrência
       const nextOccurrence = this.getNextOccurrence(hours, minutes);
@@ -139,14 +139,14 @@ class ProgressNotificationSchedulerService {
       // Criar notificação com Notifee
       const notificationId = await notifee.createTriggerNotification(
         {
-          title: '📊 Verificação de Progresso',
+          title: 'Verificação de progresso',
           body: `Como está seu progresso em "${habit.name}"?`,
           data: {
             habitId: habit.id,
             habitName: habit.name,
             period,
             type: 'progress_check',
-            checkProgress: 'true', // String ao invés de boolean
+            checkProgress: 'true',
           },
           android: {
             channelId: 'habits-progress',
@@ -160,10 +160,10 @@ class ProgressNotificationSchedulerService {
         trigger
       );
 
-      console.log(`✅ Notificação de progresso agendada: ${notificationId}`);
+      console.log(`Notificação de progresso agendada: ${notificationId}`);
       return notificationId;
     } catch (error) {
-      console.error('❌ Erro ao agendar notificação de progresso:', error);
+      console.error('Erro ao agendar notificação de progresso:', error);
       return null;
     }
   }
@@ -177,7 +177,6 @@ class ProgressNotificationSchedulerService {
     
     result.setHours(hours, minutes, 0, 0);
     
-    // Se já passou hoje, ir para amanhã
     if (result <= now) {
       result.setDate(result.getDate() + 1);
     }
@@ -190,9 +189,8 @@ class ProgressNotificationSchedulerService {
    */
   async cancelProgressNotifications(habitId: string): Promise<void> {
     try {
-      console.log('🗑️ Cancelando notificações de progresso:', habitId);
+      console.log('Cancelando notificações de progresso:', habitId);
 
-      // Buscar IDs salvos
       const { data: config, error } = await supabase
         .from('habit_progress_notifications')
         .select('morning_notification_id, afternoon_notification_id, evening_notification_id')
@@ -206,7 +204,6 @@ class ProgressNotificationSchedulerService {
 
       const progressConfig = config as ProgressNotification;
 
-      // Cancelar cada notificação
       const ids = [
         progressConfig.morning_notification_id,
         progressConfig.afternoon_notification_id,
@@ -216,13 +213,12 @@ class ProgressNotificationSchedulerService {
       for (const id of ids) {
         try {
           await notifee.cancelNotification(id);
-          console.log(`✅ Cancelado: ${id}`);
+          console.log(`Cancelado: ${id}`);
         } catch (err) {
           console.warn('Erro ao cancelar:', id, err);
         }
       }
 
-      // Limpar IDs do banco
       await (supabase.from('habit_progress_notifications') as any)
         .update({
           morning_notification_id: null,
@@ -231,9 +227,9 @@ class ProgressNotificationSchedulerService {
         })
         .eq('habit_id', habitId);
 
-      console.log('✅ Notificações de progresso canceladas');
+      console.log('Notificações de progresso canceladas');
     } catch (error) {
-      console.error('❌ Erro ao cancelar:', error);
+      console.error('Erro ao cancelar:', error);
     }
   }
 
@@ -249,7 +245,7 @@ class ProgressNotificationSchedulerService {
    */
   async enableProgressNotifications(habitId: string, userId: string): Promise<boolean> {
     try {
-      console.log('🔔 Habilitando notificações de progresso:', habitId);
+      console.log('Habilitando notificações de progresso:', habitId);
 
       const { error: upsertError } = await (supabase
         .from('habit_progress_notifications') as any)
@@ -271,7 +267,7 @@ class ProgressNotificationSchedulerService {
 
       return await this.scheduleProgressNotifications(habitId, userId);
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
       return false;
     }
   }
@@ -281,7 +277,7 @@ class ProgressNotificationSchedulerService {
    */
   async disableProgressNotifications(habitId: string): Promise<boolean> {
     try {
-      console.log('🔕 Desabilitando notificações de progresso:', habitId);
+      console.log('Desabilitando notificações de progresso:', habitId);
 
       await this.cancelProgressNotifications(habitId);
 
@@ -295,10 +291,10 @@ class ProgressNotificationSchedulerService {
         return false;
       }
 
-      console.log('✅ Notificações de progresso desabilitadas');
+      console.log('Notificações de progresso desabilitadas');
       return true;
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
       return false;
     }
   }
@@ -314,7 +310,7 @@ class ProgressNotificationSchedulerService {
     time?: string
   ): Promise<boolean> {
     try {
-      console.log(`📝 Atualizando ${period}:`, { enabled, time });
+      console.log(`Atualizando ${period}:`, { enabled, time });
 
       const updates: any = {};
       updates[`${period}_enabled`] = enabled;
@@ -332,10 +328,9 @@ class ProgressNotificationSchedulerService {
         return false;
       }
 
-      // Re-agendar
       return await this.scheduleProgressNotifications(habitId, userId);
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
       return false;
     }
   }
@@ -360,7 +355,7 @@ class ProgressNotificationSchedulerService {
 
       return data as ProgressNotification | null;
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
       return null;
     }
   }
@@ -385,21 +380,20 @@ class ProgressNotificationSchedulerService {
 
       return true;
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
       return false;
     }
   }
 
   /**
    * Processa notificação quando dispara
-   * (Chamado pelo handler de notificações)
    */
   async processProgressNotification(
     habitId: string,
     period: NotificationPeriod
   ): Promise<void> {
     try {
-      console.log('📊 Processando notificação de progresso:', { habitId, period });
+      console.log('Processando notificação de progresso:', { habitId, period });
 
       const progress = await progressCheckerService.getTodayProgress(habitId);
       if (!progress) {
@@ -433,9 +427,9 @@ class ProgressNotificationSchedulerService {
         },
       });
 
-      console.log('✅ Notificação de progresso enviada');
+      console.log('Notificação de progresso enviada');
     } catch (error) {
-      console.error('❌ Erro ao processar:', error);
+      console.error('Erro ao processar:', error);
     }
   }
 
@@ -453,7 +447,7 @@ class ProgressNotificationSchedulerService {
         .eq('user_id', userId)
         .eq('enabled', true);
 
-      console.log('📊 Notificações ativas:', data?.length || 0);
+      console.log('Notificações ativas:', data?.length || 0);
       data?.forEach((config: any) => {
         console.log('\n---');
         console.log('Hábito:', config.habits.name);
@@ -462,7 +456,7 @@ class ProgressNotificationSchedulerService {
         console.log('Noite:', config.evening_enabled ? config.evening_time : 'Off');
       });
     } catch (error) {
-      console.error('❌ Erro:', error);
+      console.error('Erro:', error);
     }
   }
 }
