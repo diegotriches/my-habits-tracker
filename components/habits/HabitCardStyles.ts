@@ -5,7 +5,7 @@ export const habitCardStyles = (colors: any, cardColor?: string) => StyleSheet.c
   card: {
     borderRadius: 16,
     marginBottom: 12,
-    borderWidth: 1.5,
+    borderWidth: 2.5,
     backgroundColor: colors.background,
     borderColor: cardColor ? cardColor + '40' : colors.border,
     shadowColor: cardColor || '#000',

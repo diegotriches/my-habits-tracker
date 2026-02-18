@@ -7,7 +7,7 @@ import { hapticFeedback } from '@/utils/haptics';
 import { addDays, isFuture, isSameDay, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import React, { useRef } from 'react';
 import { Text, TouchableOpacity, View, PanResponder, Animated } from 'react-native';
-import { styles } from './HabitWeeklyRowStyles';
+import { createWeeklyRowStyles } from './HabitWeeklyRowStyles';
 
 interface HabitWeeklyRowProps {
   habit: Habit;
@@ -33,6 +33,7 @@ export function HabitWeeklyRow({
   const { colors } = useTheme();
   const isNegative = habit.type === 'negative';
   const habitColor = isNegative ? colors.warning : habit.color;
+  const styles = createWeeklyRowStyles(colors, habitColor);
 
   const today = new Date();
   const weekStart = weekStartProp || startOfWeek(today, { weekStartsOn: 0 });
@@ -228,11 +229,7 @@ export function HabitWeeklyRow({
     <View
       style={[
         styles.container,
-        {
-          backgroundColor: colors.background,
-          borderColor: colors.border,
-        },
-        !isDueToday && { opacity: 0.7 },
+        !isDueToday && { opacity: 0.6 },
       ]}
     >
       <View style={[styles.colorIndicator, { backgroundColor: habitColor }]} />
