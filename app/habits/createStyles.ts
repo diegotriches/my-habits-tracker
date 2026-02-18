@@ -1,5 +1,7 @@
 // app/habits/createStyles.ts
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const styles = (colors: any) => StyleSheet.create({
   container: {
@@ -119,40 +121,136 @@ export const styles = (colors: any) => StyleSheet.create({
   },
   metaSeparator: {
     borderTopWidth: 1,
-    marginVertical: 16,
+    marginVertical: 8,
+    marginBottom: 16,
   },
-  collapsibleHeader: {
+
+  // ===== SUMMARY ROWS (compact buttons) =====
+  summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 12,
   },
-  reminderBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  summaryIconCircle: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  reminderBadgeText: {
+  summaryTextContainer: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  summaryValue: {
     fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // ===== BOTTOM SHEET MODAL =====
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalKeyboardView: {
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: SCREEN_HEIGHT * 0.85,
+    minHeight: SCREEN_HEIGHT * 0.3,
+  },
+  modalHandle: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  modalHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '700',
   },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'android' ? 48 : 16,
+    borderTopWidth: 1,
+  },
+  modalConfirmButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSection: {
+    marginBottom: 16,
+  },
+  modalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  modalSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalSectionSubtitle: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  modalDivider: {
+    height: 1,
+    marginVertical: 8,
+  },
+
+  // ===== REMINDERS (inside modal) =====
   permissionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 10,
-    marginTop: 8,
+    marginBottom: 16,
   },
   permissionButtonText: {
-    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
   remindersList: {
-    marginTop: 12,
     gap: 8,
+    marginBottom: 12,
   },
   reminderItem: {
     flexDirection: 'row',
@@ -163,12 +261,10 @@ export const styles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   reminderTime: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
   },
   addButton: {
     flexDirection: 'row',
@@ -178,9 +274,8 @@ export const styles = (colors: any) => StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: colors.primary,
     borderStyle: 'dashed',
-    marginTop: 8,
+    marginBottom: 8,
   },
   addButtonText: {
     fontSize: 13,
@@ -188,11 +283,9 @@ export const styles = (colors: any) => StyleSheet.create({
   },
   pickerContainer: {
     marginTop: 12,
-    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   pickerButtons: {
     flexDirection: 'row',
@@ -208,5 +301,19 @@ export const styles = (colors: any) => StyleSheet.create({
   pickerButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  reminderBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  reminderBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
 });
