@@ -11,13 +11,11 @@ import { exactAlarmService } from '@/services/exactAlarmService';
 
 // REGISTRAR HeadlessJS Task (só executa uma vez)
 if (__DEV__) {
-  console.log('📝 Registrando HeadlessJS task...');
+  console.log('Registrando HeadlessJS task...');
 }
 exactAlarmService.registerHeadlessTask();
 
-// Foreground + Background handlers do Notifee são registrados no index.js
-
-// ✅ Estado global para OAuth processing (fora do componente)
+// Estado global para OAuth processing (fora do componente)
 let globalOAuthProcessing = false;
 
 function RootLayoutNav() {
@@ -27,34 +25,46 @@ function RootLayoutNav() {
   const [isOAuthReloading, setIsOAuthReloading] = React.useState(false);
   const [isProcessingOAuth, setIsProcessingOAuth] = React.useState(false);
 
-  // ✅ Verificar se está recarregando após OAuth
+  // Verificar atualizações OTA ao abrir o app
+  useEffect(() => {
+    async function checkForUpdates() {
+      if (__DEV__) return;
+
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        console.log('Erro ao verificar atualizações:', error);
+      }
+    }
+
+    checkForUpdates();
+  }, []);
+
+  // Verificar se está recarregando após OAuth
   useEffect(() => {
     const checkOAuthReload = async () => {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const oauthReload = await AsyncStorage.getItem('oauth_reload_in_progress');
       
       if (oauthReload === 'true') {
-        console.log('⚠️ App recarregou após OAuth - mostrando loading...');
         setIsOAuthReloading(true);
-        
         await AsyncStorage.removeItem('oauth_reload_in_progress');
-        
-        // Aguardar sessão carregar completamente
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
         setIsOAuthReloading(false);
-        console.log('✅ OAuth reload completo');
       }
     };
     
     checkOAuthReload();
   }, []);
 
-  // ✅ Atualizar estado local quando global mudar
+  // Atualizar estado local quando global mudar
   useEffect(() => {
     const checkInterval = setInterval(() => {
       if (globalOAuthProcessing !== isProcessingOAuth) {
-        console.log('🔄 Atualizando estado OAuth:', globalOAuthProcessing);
         setIsProcessingOAuth(globalOAuthProcessing);
       }
     }, 100);
@@ -62,100 +72,56 @@ function RootLayoutNav() {
     return () => clearInterval(checkInterval);
   }, [isProcessingOAuth]);
 
-  // ✅ LISTENER DE DEEP LINKS - Processa OAuth callback
+  // LISTENER DE DEEP LINKS - Processa OAuth callback
   useEffect(() => {
-    console.log('🔗 Configurando listener de deep links...');
-
     const handleDeepLink = async (url: string) => {
-      console.log('📍 Deep link recebido:', url);
-      
       if (url.includes('auth/callback')) {
-        console.log('🔐 ============ PROCESSANDO OAUTH CALLBACK ============');
-        
-        // ✅ Marcar que estamos processando OAuth (estado global)
         globalOAuthProcessing = true;
-        console.log('⚠️ OAuth processamento iniciado - mostrando loading...');
         
         try {
-          // ✅ Salvar flag para detectar se já processamos
           const AsyncStorage = require('@react-native-async-storage/async-storage').default;
           const processedKey = 'oauth_callback_processed';
           const alreadyProcessed = await AsyncStorage.getItem(processedKey);
           
-          if (alreadyProcessed) {
-            console.log('⏭️ Callback já processado anteriormente, ignorando...');
-            return;
-          }
+          if (alreadyProcessed) return;
           
-          console.log('✅ Primeira vez processando este callback');
           await AsyncStorage.setItem(processedKey, 'true');
           
           const hashIndex = url.indexOf('#');
-          if (hashIndex === -1) {
-            console.error('❌ Hash não encontrado na URL');
-            return;
-          }
+          if (hashIndex === -1) return;
 
           const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
 
-          console.log('🔑 Tokens:', {
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken,
-          });
+          if (!accessToken) return;
 
-          if (!accessToken) {
-            console.error('❌ No access token');
-            return;
-          }
-
-          console.log('💾 Creating session...');
           const { supabase } = require('@/services/supabase');
           
-          console.log('📞 Calling setSession (não aguardar)...');
-          
-          // ✅ NÃO AGUARDAR - apenas chamar
           supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
           }).then((result: any) => {
-            console.log('📊 setSession completed:', {
-              hasData: !!result.data,
-              hasError: !!result.error,
-            });
+            // Session set
           }).catch((err: any) => {
-            console.error('❌ setSession error:', err);
+            console.error('setSession error:', err);
           });
 
-          console.log('✅ setSession called (processing in background)');
-          console.log('⏳ Aguardando 3 segundos para sessão ser salva...');
-          
           await new Promise(resolve => setTimeout(resolve, 3000));
           
-          console.log('✅ ============ TEMPO EXPIRADO - RECARREGANDO ============');
-          console.log('🔄 Recarregando app AGORA...');
-          
-          // Limpar flags antes do reload
           await AsyncStorage.removeItem(processedKey);
           globalOAuthProcessing = false;
-          
-          // ✅ Marcar que estamos recarregando após OAuth
           await AsyncStorage.setItem('oauth_reload_in_progress', 'true');
           
-          // ✅ Usar Updates.reloadAsync para funcionar em produção
           if (__DEV__) {
-            // Em desenvolvimento, usar DevSettings (mais rápido)
             const { DevSettings } = require('react-native');
             DevSettings.reload();
           } else {
-            // Em produção, usar Updates.reloadAsync
             await Updates.reloadAsync();
           }
           
         } catch (err) {
-          console.error('❌ Error processing OAuth:', err);
-          console.error('❌ Error details:', JSON.stringify(err, null, 2));
+          console.error('Error processing OAuth:', err);
           globalOAuthProcessing = false;
         }
       }
@@ -172,41 +138,23 @@ function RootLayoutNav() {
     return () => {
       subscription.remove();
     };
-  }, []); // ✅ SEM dependências - não recria
+  }, []);
 
-  // 🔧 Controle de autenticação e navegação
+  // Controle de autenticação e navegação
   useEffect(() => {
-    // ✅ Se estiver processando ou recarregando OAuth, não fazer nada
-    if (isOAuthReloading || isProcessingOAuth) {
-      console.log('⏳ Aguardando OAuth completar...');
-      return;
-    }
-    
-    console.log('🔄 Navigation Check:', {
-      isAuthenticated,
-      loading,
-      segments: segments.join('/'),
-    });
+    if (isOAuthReloading || isProcessingOAuth) return;
 
-    if (loading) {
-      console.log('⏳ Still loading...');
-      return;
-    }
+    if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      console.log('➡️ Redirecting to login');
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      console.log('➡️ Redirecting to tabs');
       router.replace('/(tabs)');
-    } else {
-      console.log('✅ Already in correct place');
     }
   }, [isAuthenticated, loading, segments, isOAuthReloading, isProcessingOAuth]);
 
-  // ✅ Mostrar loading durante OAuth reload ou processamento
   if (loading || isOAuthReloading || isProcessingOAuth) {
     const loadingMessage = isProcessingOAuth 
       ? 'Autenticando...' 

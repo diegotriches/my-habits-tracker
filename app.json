@@ -7,6 +7,12 @@
     "icon": "./assets/images/icon.png",
     "scheme": "habittracker",
     "newArchEnabled": true,
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/60e4b382-5295-4071-96e4-5e0d58f77a54"
+    },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
