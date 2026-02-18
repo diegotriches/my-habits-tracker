@@ -6,10 +6,12 @@ import { InsightsCard } from '@/components/stats/InsightsCard';
 import { RecordsCard } from '@/components/stats/RecordsCard';
 import { StreaksList } from '@/components/stats/StreaksList';
 import { SummaryCards } from '@/components/stats/SummaryCards';
+import StatsCard from '@/components/profile/StatsCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { useAdvancedStats } from '@/hooks/useAdvancedStats';
 import { useStats } from '@/hooks/useStats';
+import { useProfileStats } from '@/hooks/useProfileStats';
 import { hapticFeedback } from '@/utils/haptics';
 import { router } from 'expo-router';
 import React from 'react';
@@ -36,6 +38,12 @@ export default function StatsScreen() {
   } = useStats();
 
   const {
+    stats: profileStats,
+    loading: profileStatsLoading,
+    refetch: refetchProfileStats,
+  } = useProfileStats();
+
+  const {
     insights,
     weekComparison,
     monthComparison,
@@ -48,7 +56,7 @@ export default function StatsScreen() {
   const onRefresh = async () => {
     hapticFeedback.light();
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), refetchProfileStats()]);
     setRefreshing(false);
     hapticFeedback.success();
   };
@@ -128,6 +136,32 @@ export default function StatsScreen() {
         </Text>
       </View>
 
+      {/* Estatísticas Rápidas (movidas do Perfil) */}
+      <View style={styles.quickStatsContainer}>
+        <StatsCard
+          stats={[
+            {
+              iconName: 'calendar',
+              iconColor: colors.primary,
+              value: profileStats.daysActive,
+              label: 'Dias Ativos',
+            },
+            {
+              iconName: 'checkCircle',
+              iconColor: colors.success,
+              value: profileStats.totalCompletions,
+              label: 'Completados',
+            },
+            {
+              iconName: 'flame',
+              iconColor: colors.streak,
+              value: profileStats.bestStreak,
+              label: 'Melhor Streak',
+            },
+          ]}
+        />
+      </View>
+
       {/* Insights Personalizados */}
       {insights.length > 0 && <InsightsCard insights={insights} />}
 
@@ -174,6 +208,9 @@ const styles = StyleSheet.create({
   header: { marginBottom: 24 },
   title: { fontSize: 32, fontWeight: 'bold', marginBottom: 4 },
   subtitle: { fontSize: 16 },
+  quickStatsContainer: {
+    marginBottom: 16,
+  },
   motivationalCard: {
     borderRadius: 16, padding: 24, marginTop: 16, alignItems: 'center', borderWidth: 2,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,

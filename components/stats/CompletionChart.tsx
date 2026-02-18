@@ -1,3 +1,4 @@
+// components/stats/CompletionChart.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
@@ -16,7 +17,7 @@ type ChartType = 'daily' | 'weekday';
 export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) => {
   const { colors, theme } = useTheme();
   const [chartType, setChartType] = useState<ChartType>('daily');
-  const screenWidth = Dimensions.get('window').width - 80; // Reduzido para caber no card (40 padding + 40 margem)
+  const screenWidth = Dimensions.get('window').width - 80;
 
   const handleChartTypeChange = (type: ChartType) => {
     if (type === chartType) return;
@@ -25,16 +26,39 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
   };
 
   // Preparar dados para gráfico diário (últimos 7 dias)
-  const last7Days = dailyStats.slice(-7);
-  const dailyLabels = last7Days.map(stat => {
-    const date = new Date(stat.date);
-    return `${date.getDate()}/${date.getMonth() + 1}`;
-  });
-  const dailyData = last7Days.map(stat => stat.completions);
+  // Se dailyStats tem menos de 7 dias, preencher com dias anteriores
+  const prepareDailyData = () => {
+    const today = new Date();
+    const last7: Array<{ label: string; value: number }> = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      const stat = dailyStats.find(s => s.date === dateStr);
+      last7.push({
+        label: `${date.getDate()}/${date.getMonth() + 1}`,
+        value: stat ? stat.completions : 0,
+      });
+    }
+
+    return last7;
+  };
+
+  const dailyPrepared = prepareDailyData();
+  const dailyLabels = dailyPrepared.map(d => d.label);
+  const dailyData = dailyPrepared.map(d => d.value);
+  const hasDailyData = dailyData.some(v => v > 0);
+
+  // Garantir que o dataset nunca é vazio ou todos zeros para o chart
+  // react-native-chart-kit falha com dataset [0,0,0,...]
+  const safeDailyData = hasDailyData ? dailyData : dailyData.map(() => 0);
 
   // Dados para gráfico por dia da semana
   const weekdayLabels = weekdayStats.map(stat => stat.day);
   const weekdayData = weekdayStats.map(stat => stat.completions);
+  const hasWeekdayData = weekdayData.some(v => v > 0);
 
   const chartConfig = {
     backgroundColor: colors.primary,
@@ -103,11 +127,11 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
         </View>
       </View>
 
-      {chartType === 'daily' && dailyData.length > 0 && (
+      {chartType === 'daily' && hasDailyData && (
         <LineChart
           data={{
             labels: dailyLabels,
-            datasets: [{ data: dailyData }],
+            datasets: [{ data: safeDailyData }],
           }}
           width={screenWidth}
           height={220}
@@ -119,7 +143,19 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
         />
       )}
 
-      {chartType === 'weekday' && weekdayData.length > 0 && (
+      {chartType === 'daily' && !hasDailyData && (
+        <View style={styles.emptyState}>
+          <Icon name="trendingUp" size={32} color={colors.textTertiary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            Nenhuma conclusão nos últimos 7 dias
+          </Text>
+          <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>
+            Complete hábitos para ver seu progresso aqui
+          </Text>
+        </View>
+      )}
+
+      {chartType === 'weekday' && hasWeekdayData && (
         <BarChart
           data={{
             labels: weekdayLabels,
@@ -137,13 +173,14 @@ export const CompletionChart: React.FC<Props> = ({ dailyStats, weekdayStats }) =
         />
       )}
 
-      {dailyData.length === 0 && chartType === 'daily' && (
+      {chartType === 'weekday' && !hasWeekdayData && (
         <View style={styles.emptyState}>
+          <Icon name="calendar" size={32} color={colors.textTertiary} />
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Nenhum dado dos últimos 7 dias
+            Sem dados por dia da semana
           </Text>
           <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>
-            Complete hábitos para ver seu progresso
+            Complete hábitos para ver a distribuição
           </Text>
         </View>
       )}
@@ -196,14 +233,15 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 32,
+    gap: 8,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 8,
+    marginTop: 4,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: 13,
   },
 });

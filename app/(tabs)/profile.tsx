@@ -1,16 +1,18 @@
 // app/(tabs)/profile.tsx
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import StatsCard from '@/components/profile/StatsCard';
-import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Icon } from '@/components/ui/Icon';
+import { IconName } from '@/constants/Icons';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { useProfileStats } from '@/hooks/useProfileStats';
+import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Modal,
+  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -25,12 +27,10 @@ type ThemeMode = 'light' | 'dark' | 'system';
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, refetch: refetchProfile } = useProfile();
-  const { stats, loading: statsLoading, refetch: refetchStats } = useProfileStats();
   const { colors, themeMode, setThemeMode } = useTheme();
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  const loading = profileLoading || statsLoading;
+  const [showAppearanceModal, setShowAppearanceModal] = useState(false);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -43,14 +43,30 @@ export default function ProfileScreen() {
   };
 
   const handleRefresh = async () => {
-    await Promise.all([refetchProfile(), refetchStats()]);
+    await refetchProfile();
   };
 
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
   };
 
-  if (loading && !profile) {
+  const getThemeLabel = (): string => {
+    switch (themeMode) {
+      case 'light': return 'Claro';
+      case 'dark': return 'Escuro';
+      case 'system': return 'Automático';
+    }
+  };
+
+  const getThemeIcon = (): IconName => {
+    switch (themeMode) {
+      case 'light': return 'sun';
+      case 'dark': return 'moon';
+      case 'system': return 'palette';
+    }
+  };
+
+  if (profileLoading && !profile) {
     return <ProfileSkeleton />;
   }
 
@@ -66,13 +82,19 @@ export default function ProfileScreen() {
     );
   }
 
+  const themeOptions: Array<{ mode: ThemeMode; icon: IconName; label: string; description: string }> = [
+    { mode: 'light', icon: 'sun', label: 'Claro', description: 'Tema claro padrão' },
+    { mode: 'dark', icon: 'moon', label: 'Escuro', description: 'Ideal para ambientes escuros' },
+    { mode: 'system', icon: 'palette', label: 'Automático', description: 'Segue as configurações do sistema' },
+  ];
+
   return (
     <>
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
+            refreshing={profileLoading}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
           />
@@ -86,38 +108,9 @@ export default function ProfileScreen() {
         {/* Profile Header com Avatar */}
         <ProfileHeader profile={profile} />
 
-        {/* Estatísticas Rápidas */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
-            Estatísticas
-          </Text>
-          <StatsCard
-            stats={[
-              {
-                iconName: 'calendar',
-                iconColor: colors.primary,
-                value: stats.daysActive,
-                label: 'Dias Ativos',
-              },
-              {
-                iconName: 'checkCircle',
-                iconColor: colors.success,
-                value: stats.totalCompletions,
-                label: 'Completados',
-              },
-              {
-                iconName: 'flame',
-                iconColor: colors.streak,
-                value: stats.bestStreak,
-                label: 'Melhor Streak',
-              },
-            ]}
-          />
-        </View>
-
         {/* Informações da Conta */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             Conta
           </Text>
           <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
@@ -130,68 +123,33 @@ export default function ProfileScreen() {
                 {user?.email}
               </Text>
             </View>
-            <View style={styles.infoRow}>
-              <View style={styles.infoLeft}>
-                <Icon name="target" size={16} color={colors.textSecondary} />
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Total de Hábitos</Text>
-              </View>
-              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{stats.totalHabits}</Text>
-            </View>
           </View>
         </View>
 
         {/* Configurações */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             Configurações
           </Text>
 
-          {/* Tema Section */}
-          <View style={[styles.settingGroup, { backgroundColor: colors.surface }]}>
-            <View style={[styles.settingHeader, { borderBottomColor: colors.border }]}>
-              <Icon name="palette" size={20} color={colors.textSecondary} />
-              <Text style={[styles.settingHeaderText, { color: colors.textPrimary }]}>
-                Aparência
-              </Text>
+          {/* Aparência */}
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: colors.surface }]}
+            onPress={() => setShowAppearanceModal(true)}
+          >
+            <View style={styles.settingLeft}>
+              <Icon name={getThemeIcon()} size={20} color={colors.textSecondary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.settingText, { color: colors.textPrimary }]}>Aparência</Text>
+                <Text style={[styles.settingSubtext, { color: colors.textTertiary }]}>{getThemeLabel()}</Text>
+              </View>
             </View>
-
-            <TouchableOpacity
-              onPress={() => handleThemeChange('light')}
-              style={[styles.themeOption, { borderBottomColor: colors.border }]}
-            >
-              <View style={styles.themeLeft}>
-                <Icon name="sun" size={20} color={colors.textSecondary} />
-                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Claro</Text>
-              </View>
-              {themeMode === 'light' && <Icon name="check" size={20} color={colors.primary} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleThemeChange('dark')}
-              style={[styles.themeOption, { borderBottomColor: colors.border }]}
-            >
-              <View style={styles.themeLeft}>
-                <Icon name="moon" size={20} color={colors.textSecondary} />
-                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Escuro</Text>
-              </View>
-              {themeMode === 'dark' && <Icon name="check" size={20} color={colors.primary} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleThemeChange('system')}
-              style={styles.themeOption}
-            >
-              <View style={styles.themeLeft}>
-                <Icon name="palette" size={20} color={colors.textSecondary} />
-                <Text style={[styles.themeText, { color: colors.textPrimary }]}>Automático</Text>
-              </View>
-              {themeMode === 'system' && <Icon name="check" size={20} color={colors.primary} />}
-            </TouchableOpacity>
-          </View>
+            <Icon name="chevronRight" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
 
           {/* Notificações */}
           <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface }]}
             onPress={() => router.push('/settings/notifications' as any)}
           >
             <View style={styles.settingLeft}>
@@ -203,7 +161,7 @@ export default function ProfileScreen() {
 
           {/* Dados e Privacidade */}
           <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface }]}
             onPress={() => router.push('/settings/privacy' as any)}
           >
             <View style={styles.settingLeft}>
@@ -220,7 +178,6 @@ export default function ProfileScreen() {
                 styles.settingItem,
                 {
                   backgroundColor: colors.surface,
-                  borderBottomColor: colors.border,
                   borderWidth: 2,
                   borderColor: colors.info + '40',
                 },
@@ -233,7 +190,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.settingText, { color: colors.info, fontWeight: '600' }]}>
                     Testes de Notificação
                   </Text>
-                  <Text style={[styles.devBadge, { color: colors.info }]}>
+                  <Text style={[styles.settingSubtext, { color: colors.info }]}>
                     Modo Desenvolvedor
                   </Text>
                 </View>
@@ -271,6 +228,88 @@ export default function ProfileScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* Modal Aparência */}
+      <Modal
+        visible={showAppearanceModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowAppearanceModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowAppearanceModal(false)}>
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: colors.background }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalHandle}>
+              <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
+            </View>
+
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Aparência</Text>
+              <TouchableOpacity
+                onPress={() => setShowAppearanceModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {themeOptions.map((option) => {
+                const isActive = themeMode === option.mode;
+                return (
+                  <TouchableOpacity
+                    key={option.mode}
+                    style={[
+                      styles.themeOption,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                      isActive && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                    ]}
+                    onPress={() => handleThemeChange(option.mode)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.themeIconCircle,
+                      { backgroundColor: isActive ? colors.primary + '20' : colors.borderLight },
+                    ]}>
+                      <Icon
+                        name={option.icon}
+                        size={22}
+                        color={isActive ? colors.primary : colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[
+                        styles.themeLabel,
+                        { color: isActive ? colors.primary : colors.textPrimary },
+                      ]}>
+                        {option.label}
+                      </Text>
+                      <Text style={[styles.themeDescription, { color: colors.textTertiary }]}>
+                        {option.description}
+                      </Text>
+                    </View>
+                    {isActive && (
+                      <Icon name="check" size={20} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, { backgroundColor: colors.primary }]}
+                onPress={() => setShowAppearanceModal(false)}
+              >
+                <Text style={styles.modalConfirmText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <ConfirmDialog
         visible={showLogoutConfirm}
         title="Sair da Conta"
@@ -294,12 +333,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerTitle: { fontSize: 28, fontWeight: 'bold' },
-  section: { marginTop: 12 },
+  section: { marginTop: 16 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    marginBottom: 10,
   },
   infoCard: {
     borderRadius: 12,
@@ -317,31 +356,6 @@ const styles = StyleSheet.create({
   infoLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 14, fontWeight: '600', maxWidth: '60%' },
-  settingGroup: {
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  settingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  settingHeaderText: { fontSize: 14, fontWeight: '600' },
-  themeOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-  },
-  themeLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  themeText: { fontSize: 15 },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -350,18 +364,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginHorizontal: 20,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  settingText: { fontSize: 16 },
-  devBadge: { fontSize: 11, marginTop: 2, fontWeight: '500' },
-  devModeBadge: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  devModeText: { fontSize: 11, fontWeight: '600' },
+  settingText: { fontSize: 15 },
+  settingSubtext: { fontSize: 12, marginTop: 2 },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,4 +382,87 @@ const styles = StyleSheet.create({
   logoutButtonText: { fontSize: 16, fontWeight: '600' },
   footer: { alignItems: 'center', paddingVertical: 20 },
   versionText: { fontSize: 12, marginBottom: 4 },
+  devModeBadge: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  devModeText: { fontSize: 11, fontWeight: '600' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHandle: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  modalHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalBody: {
+    padding: 20,
+    gap: 10,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 14,
+  },
+  themeIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  themeDescription: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'android' ? 48 : 16,
+    borderTopWidth: 1,
+  },
+  modalConfirmButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
