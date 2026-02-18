@@ -4,6 +4,7 @@ import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
+import { WeekNavigator } from '@/components/habits/WeekNavigator';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -21,7 +22,7 @@ import { isHabitDueToday } from '@/utils/habitHelpers';
 import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -30,6 +31,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { startOfWeek } from 'date-fns';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -49,6 +51,11 @@ export default function HomeScreen() {
     getCompletion,
     refetch: refetchCompletions
   } = useCompletions();
+
+  // Week navigation state
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
+    startOfWeek(new Date(), { weekStartsOn: 0 })
+  );
 
   const {
     completions: weeklyCompletions,
@@ -87,21 +94,39 @@ export default function HomeScreen() {
     }
   }, [habits]);
 
+  // Refetch weekly completions when week changes
+  const handleWeekChange = useCallback((newWeekStart: Date) => {
+    setSelectedWeekStart(newWeekStart);
+    refetchWeeklyCompletions(newWeekStart);
+  }, [refetchWeeklyCompletions]);
+
+  // Also refetch when selectedWeekStart changes (e.g. on period switch)
+  useEffect(() => {
+    if (timePeriod === 'week') {
+      refetchWeeklyCompletions(selectedWeekStart);
+    }
+  }, [selectedWeekStart, timePeriod]);
+
+  // Reset to current week when switching to week view
+  const handleTimePeriodChange = async (period: TimePeriod) => {
+    setTimePeriod(period);
+    if (period === 'week') {
+      const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+      setSelectedWeekStart(currentWeekStart);
+    }
+    try {
+      await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
+    } catch (error) {
+      // Erro silencioso
+    }
+  };
+
   const loadViewPreferences = async () => {
     try {
       const savedPeriod = await AsyncStorage.getItem(PERIOD_STORAGE_KEY);
       if (savedPeriod === 'day' || savedPeriod === 'week') {
         setTimePeriod(savedPeriod);
       }
-    } catch (error) {
-      // Erro silencioso
-    }
-  };
-
-  const handleTimePeriodChange = async (period: TimePeriod) => {
-    setTimePeriod(period);
-    try {
-      await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
     } catch (error) {
       // Erro silencioso
     }
@@ -142,7 +167,7 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
-        await refetchWeeklyCompletions();
+        await refetchWeeklyCompletions(selectedWeekStart);
       } else {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
@@ -194,7 +219,7 @@ export default function HomeScreen() {
         }, 1000);
       }
 
-      await refetchWeeklyCompletions();
+      await refetchWeeklyCompletions(selectedWeekStart);
     }
 
     setShowProgressModal(false);
@@ -217,7 +242,7 @@ export default function HomeScreen() {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
       await refetchCompletions();
-      await refetchWeeklyCompletions();
+      await refetchWeeklyCompletions(selectedWeekStart);
     } else {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
@@ -271,7 +296,7 @@ export default function HomeScreen() {
             }, 1000);
           }
 
-          await refetchWeeklyCompletions();
+          await refetchWeeklyCompletions(selectedWeekStart);
         } else if (error) {
           setSuccessMessage('Erro ao registrar progresso');
           setShowSuccessToast(true);
@@ -309,7 +334,7 @@ export default function HomeScreen() {
         checkStreakMilestone(updatedStreak.current_streak);
       }
 
-      await refetchWeeklyCompletions();
+      await refetchWeeklyCompletions(selectedWeekStart);
     }
   };
 
@@ -378,7 +403,7 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
-        await refetchWeeklyCompletions();
+        await refetchWeeklyCompletions(selectedWeekStart);
       } else {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
@@ -402,7 +427,7 @@ export default function HomeScreen() {
 
       setSuccessMessage('Hábito desmarcado');
       setShowSuccessToast(true);
-      await refetchWeeklyCompletions();
+      await refetchWeeklyCompletions(selectedWeekStart);
     }
 
     setShowUncompleteConfirm(false);
@@ -413,7 +438,7 @@ export default function HomeScreen() {
     await Promise.all([
       refetchHabits(),
       refetchCompletions(),
-      refetchWeeklyCompletions(),
+      refetchWeeklyCompletions(selectedWeekStart),
       refetchProfile(),
     ]);
   };
@@ -458,6 +483,8 @@ export default function HomeScreen() {
           onDayPress={handleDayPress}
           onHabitPress={handleHabitPress}
           isDueToday={isDueToday}
+          weekStart={selectedWeekStart}
+          onWeekChange={handleWeekChange}
         />
       );
     }
@@ -560,11 +587,17 @@ export default function HomeScreen() {
           }
           ListHeaderComponent={
             timePeriod === 'week' ? (
-              <WeeklySummaryCard
-                habits={habits}
-                completions={weeklyCompletions}
-                streaks={streaks}
-              />
+              <View>
+                <WeekNavigator
+                  weekStart={selectedWeekStart}
+                  onWeekChange={handleWeekChange}
+                />
+                <WeeklySummaryCard
+                  habits={habits}
+                  completions={weeklyCompletions}
+                  streaks={streaks}
+                />
+              </View>
             ) : null
           }
         />
