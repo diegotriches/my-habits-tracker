@@ -23,6 +23,10 @@ import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
+    Modal,
+    Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -58,6 +62,7 @@ export default function HabitDetailsScreen() {
   const [pendingUncompleteDate, setPendingUncompleteDate] = useState<Date | null>(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   const {
     habit,
@@ -341,6 +346,22 @@ export default function HabitDetailsScreen() {
     : 'Sequência Atual';
   const bestStreakLabel = 'Melhor Sequência';
 
+  const screenHeight = Dimensions.get('window').height;
+
+  const getNotificationSummary = (): string => {
+    const parts: string[] = [];
+    if (progressNotificationConfig.enabled) {
+      const count = [
+        progressNotificationConfig.morningEnabled,
+        progressNotificationConfig.afternoonEnabled,
+        progressNotificationConfig.eveningEnabled,
+      ].filter(Boolean).length;
+      parts.push(`progresso ${count > 0 ? `(${count}x/dia)` : 'ativo'}`);
+    }
+    if (parts.length === 0) return 'Toque para configurar lembretes';
+    return parts.join(' · ');
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SuccessToast visible={showSuccessToast} message={successMessage} duration={3000} onHide={() => setShowSuccessToast(false)} />
@@ -476,34 +497,23 @@ export default function HabitDetailsScreen() {
           <HabitStreakTracker data={last90DaysData} habitColor={themeColor} hasTarget={habit.has_target} onDayPress={handleCalendarDayPress} />
         </View>
 
-        {/* Notificações */}
-        <View style={styles.section}>
-          <View style={[styles.notificationsHeader, { borderBottomColor: tintBorder }]}>
-            <Icon name="bell" size={18} color={themeColor} />
-            <Text style={[styles.notificationsSectionTitle, { color: colors.textPrimary }]}>Notificações</Text>
+        {/* Notificações — Botão resumo */}
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: colors.surface, borderColor: tintBorder }]}
+          onPress={() => { hapticFeedback.light(); setShowNotificationsModal(true); }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.notifIconCircle, { backgroundColor: themeColor + '15' }]}>
+            <Icon name="bell" size={20} color={themeColor} />
           </View>
-
-          <View style={styles.notificationBlock}>
-            <ReminderSetup habitId={id as string} habitName={habit.name} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.notifButtonLabel, { color: colors.textPrimary }]}>Notificações</Text>
+            <Text style={[styles.notifButtonSummary, { color: colors.textSecondary }]}>
+              {getNotificationSummary()}
+            </Text>
           </View>
-
-          <View style={styles.notificationBlock}>
-            <ProgressNotificationSettings
-              config={progressNotificationConfig}
-              onChange={handleProgressNotificationChange}
-              hasPermission={hasPermission}
-              onRequestPermission={requestNotificationPermission}
-              hasTarget={habit.has_target}
-              habitType={habit.type}
-            />
-            {savingNotifications && (
-              <View style={[styles.savingIndicator, { backgroundColor: colors.surface }]}>
-                <ActivityIndicator size="small" color={themeColor} />
-                <Text style={[styles.savingText, { color: themeColor }]}>Salvando...</Text>
-              </View>
-            )}
-          </View>
-        </View>
+          <Icon name="chevronRight" size={18} color={colors.textTertiary} />
+        </TouchableOpacity>
 
         {/* Estatísticas Gerais */}
         {overallStats && (
@@ -556,36 +566,6 @@ export default function HabitDetailsScreen() {
           </View>
         )}
 
-        {/* Últimas Conclusões */}
-        {completions.length > 0 && (
-          <View style={styles.section}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Icon name={isNegative ? "shield" : "checkCircle"} size={16} color={themeColor} />
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                {isNegative ? 'Últimas Vitórias' : 'Últimas Conclusões'}
-              </Text>
-            </View>
-            <View style={[styles.completionsList, { backgroundColor: colors.surface, borderWidth: 1, borderColor: tintBorderLight, borderRadius: 12 }]}>
-              {completions.slice(0, 5).map((completion) => {
-                const date = new Date((completion as any).completed_at);
-                const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-                const valueAchieved = (completion as any).value_achieved;
-
-                return (
-                  <View key={(completion as any).id} style={[styles.completionItem, { borderBottomColor: tintBorderLight }]}>
-                    <Text style={[styles.completionDate, { color: colors.textPrimary }]}>{dateStr}</Text>
-                    {habit.has_target && valueAchieved != null && (
-                      <Text style={[styles.completionValue, { color: themeColor }]}>
-                        {valueAchieved} {habit.target_unit}
-                      </Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* Botão de Deletar */}
         <TouchableOpacity style={[styles.deleteButton, { backgroundColor: colors.danger }]} onPress={handleDelete} disabled={deleting}>
           {deleting ? (
@@ -598,8 +578,70 @@ export default function HabitDetailsScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={{ height: Math.max(80, insets.bottom) }} />
+        <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
+
+      {/* Modal: Notificações */}
+      <Modal
+        visible={showNotificationsModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowNotificationsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={{ flex: 1 }} onPress={() => setShowNotificationsModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHandle}>
+              <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
+            </View>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Notificações</Text>
+              <TouchableOpacity
+                onPress={() => setShowNotificationsModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={{ maxHeight: screenHeight * 0.6 }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <View style={{ marginBottom: 20 }}>
+                <ReminderSetup habitId={id as string} habitName={habit.name} />
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                <ProgressNotificationSettings
+                  config={progressNotificationConfig}
+                  onChange={handleProgressNotificationChange}
+                  hasPermission={hasPermission}
+                  onRequestPermission={requestNotificationPermission}
+                  hasTarget={habit.has_target}
+                  habitType={habit.type}
+                />
+                {savingNotifications && (
+                  <View style={[styles.savingIndicator, { backgroundColor: colors.surface }]}>
+                    <ActivityIndicator size="small" color={themeColor} />
+                    <Text style={[styles.savingText, { color: themeColor }]}>Salvando...</Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, { backgroundColor: colors.primary }]}
+                onPress={() => setShowNotificationsModal(false)}
+              >
+                <Text style={styles.modalConfirmText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -641,19 +683,12 @@ const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   periodCardsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  notificationsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 16, borderBottomWidth: 2 },
-  notificationsSectionTitle: { fontSize: 17, fontWeight: '700' },
-  notificationBlock: { marginBottom: 16 },
   savingIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, marginTop: 8, marginHorizontal: 20 },
   savingText: { fontSize: 13, fontWeight: '600' },
   statsCard: { borderRadius: 12, padding: 16, borderWidth: 1 },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1 },
   statLabel: { fontSize: 14 },
   statValue: { fontSize: 14, fontWeight: '600' },
-  completionsList: { overflow: 'hidden' },
-  completionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  completionDate: { fontSize: 14 },
-  completionValue: { fontSize: 14, fontWeight: '600' },
   deleteButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, paddingVertical: 16, borderRadius: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
@@ -661,4 +696,62 @@ const styles = StyleSheet.create({
   deleteButtonText: { fontSize: 16, fontWeight: '600' },
   backButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 16 },
   backButtonText: { fontSize: 16, fontWeight: '600' },
+
+  // Notification button
+  notificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 24,
+    gap: 12,
+  },
+  notifIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifButtonLabel: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+  notifButtonSummary: { fontSize: 12, fontWeight: '500' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHandle: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
+  modalHandleBar: { width: 40, height: 4, borderRadius: 2 },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'android' ? 48 : 16,
+    borderTopWidth: 1,
+  },
+  modalConfirmButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
