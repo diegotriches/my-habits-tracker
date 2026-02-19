@@ -349,7 +349,7 @@ export default function HabitDetailsScreen() {
 
   const isNegative = habit.type === 'negative';
   const themeColor = isNegative ? colors.warning : habit.color;
-  const tintBg = themeColor + '0A';
+  const tintBg = themeColor + '15';
   const tintBorder = themeColor + '30';
   const tintBorderLight = themeColor + '18';
 
@@ -485,13 +485,13 @@ export default function HabitDetailsScreen() {
         {/* Streak Cards */}
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, { backgroundColor: colors.surface, borderColor: tintBorder }]}>
-            <Icon name={isNegative ? "shield" : "flame"} size={32} color={isNegative ? colors.warning : colors.streak} />
+            <Icon name={isNegative ? "shield" : "flame"} size={32} color={themeColor} />
             <Text style={[styles.streakValue, { color: colors.textPrimary }]}>{streak?.current_streak || 0}</Text>
             <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{streakLabel}</Text>
           </View>
 
           <View style={[styles.streakCard, { backgroundColor: colors.surface, borderColor: tintBorder }]}>
-            <Icon name="award" size={32} color={colors.warning} />
+            <Icon name="award" size={32} color={themeColor} />
             <Text style={[styles.streakValue, { color: colors.textPrimary }]}>{streak?.best_streak || 0}</Text>
             <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>{bestStreakLabel}</Text>
           </View>
