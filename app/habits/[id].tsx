@@ -19,7 +19,7 @@ import { ProgressNotification } from '@/types/database';
 import { formatSelectedDays } from '@/utils/habitHelpers';
 import { hapticFeedback } from '@/utils/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -43,6 +43,8 @@ export default function HabitDetailsScreen() {
   const { user } = useAuth();
   const { deleteHabit } = useHabits();
   const [deleting, setDeleting] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollPositionRef = useRef(0);
 
   const [hasPermission, setHasPermission] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
@@ -190,6 +192,16 @@ export default function HabitDetailsScreen() {
     }
   };
 
+  // ========== REFETCH SEM PERDER SCROLL ==========
+  const refetchKeepingScroll = async () => {
+    const savedPosition = scrollPositionRef.current;
+    await refetch();
+    // Restore after re-render
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({ y: savedPosition, animated: false });
+    });
+  };
+
   // ========== HANDLERS DO CALENDÁRIO ==========
 
   const handleCalendarDayPress = async (date: Date, isCompleted: boolean) => {
@@ -214,7 +226,7 @@ export default function HabitDetailsScreen() {
       hapticFeedback.success();
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
-      await refetch();
+      await refetchKeepingScroll();
     } else {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
@@ -235,7 +247,7 @@ export default function HabitDetailsScreen() {
       hapticFeedback.success();
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
-      await refetch();
+      await refetchKeepingScroll();
     } else {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
@@ -259,7 +271,7 @@ export default function HabitDetailsScreen() {
       hapticFeedback.success();
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
-      await refetch();
+      await refetchKeepingScroll();
     } else {
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
@@ -400,7 +412,13 @@ export default function HabitDetailsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={[styles.content, { backgroundColor: tintBg }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={[styles.content, { backgroundColor: tintBg }]}
+        showsVerticalScrollIndicator={false}
+        onScroll={(e) => { scrollPositionRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
+      >
         {/* Card Principal */}
         <View style={[styles.habitCard, { backgroundColor: colors.surface, borderLeftColor: themeColor, borderColor: tintBorder }]}>
           <View style={styles.habitHeader}>

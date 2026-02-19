@@ -166,19 +166,6 @@ export function HabitStreakTracker({
     return 'missed';
   };
 
-  const getDayColor = (status: string | null) => {
-    switch (status) {
-      case 'completed':
-        return habitColor;
-      case 'missed':
-        return colors.danger;
-      case 'empty':
-        return colors.border;
-      default:
-        return 'transparent';
-    }
-  };
-
   // ========== HANDLERS ==========
   const goToPreviousMonth = () => {
     setCurrentMonth(subMonths(currentMonth, 1));
@@ -211,13 +198,97 @@ export function HabitStreakTracker({
       <View style={[styles.emptyContainer, { backgroundColor: colors.surface }]}>
         <Icon name="activity" size={32} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-          📊 Complete hábitos para ver estatísticas
+          Complete hábitos para ver estatísticas
         </Text>
       </View>
     );
   }
 
   const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+  // ========== RENDER DAY ==========
+  const renderDay = (day: Date | null, index: number) => {
+    if (!day) {
+      return <View key={index} style={styles.dayCell} />;
+    }
+
+    const status = getDayStatus(day);
+    const isCurrentDay = isToday(day);
+    const isFutureDay = isFuture(day) && !isCurrentDay;
+    const isClickable = !!onDayPress && !isFutureDay;
+
+    // Determine styles based on status
+    let bgColor = 'transparent';
+    let borderColor = 'transparent';
+    let borderWidth = 0;
+    let textColor = colors.text;
+
+    if (isFutureDay) {
+      // Future: subtle gray
+      bgColor = colors.border + '30';
+      textColor = colors.textTertiary;
+    } else if (status === 'completed') {
+      // Completed: filled with habit color
+      bgColor = habitColor;
+      textColor = '#FFFFFF';
+    } else if (status === 'missed') {
+      // Missed (past, not done): border only in habit color, no fill
+      bgColor = 'transparent';
+      borderColor = habitColor + '45';
+      borderWidth = 1.5;
+      textColor = colors.textSecondary;
+    } else {
+      // Empty (no data for this day): very subtle
+      bgColor = colors.border + '20';
+      textColor = colors.textTertiary;
+    }
+
+    // Today: prominent border to highlight current day
+    if (isCurrentDay) {
+      borderColor = colors.primary;
+      borderWidth = 2.5;
+      if (status !== 'completed') {
+        textColor = colors.primary;
+      }
+    }
+
+    const dayContent = (
+      <View
+        style={[
+          styles.dayCircle,
+          {
+            backgroundColor: bgColor,
+            borderWidth: borderWidth,
+            borderColor: borderColor,
+          },
+        ]}
+      >
+        <Text style={[styles.dayText, { color: textColor }]}>
+          {format(day, 'd')}
+        </Text>
+        {/* Today dot indicator when not completed */}
+        {isCurrentDay && status !== 'completed' && (
+          <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />
+        )}
+      </View>
+    );
+
+    return (
+      <View key={index} style={styles.dayCell}>
+        {isClickable ? (
+          <TouchableOpacity
+            style={styles.dayTouchable}
+            onPress={() => handleDayPress(day)}
+            activeOpacity={0.6}
+          >
+            {dayContent}
+          </TouchableOpacity>
+        ) : (
+          dayContent
+        )}
+      </View>
+    );
+  };
 
   return (
     <ScrollView 
@@ -266,6 +337,22 @@ export function HabitStreakTracker({
           </View>
         )}
 
+        {/* Legenda */}
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: habitColor }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Feito</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDotOutline, { borderColor: habitColor + '45' }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Não feito</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDotBorder, { borderColor: colors.primary }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Hoje</Text>
+          </View>
+        </View>
+
         {/* Dias da semana */}
         <View style={styles.weekDaysRow}>
           {weekDays.map((day, index) => (
@@ -279,58 +366,7 @@ export function HabitStreakTracker({
 
         {/* Grid de dias */}
         <View style={styles.calendarGrid}>
-          {calendarDays.map((day, index) => {
-            const status = getDayStatus(day);
-            const isCurrentDay = day && isToday(day);
-            const isFutureDay = day && isFuture(day) && !isCurrentDay;
-            const isClickable = !!onDayPress && !!day && !isFutureDay;
-
-            const dayContent = (
-              <View
-                style={[
-                  styles.dayCircle,
-                  { 
-                    backgroundColor: isFutureDay 
-                      ? colors.border + '40'
-                      : getDayColor(status),
-                    borderWidth: isCurrentDay ? 2 : 0,
-                    borderColor: colors.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.dayText,
-                    {
-                      color: isFutureDay
-                        ? colors.textTertiary
-                        : status === 'completed' || status === 'missed' 
-                          ? '#FFFFFF' 
-                          : colors.text,
-                    },
-                  ]}
-                >
-                  {day ? format(day, 'd') : ''}
-                </Text>
-              </View>
-            );
-
-            return (
-              <View key={index} style={styles.dayCell}>
-                {day && isClickable ? (
-                  <TouchableOpacity
-                    style={styles.dayTouchable}
-                    onPress={() => handleDayPress(day)}
-                    activeOpacity={0.6}
-                  >
-                    {dayContent}
-                  </TouchableOpacity>
-                ) : day ? (
-                  dayContent
-                ) : null}
-              </View>
-            );
-          })}
+          {calendarDays.map((day, index) => renderDay(day, index))}
         </View>
       </View>
 
@@ -437,6 +473,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+
+  // ========== LEGENDA ==========
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendDotOutline: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    backgroundColor: 'transparent',
+  },
+  legendDotBorder: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // ========== GRID ==========
   weekDaysRow: {
     flexDirection: 'row',
     marginBottom: 8,
@@ -470,6 +544,13 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  todayDot: {
+    position: 'absolute',
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 
   // ========== STREAKS CHART ==========
