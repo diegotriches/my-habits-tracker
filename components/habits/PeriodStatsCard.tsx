@@ -57,15 +57,15 @@ export function PeriodStatsCard({
 
   const getMotivationalMessage = () => {
     if (percentage >= 90) {
-      return '🎉 Excelente! Continue assim!';
+      return 'Excelente! Continue assim!';
     } else if (percentage >= 70) {
-      return '👍 Muito bem! Você está indo ótimo!';
+      return 'Muito bem! Você está indo ótimo!';
     } else if (percentage >= 50) {
-      return '💪 Bom trabalho! Continue firme!';
+      return 'Bom trabalho! Continue firme!';
     } else if (percentage >= 30) {
-      return '📈 Há espaço para melhorar!';
+      return 'Há espaço para melhorar!';
     } else {
-      return '🌱 Cada passo conta! Não desista!';
+      return 'Cada passo conta! Não desista!';
     }
   };
 
@@ -86,7 +86,6 @@ export function PeriodStatsCard({
         {/* Círculo de Progresso */}
         <View style={styles.circleContainer}>
           <Svg width={80} height={80}>
-            {/* Círculo de fundo */}
             <Circle
               cx={40}
               cy={40}
@@ -95,7 +94,6 @@ export function PeriodStatsCard({
               strokeWidth={strokeWidth}
               fill="none"
             />
-            {/* Círculo de progresso */}
             <Circle
               cx={40}
               cy={40}
@@ -170,7 +168,7 @@ export function PeriodStatsCard({
                     Dias faltantes:
                   </Text>
                   <Text style={[styles.tooltipStatValue, { color: colors.textPrimary }]}>
-                    {total - completed}
+                    {Math.max(0, total - completed)}
                   </Text>
                 </View>
 
@@ -191,7 +189,7 @@ export function PeriodStatsCard({
               </View>
 
               <Text style={[styles.tooltipNote, { color: colors.textTertiary }]}>
-                💡 Apenas os dias programados para este hábito são contabilizados
+                Apenas os dias programados para este hábito são contabilizados
               </Text>
             </View>
 

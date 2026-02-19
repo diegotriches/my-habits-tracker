@@ -360,6 +360,26 @@ export default function HabitDetailsScreen() {
 
   const screenHeight = Dimensions.get('window').height;
 
+  const getFrequencyLabel = (): string => {
+    if (!habit) return '';
+    const goalValue = (habit as any).frequency_goal_value;
+    const goalPeriod = (habit as any).frequency_goal_period;
+    const goalCustomDays = (habit as any).frequency_goal_custom_days;
+
+    if (goalValue && goalValue > 0) {
+      const periodLabel = goalPeriod === 'week' ? 'semana'
+        : goalPeriod === 'month' ? 'mês'
+        : `${goalCustomDays || '?'} dias`;
+      return `${goalValue}x por ${periodLabel}`;
+    }
+    if (habit.frequency_type === 'daily') return 'Todos os dias';
+    if (habit.frequency_type === 'weekly' && habit.frequency_days) {
+      if (habit.frequency_days.length === 7) return 'Todos os dias';
+      return formatSelectedDays(habit.frequency_days);
+    }
+    return 'Personalizado';
+  };
+
   const getNotificationSummary = (): string => {
     const parts: string[] = [];
     if (progressNotificationConfig.enabled) {
@@ -445,11 +465,7 @@ export default function HabitDetailsScreen() {
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Frequência:</Text>
             </View>
             <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
-              {habit.frequency_type === 'daily'
-                ? 'Todos os dias'
-                : habit.frequency_days
-                ? formatSelectedDays(habit.frequency_days)
-                : 'Personalizado'}
+              {getFrequencyLabel()}
             </Text>
           </View>
 
