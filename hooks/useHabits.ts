@@ -70,6 +70,9 @@ export const useHabits = () => {
     has_target?: boolean;
     target_value?: number | null;
     target_unit?: string | null;
+    frequency_goal_value?: number | null;
+    frequency_goal_period?: string | null;
+    frequency_goal_custom_days?: number | null;
     color: string;
     icon?: string;
   }) => {
@@ -92,6 +95,16 @@ export const useHabits = () => {
         icon: habitData.icon || 'star',
         is_active: true,
       };
+
+      if (habitData.frequency_goal_value) {
+        (dataToInsert as any).frequency_goal_value = habitData.frequency_goal_value;
+      }
+      if (habitData.frequency_goal_period) {
+        (dataToInsert as any).frequency_goal_period = habitData.frequency_goal_period;
+      }
+      if (habitData.frequency_goal_custom_days) {
+        (dataToInsert as any).frequency_goal_custom_days = habitData.frequency_goal_custom_days;
+      }
 
       const { data, error: insertError } = await habitsTable()
         .insert(dataToInsert)
@@ -122,6 +135,11 @@ export const useHabits = () => {
       has_target?: boolean;
       target_value?: number | null;
       target_unit?: string | null;
+      frequency_type?: 'daily' | 'weekly' | 'custom';
+      frequency_days?: number[] | null;
+      frequency_goal_value?: number | null;
+      frequency_goal_period?: string | null;
+      frequency_goal_custom_days?: number | null;
     }
   ) => {
     try {
