@@ -1,9 +1,12 @@
 // components/habits/TargetInput.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticFeedback } from '@/utils/haptics';
 import React, { useState } from 'react';
 import {
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,12 +33,17 @@ export function TargetInput({
 }: TargetInputProps) {
   const { colors } = useTheme();
   const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [customUnit, setCustomUnit] = useState('');
 
   const popularUnits = [
     'litros', 'km', 'minutos', 'horas', 'páginas', 'vezes'
   ];
 
   const otherUnits = availableUnits.filter(u => !popularUnits.includes(u));
+
+  // Check if current unit is custom (not in any list)
+  const allKnownUnits = [...popularUnits, ...otherUnits];
+  const isCustomUnit = unit && !allKnownUnits.includes(unit);
 
   const handleValueChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.]/g, '');
@@ -44,6 +52,32 @@ export function TargetInput({
     if (parts.length === 2 && parts[1].length > 2) return;
 
     onValueChange(cleaned);
+  };
+
+  const handleSelectUnit = (u: string) => {
+    hapticFeedback.selection();
+    onUnitChange(u);
+    setCustomUnit('');
+    setShowUnitPicker(false);
+  };
+
+  const handleConfirmCustomUnit = () => {
+    const trimmed = customUnit.trim();
+    if (!trimmed) return;
+    hapticFeedback.selection();
+    onUnitChange(trimmed);
+    setCustomUnit('');
+    setShowUnitPicker(false);
+  };
+
+  const handleOpenPicker = () => {
+    // If current unit is custom, pre-fill the input
+    if (isCustomUnit) {
+      setCustomUnit(unit);
+    } else {
+      setCustomUnit('');
+    }
+    setShowUnitPicker(true);
   };
 
   return (
@@ -79,7 +113,7 @@ export function TargetInput({
               backgroundColor: colors.surface,
               borderColor: colors.border 
             }]}
-            onPress={() => setShowUnitPicker(true)}
+            onPress={handleOpenPicker}
           >
             <Text style={[
               styles.unitButtonText,
@@ -116,11 +150,11 @@ export function TargetInput({
       >
         <Pressable 
           style={styles.modalOverlay}
-          onPress={() => setShowUnitPicker(false)}
+          onPress={() => { Keyboard.dismiss(); setShowUnitPicker(false); }}
         >
           <Pressable 
             style={[styles.modalContent, { backgroundColor: colors.background }]} 
-            onPress={(e) => e.stopPropagation()}
+            onPress={Keyboard.dismiss}
           >
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
@@ -131,7 +165,45 @@ export function TargetInput({
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.unitList} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.unitList}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Unidade Personalizada */}
+              <View style={styles.unitSection}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Personalizada
+                </Text>
+                <View style={styles.customUnitRow}>
+                  <TextInput
+                    style={[styles.customUnitInput, {
+                      backgroundColor: colors.surface,
+                      borderColor: customUnit.trim() ? colors.primary : colors.border,
+                      color: colors.textPrimary,
+                    }]}
+                    placeholder="Digite sua unidade..."
+                    placeholderTextColor={colors.textTertiary}
+                    value={customUnit}
+                    onChangeText={setCustomUnit}
+                    maxLength={20}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleConfirmCustomUnit}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.customUnitButton,
+                      { backgroundColor: customUnit.trim() ? colors.primary : colors.border },
+                    ]}
+                    onPress={handleConfirmCustomUnit}
+                    disabled={!customUnit.trim()}
+                  >
+                    <Icon name="check" size={18} color={customUnit.trim() ? '#FFFFFF' : colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {/* Unidades Populares */}
               <View style={styles.unitSection}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -149,10 +221,7 @@ export function TargetInput({
                           borderColor: colors.primary 
                         },
                       ]}
-                      onPress={() => {
-                        onUnitChange(u);
-                        setShowUnitPicker(false);
-                      }}
+                      onPress={() => handleSelectUnit(u)}
                     >
                       <Text style={[
                         styles.unitOptionText,
@@ -184,10 +253,7 @@ export function TargetInput({
                             borderColor: colors.primary 
                           },
                         ]}
-                        onPress={() => {
-                          onUnitChange(u);
-                          setShowUnitPicker(false);
-                        }}
+                        onPress={() => handleSelectUnit(u)}
                       >
                         <Text style={[
                           styles.unitOptionText,
@@ -201,6 +267,8 @@ export function TargetInput({
                   </View>
                 </View>
               )}
+
+              <View style={{ height: Platform.OS === 'android' ? 40 : 20 }} />
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -272,6 +340,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
+
+  // Custom unit
+  customUnitRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  customUnitInput: {
+    flex: 1,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+    borderWidth: 1.5,
+  },
+  customUnitButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   unitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   unitOption: {
     paddingHorizontal: 16,
