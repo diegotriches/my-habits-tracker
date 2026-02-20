@@ -268,7 +268,7 @@ export function HabitProgressInput({
                 <View style={[styles.achievementBadge, { backgroundColor: colors.successLight }]}>
                   <Icon name="sparkles" size={20} color={colors.success} />
                   <Text style={[styles.achievementText, { color: colors.success }]}>
-                    Meta atingida! +Bônus de pontos
+                    Meta atingida!
                   </Text>
                 </View>
               )}

@@ -64,6 +64,7 @@ export default function HabitDetailsScreen() {
   const [pendingUncompleteDate, setPendingUncompleteDate] = useState<Date | null>(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
+  const [pendingProgressCurrentValue, setPendingProgressCurrentValue] = useState(0);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   const {
@@ -204,18 +205,21 @@ export default function HabitDetailsScreen() {
 
   // ========== HANDLERS DO CALENDÁRIO ==========
 
-  const handleCalendarDayPress = async (date: Date, isCompleted: boolean) => {
+  const handleCalendarDayPress = async (date: Date, isCompleted: boolean, currentValue?: number) => {
     if (!habit || !user) return;
 
-    if (isCompleted) {
-      setPendingUncompleteDate(date);
-      setShowUncompleteConfirm(true);
+    // Target habit: always open progress modal (for new entry or editing)
+    if (habit.has_target) {
+      setPendingProgressDate(date);
+      setPendingProgressCurrentValue(currentValue || 0);
+      setShowProgressModal(true);
       return;
     }
 
-    if (habit.has_target) {
-      setPendingProgressDate(date);
-      setShowProgressModal(true);
+    // Non-target habit: toggle completion
+    if (isCompleted) {
+      setPendingUncompleteDate(date);
+      setShowUncompleteConfirm(true);
       return;
     }
 
@@ -261,10 +265,21 @@ export default function HabitDetailsScreen() {
     if (!habit || !user || !pendingProgressDate) {
       setShowProgressModal(false);
       setPendingProgressDate(null);
+      setPendingProgressCurrentValue(0);
       return;
     }
 
-    const result = await retroactiveCompletionService.completeRetroactively(habit, pendingProgressDate, user.id, value);
+    // Calculate final value
+    const finalValue = mode === 'add'
+      ? pendingProgressCurrentValue + value
+      : value;
+
+    // If there's already a completion, delete it first so we can re-create
+    if (pendingProgressCurrentValue > 0) {
+      await retroactiveCompletionService.uncompleteRetroactively(habit, pendingProgressDate, user.id);
+    }
+
+    const result = await retroactiveCompletionService.completeRetroactively(habit, pendingProgressDate, user.id, finalValue);
 
     if (result.success) {
       await retroactiveCompletionService.recalculateStreak(habit.id);
@@ -279,6 +294,7 @@ export default function HabitDetailsScreen() {
 
     setShowProgressModal(false);
     setPendingProgressDate(null);
+    setPendingProgressCurrentValue(0);
   };
 
   // ========== HANDLERS ORIGINAIS ==========
@@ -415,9 +431,9 @@ export default function HabitDetailsScreen() {
           habitName={habit.name}
           targetValue={habit.target_value || 0}
           targetUnit={habit.target_unit || ''}
-          currentValue={0}
+          currentValue={pendingProgressCurrentValue}
           onConfirm={handleProgressConfirm}
-          onCancel={() => { setShowProgressModal(false); setPendingProgressDate(null); }}
+          onCancel={() => { setShowProgressModal(false); setPendingProgressDate(null); setPendingProgressCurrentValue(0); }}
         />
       )}
 
@@ -528,7 +544,7 @@ export default function HabitDetailsScreen() {
             <Icon name="calendar" size={16} color={themeColor} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Calendário & Sequências</Text>
           </View>
-          <HabitStreakTracker data={last90DaysData} habitColor={themeColor} hasTarget={habit.has_target} onDayPress={handleCalendarDayPress} />
+          <HabitStreakTracker data={last90DaysData} habitColor={themeColor} hasTarget={habit.has_target} targetValue={habit.target_value || 0} targetUnit={habit.target_unit || ''} onDayPress={handleCalendarDayPress} />
         </View>
 
         {/* Notificações — Botão resumo */}

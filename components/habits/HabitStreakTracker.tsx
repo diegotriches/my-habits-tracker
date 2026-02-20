@@ -30,7 +30,9 @@ interface HabitStreakTrackerProps {
   data: DayData[];
   habitColor: string;
   hasTarget?: boolean;
-  onDayPress?: (date: Date, isCompleted: boolean) => void;
+  targetValue?: number;
+  targetUnit?: string;
+  onDayPress?: (date: Date, isCompleted: boolean, currentValue?: number) => void;
 }
 
 interface Streak {
@@ -43,6 +45,8 @@ export function HabitStreakTracker({
   data, 
   habitColor,
   hasTarget = false,
+  targetValue = 0,
+  targetUnit = '',
   onDayPress,
 }: HabitStreakTrackerProps) {
   const { colors } = useTheme();
@@ -156,14 +160,41 @@ export function HabitStreakTracker({
     return [...emptyDays, ...days];
   }, [currentMonth]);
 
+  const getDayData = (date: Date | null): DayData | undefined => {
+    if (!date) return undefined;
+    return data.find(d => isSameDay(parseISO(d.date), date));
+  };
+
   const getDayStatus = (date: Date | null) => {
     if (!date) return null;
-    
-    const dayData = data.find(d => isSameDay(parseISO(d.date), date));
-    
+    const dayData = getDayData(date);
     if (!dayData) return 'empty';
     if (dayData.completed) return 'completed';
     return 'missed';
+  };
+
+  // ========== HELPERS DE PROGRESSO ==========
+
+  /**
+   * Calcula a porcentagem de progresso de um dia (para hábitos com meta)
+   */
+  const getDayProgress = (date: Date): number => {
+    if (!hasTarget || targetValue <= 0) return 0;
+    const dayData = getDayData(date);
+    if (!dayData || !dayData.value) return 0;
+    return Math.min(dayData.value / targetValue, 1);
+  };
+
+  /**
+   * Converte porcentagem (0-1) para hex de opacidade (00-FF)
+   * Mínimo de 15% opacidade para dias com algum progresso
+   */
+  const progressToOpacity = (progress: number): string => {
+    if (progress <= 0) return '00';
+    const minOpacity = 0.20;
+    const mapped = minOpacity + progress * (1 - minOpacity);
+    const hex = Math.round(mapped * 255).toString(16).padStart(2, '0').toUpperCase();
+    return hex;
   };
 
   // ========== HANDLERS ==========
@@ -188,8 +219,10 @@ export function HabitStreakTracker({
 
     const status = getDayStatus(day);
     const isCompleted = status === 'completed';
+    const dayData = getDayData(day);
+    const currentValue = dayData?.value;
 
-    onDayPress(day, isCompleted);
+    onDayPress(day, isCompleted, currentValue);
   };
 
   // ========== RENDER VAZIO ==========
@@ -217,37 +250,54 @@ export function HabitStreakTracker({
     const isFutureDay = isFuture(day) && !isCurrentDay;
     const isClickable = !!onDayPress && !isFutureDay;
 
-    // Determine styles based on status
     let bgColor = 'transparent';
     let borderColor = 'transparent';
     let borderWidth = 0;
     let textColor = colors.text;
+    let showPercentageText = false;
+    let percentageText = '';
 
     if (isFutureDay) {
-      // Future: subtle gray
       bgColor = colors.border + '30';
       textColor = colors.textTertiary;
     } else if (status === 'completed') {
-      // Completed: filled with habit color
-      bgColor = habitColor;
-      textColor = '#FFFFFF';
+      if (hasTarget && targetValue > 0) {
+        // Target habit: opacity-based fill
+        const progress = getDayProgress(day);
+        const percentage = Math.round(progress * 100);
+        const opacityHex = progressToOpacity(progress);
+        bgColor = habitColor + opacityHex;
+
+        // Text color: white for high progress, dark for low
+        textColor = progress >= 0.6 ? '#FFFFFF' : colors.text;
+
+        // Show percentage instead of day number for partial progress
+        if (percentage < 100) {
+          showPercentageText = true;
+          percentageText = `${percentage}%`;
+        } else {
+          textColor = '#FFFFFF';
+        }
+      } else {
+        // Non-target habit: fully filled
+        bgColor = habitColor;
+        textColor = '#FFFFFF';
+      }
     } else if (status === 'missed') {
-      // Missed (past, not done): border only in habit color, no fill
       bgColor = 'transparent';
       borderColor = habitColor + '45';
       borderWidth = 1.5;
       textColor = colors.textSecondary;
     } else {
-      // Empty (no data for this day): very subtle
       bgColor = colors.border + '20';
       textColor = colors.textTertiary;
     }
 
-    // Today: prominent border to highlight current day
+    // Today override
     if (isCurrentDay) {
       borderColor = colors.primary;
       borderWidth = 2.5;
-      if (status !== 'completed') {
+      if (status !== 'completed' || (hasTarget && getDayProgress(day) < 0.6)) {
         textColor = colors.primary;
       }
     }
@@ -263,10 +313,15 @@ export function HabitStreakTracker({
           },
         ]}
       >
-        <Text style={[styles.dayText, { color: textColor }]}>
-          {format(day, 'd')}
-        </Text>
-        {/* Today dot indicator when not completed */}
+        {showPercentageText ? (
+          <Text style={[styles.percentageText, { color: textColor }]}>
+            {percentageText}
+          </Text>
+        ) : (
+          <Text style={[styles.dayText, { color: textColor }]}>
+            {format(day, 'd')}
+          </Text>
+        )}
         {isCurrentDay && status !== 'completed' && (
           <View style={[styles.todayDot, { backgroundColor: colors.primary }]} />
         )}
@@ -332,21 +387,42 @@ export function HabitStreakTracker({
           <View style={[styles.hintContainer, { backgroundColor: colors.primaryLight }]}>
             <Icon name="info" size={14} color={colors.primary} />
             <Text style={[styles.hintText, { color: colors.primary }]}>
-              Toque em um dia para marcar ou desmarcar
+              {hasTarget
+                ? 'Toque em um dia para registrar ou editar progresso'
+                : 'Toque em um dia para marcar ou desmarcar'}
             </Text>
           </View>
         )}
 
         {/* Legenda */}
         <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: habitColor }]} />
-            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Feito</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDotOutline, { borderColor: habitColor + '45' }]} />
-            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Não feito</Text>
-          </View>
+          {hasTarget ? (
+            <>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: habitColor }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>100%</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: habitColor + '80' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>Parcial</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDotOutline, { borderColor: habitColor + '45' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>0%</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: habitColor }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>Feito</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDotOutline, { borderColor: habitColor + '45' }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>Não feito</Text>
+              </View>
+            </>
+          )}
           <View style={styles.legendItem}>
             <View style={[styles.legendDotBorder, { borderColor: colors.primary }]} />
             <Text style={[styles.legendText, { color: colors.textSecondary }]}>Hoje</Text>
@@ -544,6 +620,10 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  percentageText: {
+    fontSize: 8,
+    fontWeight: '700',
   },
   todayDot: {
     position: 'absolute',
