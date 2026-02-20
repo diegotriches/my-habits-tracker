@@ -365,7 +365,7 @@ export default function HabitDetailsScreen() {
 
   const isNegative = habit.type === 'negative';
   const themeColor = isNegative ? colors.warning : habit.color;
-  const tintBg = themeColor + '15';
+  const tintBg = themeColor + '20';
   const tintBorder = themeColor + '30';
   const tintBorderLight = themeColor + '18';
 
