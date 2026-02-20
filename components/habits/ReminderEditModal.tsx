@@ -2,6 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { NotificationSound } from '@/services/notifications';
+import { soundPreviewService } from '@/services/soundPreview';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState, useEffect } from 'react';
 import {
@@ -212,11 +213,25 @@ export function ReminderEditModal({
                       {SOUND_OPTIONS.find(o => o.value === selectedSound)?.label || 'Padrão'}
                     </Text>
                   </View>
-                  <Icon
-                    name={showSoundPicker ? 'chevronDown' : 'chevronRight'}
-                    size={18}
-                    color={colors.textTertiary}
-                  />
+                  <View style={styles.soundSelectorRight}>
+                    {selectedSound !== 'silence' && (
+                      <TouchableOpacity
+                        style={[styles.previewButton, { backgroundColor: colors.primaryLight }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          soundPreviewService.playPreview(selectedSound, habitName);
+                        }}
+                        activeOpacity={0.6}
+                      >
+                        <Icon name="sound" size={14} color={colors.primary} />
+                      </TouchableOpacity>
+                    )}
+                    <Icon
+                      name={showSoundPicker ? 'chevronDown' : 'chevronRight'}
+                      size={18}
+                      color={colors.textTertiary}
+                    />
+                  </View>
                 </TouchableOpacity>
 
                 {showSoundPicker && (
@@ -254,9 +269,31 @@ export function ReminderEditModal({
                           </Text>
                         </View>
 
-                        {selectedSound === option.value && (
-                          <Icon name="check" size={16} color={colors.primary} />
-                        )}
+                        <View style={styles.soundOptionRight}>
+                          {option.value !== 'silence' && (
+                            <TouchableOpacity
+                              style={[styles.previewButtonSmall, {
+                                backgroundColor: selectedSound === option.value
+                                  ? colors.primary + '20'
+                                  : colors.border + '60',
+                              }]}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                soundPreviewService.playPreview(option.value, habitName);
+                              }}
+                              activeOpacity={0.6}
+                            >
+                              <Icon
+                                name="sound"
+                                size={12}
+                                color={selectedSound === option.value ? colors.primary : colors.textSecondary}
+                              />
+                            </TouchableOpacity>
+                          )}
+                          {selectedSound === option.value && (
+                            <Icon name="check" size={16} color={colors.primary} />
+                          )}
+                        </View>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -422,9 +459,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  soundSelectorRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   soundSelectorText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  previewButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewButtonSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   soundOptionsContainer: {
     marginTop: 8,
@@ -445,6 +501,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  soundOptionRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   soundOptionText: {
     fontSize: 14,
