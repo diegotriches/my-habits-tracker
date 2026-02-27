@@ -1,7 +1,6 @@
 // app/(tabs)/index.tsx
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
-import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
 import { WeekNavigator } from '@/components/habits/WeekNavigator';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
@@ -29,7 +28,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -86,6 +86,9 @@ export default function HomeScreen() {
   };
 
   const firstName = profile?.display_name?.split(' ')[0] || '';
+
+  // Today's date formatted
+  const todayFormatted = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
 
   useEffect(() => {
     if (habits.length > 0) {
@@ -546,14 +549,15 @@ export default function HomeScreen() {
           }
           ListHeaderComponent={
             <View>
+              <View style={styles.todayBar}>
+                <Icon name="calendar" size={14} color={colors.textSecondary} />
+                <Text style={[styles.todayText, { color: colors.textSecondary }]}>
+                  {todayFormatted}
+                </Text>
+              </View>
               <WeekNavigator
                 weekStart={selectedWeekStart}
                 onWeekChange={handleWeekChange}
-              />
-              <WeeklySummaryCard
-                habits={habits}
-                completions={weeklyCompletions}
-                streaks={streaks}
               />
             </View>
           }
@@ -605,6 +609,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
+  },
+  todayBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  todayText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   fab: {
     position: 'absolute',
