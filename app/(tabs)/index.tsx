@@ -22,6 +22,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -58,7 +59,7 @@ export default function HomeScreen() {
   } = useWeeklyCompletions();
 
   const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
-  const { refetch: refetchProfile } = useProfile();
+  const { profile, refetch: refetchProfile } = useProfile();
   const {
     celebrationData,
     isVisible: showCelebration,
@@ -75,6 +76,16 @@ export default function HomeScreen() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   const loading = habitsLoading || completionsLoading;
+
+  // Greeting based on time of day
+  const getGreeting = (): string => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
+  const firstName = profile?.display_name?.split(' ')[0] || '';
 
   useEffect(() => {
     if (habits.length > 0) {
@@ -406,8 +417,14 @@ export default function HomeScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>Olá!</Text>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>
+              {getGreeting()}{firstName ? `, ${firstName}!` : '!'}
+            </Text>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
+          </View>
+
+          <View style={[styles.avatarPlaceholder, { backgroundColor: colors.border }]}>
+            <Icon name="profile" size={20} color={colors.textTertiary} />
           </View>
         </View>
         <HabitListSkeleton count={5} />
@@ -483,15 +500,26 @@ export default function HomeScreen() {
 
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>Olá!</Text>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>
+            {getGreeting()}{firstName ? `, ${firstName}!` : '!'}
+          </Text>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={handleCreateHabit}
+          style={styles.avatarButton}
+          onPress={() => router.push('/(tabs)/profile' as any)}
+          activeOpacity={0.7}
         >
-          <Icon name="add" size={24} color="#FFFFFF" />
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={[styles.avatar, { borderColor: colors.primary }]} />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarInitial}>
+                {firstName ? firstName[0].toUpperCase() : '?'}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -531,6 +559,15 @@ export default function HomeScreen() {
           }
         />
       )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={handleCreateHabit}
+        activeOpacity={0.8}
+      >
+        <Icon name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -548,17 +585,41 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 14, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: 'bold' },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  avatarButton: {
+    padding: 2,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+  },
+  avatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3b82f6',
+  },
+  avatarInitial: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
   listContent: {
     padding: 20,
