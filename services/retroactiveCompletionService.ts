@@ -143,14 +143,14 @@ export const retroactiveCompletionService = {
         return;
       }
 
-      // 2. Buscar todas as completions
-      const { data: completions } = await supabase
+      // 2. Buscar todas as completions (incluindo value_achieved para filtrar metas)
+      const { data: rawCompletions } = await supabase
         .from('completions')
-        .select('completed_at')
+        .select('completed_at, value_achieved')
         .eq('habit_id', habitId)
         .order('completed_at', { ascending: false });
 
-      if (!completions || completions.length === 0) {
+      if (!rawCompletions || rawCompletions.length === 0) {
         await (supabase.from('streaks') as any)
           .upsert({
             habit_id: habitId,
@@ -162,6 +162,30 @@ export const retroactiveCompletionService = {
       }
 
       const habitData = habit as Habit;
+
+      // 3. Para hábitos com meta numérica, filtrar apenas completions 100%
+      let completions = rawCompletions;
+      if (habitData.has_target && habitData.target_value && habitData.target_value > 0) {
+        completions = rawCompletions.filter((c: any) => {
+          const achieved = c.value_achieved || 0;
+          return achieved >= habitData.target_value!;
+        });
+        console.log(`🎯 Meta numérica: ${completions.length}/${rawCompletions.length} completions atingiram 100% (meta: ${habitData.target_value} ${habitData.target_unit || ''})`);
+      }
+
+      if (completions.length === 0) {
+        await (supabase.from('streaks') as any)
+          .upsert({
+            habit_id: habitId,
+            current_streak: 0,
+            best_streak: 0,
+            last_completion_date: rawCompletions[0] 
+              ? format(startOfDay(new Date((rawCompletions[0] as any).completed_at)), 'yyyy-MM-dd')
+              : null,
+          }, { onConflict: 'habit_id' });
+        return;
+      }
+
       const goalValue = (habitData as any).frequency_goal_value;
       const goalPeriod = (habitData as any).frequency_goal_period;
 
