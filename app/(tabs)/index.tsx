@@ -1,8 +1,6 @@
 // app/(tabs)/index.tsx
-import HabitCard from '@/components/habits/HabitCard';
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
-import { TimePeriodSelector, TimePeriod } from '@/components/habits/TimePeriodSelector';
 import { WeeklySummaryCard } from '@/components/habits/WeeklySummaryCard';
 import { WeekNavigator } from '@/components/habits/WeekNavigator';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
@@ -20,7 +18,6 @@ import { useStreaks } from '@/hooks/useStreaks';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
 import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -34,8 +31,6 @@ import {
 import { startOfWeek } from 'date-fns';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
-
-const PERIOD_STORAGE_KEY = '@habitTimePeriod';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -72,7 +67,6 @@ export default function HomeScreen() {
     closeCelebration
   } = useCelebration();
 
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
@@ -81,10 +75,6 @@ export default function HomeScreen() {
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
   const loading = habitsLoading || completionsLoading;
-
-  useEffect(() => {
-    loadViewPreferences();
-  }, []);
 
   useEffect(() => {
     if (habits.length > 0) {
@@ -100,37 +90,9 @@ export default function HomeScreen() {
     refetchWeeklyCompletions(newWeekStart);
   }, [refetchWeeklyCompletions]);
 
-  // Also refetch when selectedWeekStart changes (e.g. on period switch)
   useEffect(() => {
-    if (timePeriod === 'week') {
-      refetchWeeklyCompletions(selectedWeekStart);
-    }
-  }, [selectedWeekStart, timePeriod]);
-
-  // Reset to current week when switching to week view
-  const handleTimePeriodChange = async (period: TimePeriod) => {
-    setTimePeriod(period);
-    if (period === 'week') {
-      const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
-      setSelectedWeekStart(currentWeekStart);
-    }
-    try {
-      await AsyncStorage.setItem(PERIOD_STORAGE_KEY, period);
-    } catch (error) {
-      // Erro silencioso
-    }
-  };
-
-  const loadViewPreferences = async () => {
-    try {
-      const savedPeriod = await AsyncStorage.getItem(PERIOD_STORAGE_KEY);
-      if (savedPeriod === 'day' || savedPeriod === 'week') {
-        setTimePeriod(savedPeriod);
-      }
-    } catch (error) {
-      // Erro silencioso
-    }
-  };
+    refetchWeeklyCompletions(selectedWeekStart);
+  }, [selectedWeekStart]);
 
   const handleCreateHabit = () => {
     router.push('/habits/create' as any);
@@ -257,8 +219,6 @@ export default function HomeScreen() {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
 
-    const isCompleted = isCompletedToday(habitId);
-
     if (habit.has_target) {
       if (achievedValue !== undefined && achievedValue > 0 && mode) {
         const streak = getStreak(habitId);
@@ -305,7 +265,9 @@ export default function HomeScreen() {
       return;
     }
 
-    if (isCompleted && !habit.has_target) {
+    const isCompleted = isCompletedToday(habitId);
+
+    if (isCompleted) {
       setSelectedHabitId(habitId);
       setShowUncompleteConfirm(true);
       return;
@@ -343,12 +305,8 @@ export default function HomeScreen() {
     const isToday = date.toDateString() === today.toDateString();
     const isPast = date < today && !isToday;
 
-    const completionsToCheck = timePeriod === 'week'
-      ? weeklyCompletions
-      : completions;
-
     if (isPast && user) {
-      const completion = completionsToCheck.find(c => {
+      const completion = weeklyCompletions.find(c => {
         const compDate = new Date(c.completed_at);
         return compDate.toDateString() === date.toDateString() && c.habit_id === habit.id;
       });
@@ -460,36 +418,18 @@ export default function HomeScreen() {
   const renderHabit = (item: Habit) => {
     const isDueToday = isHabitDueToday(item);
 
-    if (timePeriod === 'day') {
-      return (
-        <HabitCard
-          habit={item}
-          onPress={() => handleHabitPress(item.id)}
-          onComplete={(achievedValue, mode) => handleComplete(item.id, achievedValue, mode)}
-          isCompleted={isCompletedToday(item.id)}
-          streak={getStreak(item.id)}
-          completion={getCompletion(item.id)}
-          isDueToday={isDueToday}
-        />
-      );
-    }
-
-    if (timePeriod === 'week') {
-      return (
-        <HabitWeeklyRow
-          habit={item}
-          streak={getStreak(item.id)}
-          completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
-          onDayPress={handleDayPress}
-          onHabitPress={handleHabitPress}
-          isDueToday={isDueToday}
-          weekStart={selectedWeekStart}
-          onWeekChange={handleWeekChange}
-        />
-      );
-    }
-
-    return null;
+    return (
+      <HabitWeeklyRow
+        habit={item}
+        streak={getStreak(item.id)}
+        completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
+        onDayPress={handleDayPress}
+        onHabitPress={handleHabitPress}
+        isDueToday={isDueToday}
+        weekStart={selectedWeekStart}
+        onWeekChange={handleWeekChange}
+      />
+    );
   };
 
   return (
@@ -555,15 +495,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {habits.length > 0 && (
-        <View style={[styles.viewModeContainer, { backgroundColor: colors.background }]}>
-          <TimePeriodSelector
-            period={timePeriod}
-            onChange={handleTimePeriodChange}
-          />
-        </View>
-      )}
-
       {habits.length === 0 ? (
         <EmptyState
           icon="target"
@@ -586,19 +517,17 @@ export default function HomeScreen() {
             />
           }
           ListHeaderComponent={
-            timePeriod === 'week' ? (
-              <View>
-                <WeekNavigator
-                  weekStart={selectedWeekStart}
-                  onWeekChange={handleWeekChange}
-                />
-                <WeeklySummaryCard
-                  habits={habits}
-                  completions={weeklyCompletions}
-                  streaks={streaks}
-                />
-              </View>
-            ) : null
+            <View>
+              <WeekNavigator
+                weekStart={selectedWeekStart}
+                onWeekChange={handleWeekChange}
+              />
+              <WeeklySummaryCard
+                habits={habits}
+                completions={weeklyCompletions}
+                streaks={streaks}
+              />
+            </View>
           }
         />
       )}
@@ -630,10 +559,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-  },
-  viewModeContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
   },
   listContent: {
     padding: 20,
