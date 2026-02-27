@@ -356,8 +356,8 @@ export default function HabitDetailsScreen() {
         <Text style={[styles.errorText, { color: colors.textSecondary }]}>
           {error || 'Hábito não encontrado'}
         </Text>
-        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.primary }]} onPress={handleBack}>
-          <Text style={[styles.backButtonText, { color: colors.textInverse }]}>Voltar</Text>
+        <TouchableOpacity style={[styles.errorBackButton, { backgroundColor: colors.primary }]} onPress={handleBack}>
+          <Text style={[styles.errorBackButtonText, { color: colors.textInverse }]}>Voltar</Text>
         </TouchableOpacity>
       </View>
     );
@@ -443,9 +443,18 @@ export default function HabitDetailsScreen() {
           <Icon name="chevronLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>{habit.name}</Text>
-        <TouchableOpacity onPress={handleEdit} style={styles.headerButton}>
-          <Icon name="edit" size={20} color={themeColor} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleDelete} style={styles.headerIconButton} disabled={deleting}>
+            {deleting ? (
+              <ActivityIndicator size={18} color={colors.danger} />
+            ) : (
+              <Icon name="trash" size={20} color={colors.danger} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleEdit} style={styles.headerIconButton}>
+            <Icon name="edit" size={20} color={themeColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -616,18 +625,6 @@ export default function HabitDetailsScreen() {
           </View>
         )}
 
-        {/* Botão de Deletar */}
-        <TouchableOpacity style={[styles.deleteButton, { backgroundColor: colors.danger }]} onPress={handleDelete} disabled={deleting}>
-          {deleting ? (
-            <ActivityIndicator size="small" color={colors.textInverse} />
-          ) : (
-            <>
-              <Icon name="trash" size={18} color={colors.textInverse} />
-              <Text style={[styles.deleteButtonText, { color: colors.textInverse }]}>Deletar Hábito</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
         <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
 
@@ -705,7 +702,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1,
   },
-  headerButton: { padding: 8, minWidth: 60 },
+  headerButton: { padding: 8 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerIconButton: {
+    padding: 8,
+  },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', textAlign: 'center', marginHorizontal: 8 },
   content: { flex: 1, padding: 20, paddingTop: 20 },
   habitCard: {
@@ -739,13 +744,8 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1 },
   statLabel: { fontSize: 14 },
   statValue: { fontSize: 14, fontWeight: '600' },
-  deleteButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20, paddingVertical: 16, borderRadius: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-  },
-  deleteButtonText: { fontSize: 16, fontWeight: '600' },
-  backButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 16 },
-  backButtonText: { fontSize: 16, fontWeight: '600' },
+  errorBackButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 16 },
+  errorBackButtonText: { fontSize: 16, fontWeight: '600' },
 
   // Notification button
   notificationButton: {
