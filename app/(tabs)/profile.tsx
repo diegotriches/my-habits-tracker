@@ -7,6 +7,7 @@ import { IconName } from '@/constants/Icons';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
+import { hapticFeedback } from '@/utils/haptics';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -32,6 +33,15 @@ export default function ProfileScreen() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAppearanceModal, setShowAppearanceModal] = useState(false);
 
+  const handleBack = () => {
+    hapticFeedback.light();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/' as any);
+    }
+  };
+
   const handleLogout = () => {
     setShowLogoutConfirm(true);
   };
@@ -43,6 +53,10 @@ export default function ProfileScreen() {
   };
 
   const handleRefresh = async () => {
+    await refetchProfile();
+  };
+
+  const handleAvatarUpdated = async () => {
     await refetchProfile();
   };
 
@@ -102,11 +116,31 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={0.7}
+          >
+            <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Perfil</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* Profile Header com Avatar */}
-        <ProfileHeader profile={profile} />
+        <ProfileHeader profile={profile} onAvatarUpdated={handleAvatarUpdated} />
+
+        {/* Botão Editar Perfil */}
+        <View style={styles.editProfileContainer}>
+          <TouchableOpacity
+            style={[styles.editProfileButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => router.push('/settings/edit-profile' as any)}
+            activeOpacity={0.7}
+          >
+            <Icon name="edit" size={18} color={colors.primary} />
+            <Text style={[styles.editProfileText, { color: colors.primary }]}>Editar Perfil</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Informações da Conta */}
         <View style={styles.section}>
@@ -327,12 +361,40 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
   },
-  headerTitle: { fontSize: 28, fontWeight: 'bold' },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSpacer: { width: 40 },
+  editProfileContainer: {
+    paddingHorizontal: 20,
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  editProfileText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   section: { marginTop: 16 },
   sectionTitle: {
     fontSize: 16,
