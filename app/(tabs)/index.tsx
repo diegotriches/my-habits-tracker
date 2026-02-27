@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 70,
     right: 20,
     width: 56,
     height: 56,
@@ -623,6 +623,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
 });
