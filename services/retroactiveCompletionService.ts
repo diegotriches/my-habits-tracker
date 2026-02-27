@@ -9,6 +9,7 @@ import {
   format,
   eachDayOfInterval,
   subWeeks,
+  subDays,
   isAfter,
   isBefore,
 } from 'date-fns';
@@ -121,13 +122,12 @@ export const retroactiveCompletionService = {
   },
 
   /**
-   * Recalcular streak após mudanças retroativas.
+   * Recalcular streak após mudanças.
    * 
-   * Para hábitos diários ou com dias fixos (weekly):
-   *   Streak conta dias consecutivos programados com completion.
-   * 
-   * Para hábitos com meta de frequência (ex: 3x/sem):
-   *   Streak conta semanas consecutivas em que a meta foi atingida.
+   * Estratégias:
+   * 1. Meta semanal (frequency_goal_value + period=week): conta semanas consecutivas
+   * 2. Dias fixos (frequency_type=weekly + frequency_days): conta dias programados consecutivos
+   * 3. Diário (fallback): conta dias consecutivos
    */
   async recalculateStreak(habitId: string): Promise<void> {
     try {
@@ -152,11 +152,12 @@ export const retroactiveCompletionService = {
 
       if (!completions || completions.length === 0) {
         await (supabase.from('streaks') as any)
-          .update({
+          .upsert({
+            habit_id: habitId,
             current_streak: 0,
+            best_streak: 0,
             last_completion_date: null,
-          })
-          .eq('habit_id', habitId);
+          }, { onConflict: 'habit_id' });
         return;
       }
 
@@ -169,24 +170,31 @@ export const retroactiveCompletionService = {
 
       // 3. Escolher estratégia de cálculo
       if (goalValue && goalValue > 0 && goalPeriod === 'week') {
-        // Meta semanal: streak por semanas
+        // Meta semanal: streak por semanas (ex: 3x/semana)
+        console.log(`🔢 Streak semanal: ${habitData.name} — meta=${goalValue}x/semana`);
         const result = calculateWeeklyGoalStreak(completions, goalValue);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
+        console.log(`📊 Resultado semanal: atual=${currentStreak}, melhor=${bestStreak}`);
       } else if (
         habitData.frequency_type === 'weekly' &&
         habitData.frequency_days &&
+        habitData.frequency_days.length > 0 &&
         habitData.frequency_days.length < 7
       ) {
         // Dias específicos: streak por dias programados
+        console.log(`📅 Streak dias fixos: ${habitData.name}`);
         const result = calculateScheduledDaysStreak(completions, habitData);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
+        console.log(`📊 Resultado dias fixos: atual=${currentStreak}, melhor=${bestStreak}`);
       } else {
         // Diário: streak por dias consecutivos
+        console.log(`📆 Streak diário: ${habitData.name}`);
         const result = calculateDailyStreak(completions);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
+        console.log(`📊 Resultado diário: atual=${currentStreak}, melhor=${bestStreak}`);
       }
 
       // 4. Preservar melhor streak existente
@@ -207,12 +215,12 @@ export const retroactiveCompletionService = {
       );
 
       await (supabase.from('streaks') as any)
-        .update({
+        .upsert({
+          habit_id: habitId,
           current_streak: currentStreak,
           best_streak: bestStreak,
           last_completion_date: lastCompletionDate,
-        })
-        .eq('habit_id', habitId);
+        }, { onConflict: 'habit_id' });
     } catch (error) {
       console.error('Erro ao recalcular streak:', error);
     }
@@ -235,29 +243,32 @@ function calculateDailyStreak(
   );
 
   const sortedDates = [...completedDates].sort().reverse();
-  const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
+  const today = startOfDay(new Date());
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
 
-  // Current streak: from today backwards
+  // Current streak: from today or yesterday backwards
   let currentStreak = 0;
-  let checkDate = new Date();
+  let startDate: Date;
 
-  // Se hoje não foi completado, verificar se ontem foi (tolerância de 1 dia)
-  if (!completedDates.has(today)) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = format(startOfDay(yesterday), 'yyyy-MM-dd');
-    if (!completedDates.has(yesterdayStr)) {
-      // Nem hoje nem ontem: streak = 0
-      return { currentStreak: 0, bestStreak: calculateBestDailyStreak(sortedDates) };
-    }
-    checkDate = yesterday;
+  if (completedDates.has(todayStr)) {
+    startDate = today;
+  } else if (completedDates.has(yesterdayStr)) {
+    // Tolerância: se hoje ainda não completou mas ontem sim
+    startDate = subDays(today, 1);
+  } else {
+    // Nem hoje nem ontem: streak = 0
+    return { currentStreak: 0, bestStreak: calculateBestDailyStreak(sortedDates) };
   }
 
+  // Contar para trás usando subDays (imutável, sem mutation bugs)
+  let daysBack = 0;
   while (true) {
-    const dateStr = format(startOfDay(checkDate), 'yyyy-MM-dd');
+    const checkDate = subDays(startDate, daysBack);
+    const dateStr = format(checkDate, 'yyyy-MM-dd');
     if (completedDates.has(dateStr)) {
       currentStreak++;
-      checkDate.setDate(checkDate.getDate() - 1);
+      daysBack++;
     } else {
       break;
     }
@@ -354,8 +365,11 @@ function calculateScheduledDaysStreak(
 
 /**
  * Streak por meta semanal (ex: 3x por semana).
- * Conta semanas consecutivas em que a meta foi atingida.
+ * Conta DIAS completados em semanas consecutivas em que a meta foi atingida.
  * Uma "semana" vai de domingo a sábado.
+ * 
+ * Ex: meta 3x/sem, completou 3 dias em 2 semanas + 2 dias na semana atual
+ *     → streak = 3 + 3 + 2 = 8 dias
  */
 function calculateWeeklyGoalStreak(
   completions: any[],
@@ -366,11 +380,10 @@ function calculateWeeklyGoalStreak(
   );
 
   const today = new Date();
-  const currentWeekStart = startOfWeek(today, { weekStartsOn: 0 });
 
-  // Contar completions por semana (últimas 52 semanas + atual)
+  // Contar completions por semana (últimas 53 semanas + atual)
   const weeksToCheck = 53;
-  const weeklyCompletions: { weekStart: Date; count: number }[] = [];
+  const weeklyData: { weekStart: Date; count: number }[] = [];
 
   for (let i = 0; i < weeksToCheck; i++) {
     const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 0 });
@@ -380,43 +393,77 @@ function calculateWeeklyGoalStreak(
       !isBefore(d, ws) && !isAfter(d, we)
     ).length;
 
-    weeklyCompletions.push({ weekStart: ws, count });
+    weeklyData.push({ weekStart: ws, count });
   }
 
-  // Current streak: semanas consecutivas com meta atingida
-  // Semana atual: se ainda não atingiu a meta, pular (semana em andamento)
-  let currentStreak = 0;
+  console.log('📊 Semanas (recente→antigo):', 
+    weeklyData.slice(0, 5).map(w => ({
+      semana: format(w.weekStart, 'dd/MM'),
+      completions: w.count,
+      meta: w.count >= goalValue ? '✅' : '❌',
+    }))
+  );
+
+  // --- CURRENT STREAK (em dias) ---
+  // Semana atual (index 0): se ainda não atingiu a meta, tolerar (semana em andamento)
+  // e somar os dias completados até agora
+  let currentStreakDays = 0;
   let startIdx = 0;
 
-  // Se a semana atual ainda não atingiu a meta, começar da semana passada
-  if (weeklyCompletions[0].count < goalValue) {
+  // Semana atual: sempre somar os dias (semana em andamento)
+  if (weeklyData[0].count > 0) {
+    currentStreakDays += weeklyData[0].count;
+    
+    // Se a semana atual ainda não bateu a meta, começar a verificar da semana passada
+    // mas manter os dias da semana atual
+    if (weeklyData[0].count < goalValue) {
+      startIdx = 1;
+    } else {
+      // Semana atual bateu a meta, verificar anteriores
+      startIdx = 1;
+    }
+  } else {
+    // Nenhuma completion na semana atual — verificar semana passada
     startIdx = 1;
+    currentStreakDays = 0;
   }
 
-  for (let i = startIdx; i < weeklyCompletions.length; i++) {
-    if (weeklyCompletions[i].count >= goalValue) {
-      currentStreak++;
+  // Somar dias das semanas anteriores consecutivas que bateram a meta
+  for (let i = startIdx; i < weeklyData.length; i++) {
+    if (weeklyData[i].count >= goalValue) {
+      currentStreakDays += weeklyData[i].count;
     } else {
+      // Se a semana atual não tinha completions E a primeira semana anterior
+      // também não bateu a meta, streak = 0
+      if (startIdx === 1 && weeklyData[0].count === 0) {
+        currentStreakDays = 0;
+      }
       break;
     }
   }
 
-  // Best streak
-  let bestStreak = 0;
-  let tempStreak = 0;
+  // --- BEST STREAK (em dias) ---
+  // Percorrer do mais antigo ao mais recente, somando dias em semanas consecutivas com meta
+  let bestStreakDays = 0;
+  let tempStreakDays = 0;
 
-  // Calcular de trás pra frente (mais antigo primeiro)
-  for (let i = weeklyCompletions.length - 1; i >= 0; i--) {
-    if (weeklyCompletions[i].count >= goalValue) {
-      tempStreak++;
-      bestStreak = Math.max(bestStreak, tempStreak);
+  for (let i = weeklyData.length - 1; i >= 0; i--) {
+    if (weeklyData[i].count >= goalValue) {
+      tempStreakDays += weeklyData[i].count;
+      bestStreakDays = Math.max(bestStreakDays, tempStreakDays);
+    } else if (i === 0 && weeklyData[0].count > 0 && tempStreakDays > 0) {
+      // Semana atual em andamento: somar dias parciais se vem de uma sequência
+      tempStreakDays += weeklyData[0].count;
+      bestStreakDays = Math.max(bestStreakDays, tempStreakDays);
     } else {
-      tempStreak = 0;
+      tempStreakDays = 0;
     }
   }
 
+  console.log(`📊 Weekly goal streak: currentDays=${currentStreakDays}, bestDays=${bestStreakDays}`);
+
   return {
-    currentStreak,
-    bestStreak: Math.max(currentStreak, bestStreak),
+    currentStreak: currentStreakDays,
+    bestStreak: Math.max(currentStreakDays, bestStreakDays),
   };
 }

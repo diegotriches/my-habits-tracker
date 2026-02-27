@@ -1,9 +1,9 @@
 // hooks/useStreaks.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';
-import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 
 const streaksTable = () => (supabase.from('streaks') as any);
 
@@ -12,12 +12,7 @@ export const useStreaks = () => {
   const [streaks, setStreaks] = useState<Streak[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      // Auto-fetch pode ser feito aqui se necessário
-    }
-  }, [user]);
+  const hasRecalculated = useRef(false);
 
   // Buscar streaks de múltiplos hábitos
   const fetchStreaks = async (habitIds: string[]) => {
@@ -46,141 +41,41 @@ export const useStreaks = () => {
     return streaks.find(s => s.habit_id === habitId);
   };
 
-  // 🆕 Verifica se o streak deve ser quebrado baseado na frequência
-  const shouldBreakStreak = async (habit: Habit, lastCompletionDate: string | null): Promise<boolean> => {
-    if (!lastCompletionDate) return false;
-
-    const today = new Date();
-    const lastCompletion = new Date(lastCompletionDate);
-    
-    // Se completou hoje, não quebra
-    if (isSameDay(lastCompletion, today)) {
-      return false;
-    }
-
-    // 🔧 FIX: Verificar apenas dias em que o hábito deveria ser feito
-    let currentDate = new Date(lastCompletion);
-    currentDate.setDate(currentDate.getDate() + 1); // Começa no dia seguinte à última completion
-
-    while (currentDate < today) {
-      // Se é um dia em que o hábito deveria aparecer, o streak foi quebrado
-      if (shouldHabitAppearOnDate(habit, currentDate)) {
-        return true; // Tinha que fazer e não fez = streak quebrado
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // 🔧 Verificar se hoje é dia do hábito
-    if (shouldHabitAppearOnDate(habit, today)) {
-      // Hoje é dia do hábito e ainda não completou
-      // Mas ainda tem tempo, então não quebra ainda
-      return false;
-    }
-
-    // Não era pra fazer em nenhum dia desde a última completion
-    return false;
-  };
-
-  // 🆕 Atualizar streak considerando frequência
+  /**
+   * Atualizar streak após completar/descompletar.
+   * Delega para recalculateStreak que usa a lógica correta
+   * baseada no tipo de frequência do hábito.
+   */
   const updateStreakWithFrequency = async (
     habitId: string,
     habit: Habit,
     wasCompleted: boolean
   ) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Garantir que o streak existe antes de recalcular
+      await ensureStreakExists(habitId);
 
-      // Buscar streak atual
-      const { data: streakData, error: fetchError } = await streaksTable()
+      // Delegar para recalculateStreak que tem a lógica
+      // correta para cada tipo de frequência
+      await retroactiveCompletionService.recalculateStreak(habitId);
+
+      // Buscar o streak atualizado do banco
+      const { data: updatedData } = await streaksTable()
         .select('*')
         .eq('habit_id', habitId)
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
+      const updatedStreak = updatedData as Streak | null;
 
-      const currentStreak = streakData as Streak | null;
-
-      if (wasCompleted) {
-        // 🔧 Completou hoje: incrementar streak
-        const lastCompletionDate = currentStreak?.last_completion_date;
-        let newStreakValue = 1;
-
-        if (lastCompletionDate) {
-          const lastDate = new Date(lastCompletionDate);
-          const todayDate = new Date(today);
-
-          // Verificar se deve continuar o streak
-          const shouldContinue = await shouldContinueStreak(habit, lastDate, todayDate);
-          
-          if (shouldContinue) {
-            newStreakValue = (currentStreak?.current_streak || 0) + 1;
-          }
-        }
-
-        const bestStreak = Math.max(
-          currentStreak?.best_streak || 0,
-          newStreakValue
-        );
-
-        if (currentStreak) {
-          // Atualizar streak existente
-          await streaksTable()
-            .update({
-              current_streak: newStreakValue,
-              best_streak: bestStreak,
-              last_completion_date: today,
-            })
-            .eq('habit_id', habitId);
-        } else {
-          // Criar novo streak
-          await streaksTable()
-            .insert({
-              habit_id: habitId,
-              current_streak: newStreakValue,
-              best_streak: newStreakValue,
-              last_completion_date: today,
-            });
-        }
-
+      if (updatedStreak) {
         // Atualizar lista local
-        const updatedStreak: Streak = {
-          id: currentStreak?.id || '',
-          habit_id: habitId,
-          current_streak: newStreakValue,
-          best_streak: bestStreak,
-          last_completion_date: today,
-          updated_at: new Date().toISOString(),
-        };
-
         setStreaks(prev => {
           const filtered = prev.filter(s => s.habit_id !== habitId);
           return [...filtered, updatedStreak];
         });
-
-        return { data: updatedStreak, error: null };
-      } else {
-        // 🔧 Descompletou: decrementar streak
-        if (currentStreak) {
-          const newStreakValue = Math.max(0, currentStreak.current_streak - 1);
-
-          await streaksTable()
-            .update({ current_streak: newStreakValue })
-            .eq('habit_id', habitId);
-
-          const updatedStreak: Streak = {
-            ...currentStreak,
-            current_streak: newStreakValue,
-          };
-
-          setStreaks(prev =>
-            prev.map(s => s.habit_id === habitId ? updatedStreak : s)
-          );
-
-          return { data: updatedStreak, error: null };
-        }
       }
 
-      return { data: null, error: null };
+      return { data: updatedStreak, error: null };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao atualizar streak';
       setError(errorMsg);
@@ -188,66 +83,42 @@ export const useStreaks = () => {
     }
   };
 
-  // 🆕 Verifica se deve continuar o streak
-  const shouldContinueStreak = async (
-    habit: Habit,
-    lastDate: Date,
-    currentDate: Date
-  ): Promise<boolean> => {
-    // Se for o mesmo dia, não incrementa
-    if (isSameDay(lastDate, currentDate)) {
-      return false;
-    }
-
-    // 🔧 Verificar se pulou algum dia obrigatório
-    let checkDate = new Date(lastDate);
-    checkDate.setDate(checkDate.getDate() + 1);
-
-    while (checkDate < currentDate) {
-      if (shouldHabitAppearOnDate(habit, checkDate)) {
-        // Encontrou um dia que deveria fazer mas não fez
-        return false; // Streak quebrado, começa do zero
-      }
-      checkDate.setDate(checkDate.getDate() + 1);
-    }
-
-    // Não pulou nenhum dia obrigatório, continua o streak
-    return true;
-  };
-
-  // 🆕 Verificar e quebrar streaks expirados (executar diariamente)
+  /**
+   * Recalcular todos os streaks ao abrir o app.
+   * Garante que cada hábito tenha um registro de streak e
+   * recalcula usando a lógica unificada.
+   */
   const checkExpiredStreaks = async (habits: Habit[]) => {
+    // Evitar recalcular múltiplas vezes na mesma sessão
+    if (hasRecalculated.current || habits.length === 0) return;
+    hasRecalculated.current = true;
+
     try {
-      const today = new Date();
-      
+      console.log(`🔄 Recalculando streaks para ${habits.length} hábitos...`);
+
       for (const habit of habits) {
-        // Só verifica se o hábito deveria ser feito hoje
-        if (!shouldHabitAppearOnDate(habit, today)) {
-          continue;
-        }
+        // Garantir que existe registro de streak
+        await ensureStreakExists(habit.id);
 
-        const streak = getStreak(habit.id);
-        if (!streak || !streak.last_completion_date) {
-          continue;
-        }
+        // Recalcular usando a lógica unificada
+        await retroactiveCompletionService.recalculateStreak(habit.id);
+      }
 
-        const shouldBreak = await shouldBreakStreak(habit, streak.last_completion_date);
-        
-        if (shouldBreak) {
-          // Quebrar streak
-          await streaksTable()
-            .update({ current_streak: 0 })
-            .eq('habit_id', habit.id);
+      // Refetch todos os streaks atualizados
+      const habitIds = habits.map(h => h.id);
+      const { data } = await streaksTable()
+        .select('*')
+        .in('habit_id', habitIds);
 
-          // Atualizar local
-          setStreaks(prev =>
-            prev.map(s =>
-              s.habit_id === habit.id
-                ? { ...s, current_streak: 0 }
-                : s
-            )
-          );
-        }
+      if (data) {
+        setStreaks(data as Streak[]);
+        console.log(`✅ Streaks recalculados:`, 
+          (data as Streak[]).map(s => ({
+            habit: s.habit_id.substring(0, 8),
+            current: s.current_streak,
+            best: s.best_streak,
+          }))
+        );
       }
     } catch (err) {
       console.error('Erro ao verificar streaks expirados:', err);
@@ -265,11 +136,23 @@ export const useStreaks = () => {
   };
 };
 
-// Helper: Verifica se duas datas são o mesmo dia
-function isSameDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
+/**
+ * Garante que existe um registro de streak para o hábito.
+ * Cria um novo se não existir (com valores zerados).
+ */
+async function ensureStreakExists(habitId: string): Promise<void> {
+  const { data: existing } = await streaksTable()
+    .select('id')
+    .eq('habit_id', habitId)
+    .maybeSingle();
+
+  if (!existing) {
+    console.log(`📝 Criando registro de streak para hábito ${habitId.substring(0, 8)}`);
+    await streaksTable().insert({
+      habit_id: habitId,
+      current_streak: 0,
+      best_streak: 0,
+      last_completion_date: null,
+    });
+  }
 }
