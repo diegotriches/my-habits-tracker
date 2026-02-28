@@ -14,10 +14,6 @@ import { exactAlarmService } from './exactAlarmService';
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
 
-/**
- * Service de Notificações usando Notifee
- * VERSÃO FINAL - Timestamp isolado por iteração
- */
 class NotificationNotifeeService {
   private navigationCallback: ((habitId: string) => void) | null = null;
   private isInitialized = false;
@@ -75,7 +71,6 @@ class NotificationNotifeeService {
 
       if (granted) {
         console.log('Permissões de notificação concedidas');
-
         if (Platform.OS === 'android' && Platform.Version >= 31) {
           try {
             console.log('Verificando permissão de alarmes exatos...');
@@ -413,7 +408,6 @@ class NotificationNotifeeService {
     }
   }
 
-  // Compatibilidade
   async setupNotificationHandlers(cb: (habitId: string) => void): Promise<void> {
     await this.initialize(cb);
   }

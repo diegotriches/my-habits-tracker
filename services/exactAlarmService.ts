@@ -31,7 +31,7 @@ class ExactAlarmService {
         const {
           habitId,
           habitName,
-          title = '⏰ Hora do seu hábito!',
+          title = 'Hora do seu hábito!',
           body = `${habitName} - Expanda para ver as opções`,
           reminderId,
           dayOfWeek,
@@ -56,15 +56,14 @@ class ExactAlarmService {
             channelId: 'habits',
             importance: AndroidImportance.HIGH,
             
-            // ✅ BOTÕES DE AÇÃO
             actions: [
               {
-                title: '⏰ Adiar',
+                title: 'Adiar',
                 pressAction: { id: 'snooze' },
                 icon: 'ic_launcher',
               },
               {
-                title: '✅ Feito',
+                title: 'Feito',
                 pressAction: { id: 'complete' },
                 icon: 'ic_launcher',
               },
@@ -72,7 +71,7 @@ class ExactAlarmService {
 
             style: {
               type: AndroidStyle.BIGTEXT,
-              text: `${habitName}\n\n👇 Toque para expandir e ver os botões de ação`,
+              text: `${habitName}\n\nToque para expandir e ver os botões de ação`,
             },
 
             smallIcon: 'ic_launcher',
