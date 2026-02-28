@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔐 AuthProvider: Initializing...');
     
-    // Buscar sessão inicial
     const getSession = async () => {
       try {
         console.log('🔍 Fetching initial session...');
@@ -69,7 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getSession();
 
-    // Escutar mudanças de autenticação
     console.log('👂 Setting up auth state listener...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -78,16 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId: session?.user?.id,
         });
         
-        // ✅ Ignorar INITIAL_SESSION - já processado em getSession()
         if (event === 'INITIAL_SESSION') {
           console.log('⏭️ Ignoring INITIAL_SESSION (already processed)');
           return;
         }
         
-        // Se for um novo usuário logado, garantir que perfil existe
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in');
-          await ensureProfileExists(session.user.id, session.user.email || '');
+          await ensureProfileExists(session.user);
         }
 
         if (event === 'SIGNED_OUT') {
@@ -107,15 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🧹 Cleaning up auth listener...');
       subscription.unsubscribe();
     };
-  }, []); // ✅ Array vazio - só executa UMA VEZ
+  }, []);
 
-  // Helper: Criar perfil se não existir
-  const ensureProfileExists = async (userId: string, email: string) => {
+  const ensureProfileExists = async (user: User) => {
     try {
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', userId)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
@@ -128,17 +123,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('📝 Creating profile for user:', userId);
-      const displayName = email.split('@')[0] || 'Usuário';
-      
-      const { error: insertError } = await supabase
-        .from('profiles')
+      console.log('📝 Creating profile for user:', user.id);
+
+      // Extrair nome e avatar do Google se disponível
+      const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
+      const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+      const displayName = googleName || (user.email?.split('@')[0] || 'Usuário');
+
+      const { error: insertError } = await (supabase
+        .from('profiles') as any)
         .insert({
-          id: userId,
+          id: user.id,
           display_name: displayName,
-          level: 1,
-          total_points: 0,
-        } as any);
+          avatar_url: googleAvatar || null,
+        });
 
       if (insertError) {
         console.error('❌ Error creating profile:', insertError);
@@ -150,7 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Traduzir erros
   const translateError = (error: AuthError): string => {
     const errorMessages: { [key: string]: string } = {
       'Invalid login credentials': 'Email ou senha incorretos',
@@ -161,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       'Signup requires a valid password': 'Senha inválida',
       'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos.',
       'Invalid email or password': 'Email ou senha inválidos',
+      'For security purposes, you can only request this after 60 seconds.': 'Aguarde 60 segundos antes de tentar novamente.',
     };
     return errorMessages[error.message] || error.message || 'Erro desconhecido';
   };
@@ -216,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        await ensureProfileExists(data.user.id, cleanEmail);
+        await ensureProfileExists(data.user);
       }
 
       setAuthState({
@@ -238,7 +236,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       console.log('🚀 ========== INICIANDO LOGIN GOOGLE ==========');
-      console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim() || 'unknown');
       
       setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
@@ -266,26 +263,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data?.url) {
         console.log('🌐 Opening browser for OAuth...');
-        console.log('📍 OAuth URL:', data.url.substring(0, 100) + '...');
-        
-        // ✅ NÃO AGUARDAR O RETORNO - apenas abrir o browser
-        // O callback será processado pelo deep link listener no _layout.tsx
-        console.log('⏳ Opening browser without waiting for return...');
         
         WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
           .then(result => {
             console.log('📱 Browser closed:', result.type);
-            // Não fazer nada aqui - o deep link listener vai processar
           })
           .catch(err => {
             console.error('❌ Browser error:', err);
           });
 
         console.log('✅ Browser opened - waiting for callback via deep link');
-        console.log('ℹ️ Deep link listener will process the OAuth callback');
         
-        // Retornar imediatamente - deixar loading: true
-        // O callback será processado pelo listener de deep link
         return { data, error: null };
       }
 

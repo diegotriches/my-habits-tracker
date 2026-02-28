@@ -264,7 +264,7 @@ class NotificationNotifeeService {
 
       const { data: habitData, error } = await supabase
         .from('habits')
-        .select('id, name, has_target, points_base, user_id')
+        .select('id, name, has_target, user_id')
         .eq('id', habitId)
         .single();
 
@@ -311,18 +311,12 @@ class NotificationNotifeeService {
       await (supabase.from('completions') as any).insert({
         habit_id: habitId,
         completed_at: new Date().toISOString(),
-        points_earned: habit.points_base,
         was_synced: true,
-      });
-
-      await (supabase.rpc as any)('increment_points', {
-        user_id_param: habit.user_id,
-        points_param: habit.points_base,
       });
 
       await notifee.displayNotification({
         title: 'Completado!',
-        body: `+${habit.points_base} pontos`,
+        body: `${habit.name} registrado com sucesso`,
         android: {
           channelId: 'habits-progress',
           importance: AndroidImportance.HIGH,

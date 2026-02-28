@@ -3,7 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MIN_SUBMIT_INTERVAL = 2000;
+
 export default function SignupScreen() {
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
@@ -25,10 +28,26 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signUpWithEmail, signInWithGoogle, loading } = useAuth();
+  const lastSubmitRef = useRef(0);
+
+  const validateEmail = (value: string): boolean => {
+    return EMAIL_REGEX.test(value.trim());
+  };
 
   const handleEmailSignup = async () => {
+    const now = Date.now();
+    if (now - lastSubmitRef.current < MIN_SUBMIT_INTERVAL) {
+      return;
+    }
+    lastSubmitRef.current = now;
+
     if (!email || !password || !confirmPassword) {
       Alert.alert('Erro', 'Preencha todos os campos');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert('Erro', 'Digite um email válido');
       return;
     }
 
@@ -48,7 +67,7 @@ export default function SignupScreen() {
         Alert.alert('Erro no Cadastro', error.message);
       } else {
         Alert.alert(
-          'Sucesso! 🎉',
+          'Sucesso!',
           'Conta criada com sucesso! Você já pode começar a usar o app.',
           [{ text: 'Começar', onPress: () => router.replace('/(tabs)') }]
         );
@@ -60,6 +79,12 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    const now = Date.now();
+    if (now - lastSubmitRef.current < MIN_SUBMIT_INTERVAL) {
+      return;
+    }
+    lastSubmitRef.current = now;
+
     try {
       const { error } = await signInWithGoogle();
       if (error) {
@@ -235,7 +260,7 @@ export default function SignupScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-            Versão 1.1.0 • My Habits Tracker
+            Versão 1.2.0 • My Habits Tracker
           </Text>
         </View>
       </View>
