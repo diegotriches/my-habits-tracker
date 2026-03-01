@@ -37,6 +37,10 @@ const TARGET_UNITS = {
   weight: ['kg', 'gramas'],
 };
 
+const MIN_NAME_LENGTH = 3;
+const MAX_NAME_LENGTH = 50;
+const MAX_DESCRIPTION_LENGTH = 200;
+
 export default function EditHabitScreen() {
   const { colors } = useTheme();
   const screenHeight = Dimensions.get('window').height;
@@ -208,37 +212,37 @@ export default function EditHabitScreen() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      Alert.alert('Erro', 'Digite um nome para o hábito');
-      return;
-    }
+  const validateForm = (): string | null => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return 'Digite um nome para o hábito';
+    if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
+    if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
 
     if (hasTarget) {
-      const val = parseFloat(targetValue);
-      if (!targetValue || isNaN(val) || val <= 0) {
-        Alert.alert('Erro', 'Digite um valor de meta válido');
-        return;
-      }
-      if (!targetUnit.trim()) {
-        Alert.alert('Erro', 'Selecione uma unidade para a meta');
-        return;
-      }
+      const value = parseFloat(targetValue);
+      if (!targetValue || isNaN(value)) return 'Digite um valor válido para a meta';
+      if (value <= 0) return 'O valor da meta deve ser maior que zero';
+      if (value > 999999) return 'O valor da meta é muito alto';
+      if (!targetUnit.trim()) return 'Selecione uma unidade para a meta';
     }
 
     if (hasFrequencyGoal) {
-      if (frequencyGoalValue <= 0) {
-        Alert.alert('Erro', 'Digite quantas vezes para a meta de frequência');
-        return;
-      }
-      if (frequencyGoalValue > getMaxForPeriod()) {
-        Alert.alert('Erro', `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`);
-        return;
-      }
+      if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
+      if (frequencyGoalValue > getMaxForPeriod()) return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
+      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
     }
 
-    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) {
-      Alert.alert('Erro', 'Selecione pelo menos um dia da semana');
+    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) return 'Selecione pelo menos um dia da semana';
+
+    return null;
+  };
+
+  const handleSubmit = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      hapticFeedback.error();
+      Alert.alert('Erro', validationError);
       return;
     }
 
@@ -392,7 +396,7 @@ export default function EditHabitScreen() {
             placeholderTextColor={colors.textTertiary}
             value={name}
             onChangeText={setName}
-            maxLength={50}
+            maxLength={MAX_NAME_LENGTH}
           />
         </View>
 
@@ -407,7 +411,7 @@ export default function EditHabitScreen() {
             onChangeText={setDescription}
             multiline
             numberOfLines={2}
-            maxLength={200}
+            maxLength={MAX_DESCRIPTION_LENGTH}
           />
         </View>
 
