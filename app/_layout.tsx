@@ -7,14 +7,7 @@ import { ActivityIndicator, StyleSheet, View, Text } from 'react-native';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import * as Linking from 'expo-linking';
 import * as Updates from 'expo-updates';
-import { exactAlarmService } from '@/services/exactAlarmService';
 import { soundPreviewService } from '@/services/soundPreview';
-
-// REGISTRAR HeadlessJS Task (só executa uma vez)
-if (__DEV__) {
-  console.log('Registrando HeadlessJS task...');
-}
-exactAlarmService.registerHeadlessTask();
 
 // Configurar canal de preview de som (Android)
 soundPreviewService.setupPreviewChannel();

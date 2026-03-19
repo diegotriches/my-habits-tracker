@@ -1,13 +1,13 @@
-// app/debug/notifications.tsx - VERSÃO COMPLETA COM TODOS OS TESTES
+// app/debug/notifications.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
+import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { diagnosticService } from '@/services/notificationsDiagnostic';
 import {
   ScrollView,
   StyleSheet,
@@ -32,18 +32,14 @@ export default function NotificationTestScreen() {
   }, []);
 
   const checkEnvironment = () => {
-    const isRunningInExpoGo = Constants.appOwnership === 'expo';
-    setIsExpoGo(isRunningInExpoGo);
-
-    if (isRunningInExpoGo) {
-      addResult('⚠️ Rodando no Expo Go', 'info');
-      addResult('📦 Usando Mock de Notificações', 'info');
-      addResult('✅ Notificações funcionam, mas SEM botões', 'info');
-      addResult('🏗️ Para testar botões: faça build standalone', 'info');
+    const running = Constants.appOwnership === 'expo';
+    setIsExpoGo(running);
+    if (running) {
+      addResult('Rodando no Expo Go', 'info');
+      addResult('Notificacoes basicas funcionam, sem botoes nativos', 'info');
     } else {
-      addResult('🚀 Rodando em Build Standalone', 'success');
-      addResult('✅ Notifee nativo ativado', 'success');
-      addResult('🎯 Botões de ação funcionam!', 'success');
+      addResult('Rodando em Build Standalone', 'success');
+      addResult('expo-notifications + AlarmManager nativo ativos', 'success');
     }
   };
 
@@ -56,291 +52,76 @@ export default function NotificationTestScreen() {
       platformApiLevel: Device.platformApiLevel,
     };
     setDeviceInfo(info);
-
-    addResult(`📱 ${info.manufacturer} ${info.modelName}`, 'info');
-    addResult(`🤖 Android ${info.osVersion} (API ${info.platformApiLevel})`, 'info');
+    addResult(`${info.manufacturer} ${info.modelName}`, 'info');
+    addResult(`Android ${info.osVersion} (API ${info.platformApiLevel})`, 'info');
   };
 
   const addResult = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const emoji = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-    setTestResults(prev => [`${emoji} ${message}`, ...prev]);
+    const prefix = type === 'success' ? '[OK]' : type === 'error' ? '[ERRO]' : '[INFO]';
+    setTestResults(prev => [`${prefix} ${message}`, ...prev]);
   };
+
+  // ---------------------------------------------------------------------------
+  // Testes
+  // ---------------------------------------------------------------------------
 
   const testPermissions = async () => {
     setLoading(true);
-    addResult('🔍 Verificando permissões...', 'info');
-
+    addResult('Verificando permissoes...', 'info');
     try {
-      const hasPermission = await notificationService.hasPermission();
-
-      if (hasPermission) {
-        addResult('Permissão já concedida!', 'success');
+      const has = await notificationService.hasPermission();
+      if (has) {
+        addResult('Permissao ja concedida', 'success');
       } else {
-        addResult('Solicitando permissão...', 'info');
         const granted = await notificationService.requestPermissions();
-
-        if (granted) {
-          addResult('Permissão concedida!', 'success');
-        } else {
-          addResult('Permissão negada', 'error');
-        }
+        addResult(granted ? 'Permissao concedida' : 'Permissao negada', granted ? 'success' : 'error');
       }
-    } catch (error) {
-      addResult(`Erro: ${error}`, 'error');
+    } catch (e) {
+      addResult(`Erro: ${e}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // TESTE IMEDIATO
   const testImmediateNotification = async () => {
     setLoading(true);
-    addResult('🧪 Teste IMEDIATO (3s)...', 'info');
-
+    addResult('Agendando notificacao de teste (5s)...', 'info');
     try {
-      const hasPermission = await notificationService.hasPermission();
-      if (!hasPermission) {
-        addResult('❌ SEM PERMISSÃO!', 'error');
-        addResult('Execute "Verificar Permissões" primeiro', 'info');
-        setLoading(false);
+      const has = await notificationService.hasPermission();
+      if (!has) {
+        addResult('Sem permissao — execute "Verificar Permissoes" primeiro', 'error');
         return;
       }
-
-      addResult('✅ Permissão OK', 'success');
-      addResult('🔔 Usando testNotificationWithActions...', 'info');
-
-      await notificationService.testNotificationWithActions();
-
-      addResult('✅ Notificação agendada para 3s!', 'success');
-      addResult('', 'info');
-      addResult('⏰ AGUARDE 3 SEGUNDOS', 'success');
-      addResult('📱 Expanda quando aparecer', 'info');
-
-      setTimeout(() => {
-        addResult('⏰ DEVE TER CHEGADO!', 'success');
-        Alert.alert(
-          '📱 Chegou?',
-          'A notificação deve ter aparecido AGORA!\n\nSe chegou:\n✅ Sistema funcionando!\n\nSe NÃO chegou:\n❌ Problema na configuração',
-          [{ text: 'OK' }]
-        );
-      }, 4000);
-
-    } catch (error) {
-      addResult(`❌ ERRO: ${error}`, 'error');
-      console.error('Erro completo:', error);
+      await notificationService.scheduleTestNotification('Habito de Teste');
+      addResult('Notificacao agendada para 5 segundos', 'success');
+      setTimeout(() => addResult('Deve ter chegado agora!', 'success'), 6000);
+    } catch (e) {
+      addResult(`Erro: ${e}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // DEBUG CANAL NOTIFEE
-  const debugNotifeeChannel = async () => {
+  const testDebugChannel = async () => {
     setLoading(true);
-    addResult('🔍 Verificando canal Notifee...', 'info');
-
+    addResult('Verificando canal "habits"...', 'info');
     try {
-      const notifee = require('@notifee/react-native').default;
-      const { AndroidImportance } = require('@notifee/react-native');
-
-      const channels = await notifee.getChannels();
-
-      addResult(`📢 Total de canais: ${channels.length}`, 'info');
-
-      const habitsChannel = channels.find((c: any) => c.id === 'habits');
-
-      if (!habitsChannel) {
-        addResult('❌ Canal "habits" NÃO EXISTE!', 'error');
-        addResult('Isso é um PROBLEMA GRAVE', 'error');
-        addResult('', 'info');
-        addResult('Solução: Recriando canal...', 'info');
-
-        await notifee.createChannel({
-          id: 'habits',
-          name: 'Lembretes de Hábitos',
-          importance: AndroidImportance.HIGH,
-          sound: 'default',
-          vibration: true,
-        });
-
-        addResult('✅ Canal recriado!', 'success');
-      } else {
-        addResult('✅ Canal existe!', 'success');
-        addResult(`   Nome: ${habitsChannel.name}`, 'info');
-
-        const importanceText = [
-          'NONE (0)',
-          'MIN (1)',
-          'LOW (2)',
-          'DEFAULT (3)',
-          'HIGH (4)',
-          'MAX (5)'
-        ][habitsChannel.importance] || 'Unknown';
-
-        addResult(`   Importância: ${importanceText}`, 'info');
-
-        if (habitsChannel.importance < 3) {
-          addResult('⚠️ IMPORTÂNCIA MUITO BAIXA!', 'error');
-          addResult('Botões podem não aparecer', 'error');
-        } else {
-          addResult('✅ Importância adequada', 'success');
-        }
-
-        addResult(`   Som: ${habitsChannel.sound || 'Nenhum'}`, 'info');
-        addResult(`   Vibração: ${habitsChannel.vibration ? 'Sim' : 'Não'}`, 'info');
+      if (Platform.OS !== 'android') {
+        addResult('Verificacao de canal e apenas Android', 'info');
+        return;
       }
-
-      const settings = await notifee.getNotificationSettings();
-
-      addResult('', 'info');
-      addResult('📱 Status de Permissões:', 'info');
-      addResult(`   Authorization: ${settings.authorizationStatus}`, 'info');
-
-      if (settings.authorizationStatus < 1) {
-        addResult('❌ PERMISSÃO NEGADA!', 'error');
-      } else {
-        addResult('✅ Permissão concedida', 'success');
+      const channel = await Notifications.getNotificationChannelAsync('habits');
+      if (!channel) {
+        addResult('Canal "habits" nao existe — rode "Verificar Permissoes" para criá-lo', 'error');
+        return;
       }
-
-      const importanceText = habitsChannel
-        ? [
-          'NONE (0)',
-          'MIN (1)',
-          'LOW (2)',
-          'DEFAULT (3)',
-          'HIGH (4)',
-          'MAX (5)'
-        ][habitsChannel.importance] || 'Unknown'
-        : 'N/A';
-
-      Alert.alert(
-        '🔍 Debug Completo',
-        habitsChannel
-          ? `Canal existe\nImportância: ${importanceText}\nPermissão: ${settings.authorizationStatus >= 1 ? 'OK' : 'NEGADA'}`
-          : 'Canal não existe! Foi recriado agora.',
-        [{ text: 'OK' }]
-      );
-
-    } catch (error) {
-      addResult(`❌ Erro: ${error}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // TESTE DIRETO - displayNotification com botões (sem trigger)
-  const testDirectNotification = async () => {
-    setLoading(true);
-    addResult('🧪 Disparando notificação DIRETA...', 'info');
-
-    try {
-      const notifee = require('@notifee/react-native').default;
-      const { AndroidImportance } = require('@notifee/react-native');
-
-      await notifee.displayNotification({
-        title: '🧪 TESTE DIRETO',
-        body: 'Toque nos botões abaixo',
-        data: {
-          habitId: 'test-direto-123',
-          habitName: 'Teste Direto',
-        },
-        android: {
-          channelId: 'habits',
-          importance: AndroidImportance.HIGH,
-          smallIcon: 'ic_launcher',
-          actions: [
-            {
-              title: '⏰ Adiar',
-              pressAction: { id: 'snooze' },
-            },
-            {
-              title: '✅ Feito',
-              pressAction: { id: 'complete' },
-            },
-          ],
-          pressAction: { id: 'default' },
-        },
-      });
-
-      addResult('✅ Notificação disparada!', 'success');
-      addResult('👆 Toque nos botões e veja o console', 'info');
-      addResult('📋 Procure por logs: 🔔 [FOREGROUND]', 'info');
-    } catch (error) {
-      addResult(`❌ Erro: ${error}`, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🆕 DIAGNÓSTICO NOTIFEE - Verifica se o módulo nativo está funcional
-  const testNotifeeDiagnostic = async () => {
-    setLoading(true);
-    addResult('🔬 Iniciando diagnóstico Notifee...', 'info');
-
-    try {
-      const notifee = require('@notifee/react-native').default;
-      const { EventType } = require('@notifee/react-native');
-
-      // Teste 1: Módulo nativo responde?
-      addResult('', 'info');
-      addResult('--- Teste 1: Módulo nativo ---', 'info');
-      const initial = await notifee.getInitialNotification();
-      addResult(`getInitialNotification: ${initial ? 'tem dados' : 'null (ok)'}`, 'success');
-
-      // Teste 2: EventType disponível?
-      addResult('', 'info');
-      addResult('--- Teste 2: EventType ---', 'info');
-      addResult(`DISMISSED: ${EventType.DISMISSED}`, 'info');
-      addResult(`PRESS: ${EventType.PRESS}`, 'info');
-      addResult(`ACTION_PRESS: ${EventType.ACTION_PRESS}`, 'info');
-      addResult(`DELIVERED: ${EventType.DELIVERED}`, 'info');
-      console.log('🧪 EVENT TYPES:', JSON.stringify(EventType));
-
-      // Teste 3: onForegroundEvent é função?
-      addResult('', 'info');
-      addResult('--- Teste 3: API disponível ---', 'info');
-      addResult(`onForegroundEvent: ${typeof notifee.onForegroundEvent}`, 'info');
-      addResult(`onBackgroundEvent: ${typeof notifee.onBackgroundEvent}`, 'info');
-      addResult(`displayNotification: ${typeof notifee.displayNotification}`, 'info');
-
-      // Teste 4: Canais
-      addResult('', 'info');
-      addResult('--- Teste 4: Canais ---', 'info');
-      const channels = await notifee.getChannels();
-      addResult(`Total de canais: ${channels.length}`, 'info');
-      channels.forEach((ch: any) => {
-        addResult(`  - ${ch.id} (importance: ${ch.importance})`, 'info');
-      });
-
-      // Teste 5: Notificações pendentes
-      addResult('', 'info');
-      addResult('--- Teste 5: Notificações ---', 'info');
-      const displayed = await notifee.getDisplayedNotifications();
-      addResult(`Exibidas agora: ${displayed.length}`, 'info');
-      const triggered = await notifee.getTriggerNotifications();
-      addResult(`Agendadas: ${triggered.length}`, 'info');
-
-      // Teste 6: Registrar listener AGORA e confirmar
-      addResult('', 'info');
-      addResult('--- Teste 6: Listener ao vivo ---', 'info');
-      addResult('Registrando onForegroundEvent AGORA...', 'info');
-      
-      const unsubscribe = notifee.onForegroundEvent(({ type, detail }: any) => {
-        const msg = `🔔 EVENTO CAPTURADO! type=${type} action=${detail?.pressAction?.id || 'none'}`;
-        console.log(msg);
-        addResult(msg, 'success');
-      });
-
-      addResult('✅ Listener registrado!', 'success');
-      addResult('', 'info');
-      addResult('📌 AGORA dispare o "Teste DIRETO" e clique nos botões', 'info');
-      addResult('📌 Os eventos devem aparecer AQUI no log', 'info');
-
-      // Guardar unsubscribe para limpar depois (opcional)
-      console.log('🧪 Unsubscribe function:', typeof unsubscribe);
-
-    } catch (error) {
-      addResult(`❌ Erro diagnóstico: ${error}`, 'error');
-      console.error('Erro completo:', error);
+      const importanceLabels = ['NONE', 'MIN', 'LOW', 'DEFAULT', 'HIGH', 'MAX'];
+      addResult(`Canal existe: ${channel.name}`, 'success');
+      addResult(`Importancia: ${importanceLabels[channel.importance] ?? channel.importance}`, 'info');
+      addResult(`Som: ${channel.sound ?? 'padrao'}`, 'info');
+      addResult(`Vibracao: ${channel.enableVibrate ? 'Sim' : 'Nao'}`, 'info');
+    } catch (e) {
+      addResult(`Erro: ${e}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -348,37 +129,30 @@ export default function NotificationTestScreen() {
 
   const listScheduledNotifications = async () => {
     setLoading(true);
-    addResult('📋 Listando notificações...', 'info');
-
+    addResult('Listando notificacoes agendadas...', 'info');
     try {
       const notifications = await notificationService.getAllScheduledNotifications();
-
       if (notifications.length === 0) {
-        addResult('Nenhuma notificação agendada', 'info');
+        addResult('Nenhuma notificacao agendada', 'info');
       } else {
-        addResult(`${notifications.length} notificações agendadas:`, 'success');
-
-        notifications.forEach((item: any, index: number) => {
-          const title = item.notification?.title || item.content?.title || 'Sem título';
-          const habitName = item.notification?.data?.habitName || item.content?.data?.habitName;
-
-          addResult(`${index + 1}. ${title}`, 'info');
-          if (habitName) {
-            addResult(`   Hábito: ${habitName}`, 'info');
-          }
+        addResult(`${notifications.length} notificacoes agendadas:`, 'success');
+        notifications.forEach((n, i) => {
+          const title = n.content?.title ?? 'Sem titulo';
+          const habitName = (n.content?.data as any)?.habitName;
+          addResult(`${i + 1}. ${title}${habitName ? ` — ${habitName}` : ''}`, 'info');
         });
       }
-    } catch (error) {
-      addResult(`Erro: ${error}`, 'error');
+    } catch (e) {
+      addResult(`Erro: ${e}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const cancelAllNotifications = async () => {
+  const cancelAllNotifications = () => {
     Alert.alert(
       'Cancelar Todas?',
-      'Isso vai cancelar TODAS as notificações agendadas',
+      'Isso vai cancelar TODAS as notificacoes agendadas.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -387,20 +161,11 @@ export default function NotificationTestScreen() {
           onPress: async () => {
             setLoading(true);
             addResult('Cancelando todas...', 'info');
-
             try {
-              const notifications = await notificationService.getAllScheduledNotifications();
-
-              for (const notif of notifications) {
-                const id = notif.id || notif.notification?.id;
-                if (id) {
-                  await notificationService.cancelNotification(id);
-                }
-              }
-
-              addResult(`${notifications.length} notificações canceladas!`, 'success');
-            } catch (error) {
-              addResult(`Erro: ${error}`, 'error');
+              await notificationService.cancelAllNotifications();
+              addResult('Todas as notificacoes canceladas', 'success');
+            } catch (e) {
+              addResult(`Erro: ${e}`, 'error');
             } finally {
               setLoading(false);
             }
@@ -410,11 +175,24 @@ export default function NotificationTestScreen() {
     );
   };
 
+  const runAllTests = async () => {
+    setLoading(true);
+    addResult('--- Iniciando diagnostico completo ---', 'info');
+    await testPermissions();
+    await testDebugChannel();
+    await listScheduledNotifications();
+    addResult('--- Diagnostico concluido ---', 'success');
+    setLoading(false);
+  };
+
   const clearLog = () => {
     setTestResults([]);
-    addResult('Log limpo!', 'success');
     checkEnvironment();
   };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -423,7 +201,7 @@ export default function NotificationTestScreen() {
           <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          🚀 Testes de Notificações
+          Testes de Notificacoes
         </Text>
         <TouchableOpacity onPress={clearLog}>
           <Icon name="trash" size={20} color={colors.textSecondary} />
@@ -436,11 +214,11 @@ export default function NotificationTestScreen() {
             <Icon name="alertCircle" size={20} color={colors.warning} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.warningTitle, { color: colors.warning }]}>
-                Expo Go - Modo Limitado
+                Expo Go — Modo Limitado
               </Text>
               <Text style={[styles.warningText, { color: colors.warning }]}>
-                Botões de notificação não funcionam no Expo Go.
-                {'\n'}Faça uma build standalone para testar.
+                Botoes de notificacao nao funcionam no Expo Go.
+                {'\n'}Faca uma build standalone para testar.
               </Text>
             </View>
           </View>
@@ -450,9 +228,8 @@ export default function NotificationTestScreen() {
           <Icon name="info" size={20} color={colors.primary} />
           <Text style={[styles.infoText, { color: colors.primary }]}>
             {isExpoGo
-              ? 'Usando Mock - Notificações básicas funcionam'
-              : 'Usando Notifee - Botões funcionam 100%!'
-            }
+              ? 'Expo Go — notificacoes basicas apenas'
+              : 'Build Standalone — expo-notifications + AlarmManager'}
           </Text>
         </View>
 
@@ -468,92 +245,18 @@ export default function NotificationTestScreen() {
         )}
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          🔔 Testes de Notificação
+          Testes de Notificacao
         </Text>
 
-        <TestButton
-          title="1. Verificar Permissões"
-          subtitle="Solicita permissão de notificações"
-          icon="shield"
-          onPress={testPermissions}
-          loading={loading}
-          colors={colors}
-        />
-
-        {/* TESTE IMEDIATO */}
-        <TestButton
-          title="2. Teste Imediato (3s)"
-          subtitle="Notificação agora + 3 segundos"
-          icon="zap"
-          onPress={testImmediateNotification}
-          loading={loading}
-          colors={colors}
-          highlight
-        />
-
-        {/* DEBUG CANAL */}
-        <TestButton
-          title="3. Debug Canal Notifee"
-          subtitle="Verificar configuração do canal"
-          icon="settings"
-          onPress={debugNotifeeChannel}
-          loading={loading}
-          colors={colors}
-        />
-
-        {/* TESTE DIRETO - SEM TRIGGER */}
-        <TestButton
-          title="🧪 Teste DIRETO (sem trigger)"
-          subtitle="displayNotification com botões - teste foreground"
-          icon="bell"
-          onPress={testDirectNotification}
-          loading={loading}
-          colors={colors}
-          highlight
-        />
-
-        {/* 🆕 DIAGNÓSTICO NOTIFEE */}
-        <TestButton
-          title="🔬 Diagnóstico Notifee"
-          subtitle="Verifica módulo nativo + registra listener ao vivo"
-          icon="activity"
-          onPress={testNotifeeDiagnostic}
-          loading={loading}
-          colors={colors}
-          highlight
-        />
-
-        <TestButton
-          title="4. Listar Agendadas"
-          subtitle="Mostra todas as notificações"
-          icon="list"
-          onPress={listScheduledNotifications}
-          loading={loading}
-          colors={colors}
-        />
-
-        <TestButton
-          title="5. Cancelar Todas"
-          subtitle="Remove todos os lembretes"
-          icon="alertCircle"
-          onPress={cancelAllNotifications}
-          loading={loading}
-          colors={colors}
-          danger
-        />
-
-        <TestButton
-          title="🧪 DIAGNÓSTICO COMPLETO"
-          subtitle="Executar todos os testes"
-          icon="activity"
-          onPress={() => diagnosticService.runAllTests()}
-          loading={loading}
-          colors={colors}
-          highlight
-        />
+        <TestButton title="1. Verificar Permissoes" subtitle="Solicita permissao de notificacoes" icon="shield" onPress={testPermissions} loading={loading} colors={colors} />
+        <TestButton title="2. Teste Imediato (5s)" subtitle="Agenda notificacao para daqui 5 segundos" icon="zap" onPress={testImmediateNotification} loading={loading} colors={colors} highlight />
+        <TestButton title="3. Debug Canal" subtitle="Verifica configuracao do canal habits" icon="settings" onPress={testDebugChannel} loading={loading} colors={colors} />
+        <TestButton title="4. Listar Agendadas" subtitle="Mostra todas as notificacoes" icon="list" onPress={listScheduledNotifications} loading={loading} colors={colors} />
+        <TestButton title="5. Cancelar Todas" subtitle="Remove todos os lembretes" icon="alertCircle" onPress={cancelAllNotifications} loading={loading} colors={colors} danger />
+        <TestButton title="Diagnostico Completo" subtitle="Executa todos os testes em sequencia" icon="activity" onPress={runAllTests} loading={loading} colors={colors} highlight />
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          📊 Log de Testes
+          Log de Testes
         </Text>
 
         <View style={[styles.logContainer, { backgroundColor: colors.surface }]}>
@@ -575,6 +278,10 @@ export default function NotificationTestScreen() {
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// TestButton
+// ---------------------------------------------------------------------------
 
 interface TestButtonProps {
   title: string;
@@ -604,96 +311,42 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, h
     >
       <View style={[
         styles.iconContainer,
-        { backgroundColor: danger ? colors.dangerLight : highlight ? colors.primary : colors.primaryLight }
+        { backgroundColor: danger ? colors.dangerLight : highlight ? colors.primary : colors.primaryLight },
       ]}>
-        <Icon
-          name={icon}
-          size={24}
-          color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary}
-        />
+        <Icon name={icon} size={24} color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary} />
       </View>
-
       <View style={styles.buttonContent}>
-        <Text style={[
-          styles.buttonTitle,
-          { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary }
-        ]}>
+        <Text style={[styles.buttonTitle, { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary }]}>
           {title}
         </Text>
-        <Text style={[styles.buttonSubtitle, { color: colors.textTertiary }]}>
-          {subtitle}
-        </Text>
+        <Text style={[styles.buttonSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
       </View>
-
       <Icon name="chevronRight" size={20} color={colors.textTertiary} />
     </TouchableOpacity>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1 },
   backButton: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 18, fontWeight: '700', flex: 1, textAlign: 'center', marginRight: 32 },
   content: { flex: 1, paddingHorizontal: 20 },
-  warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 12,
-  },
-  warningTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  warningText: {
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 12,
-  },
+  warningBanner: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, borderRadius: 12, marginTop: 16, gap: 12 },
+  warningTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
+  warningText: { fontSize: 12, lineHeight: 18 },
+  infoBanner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginTop: 16, gap: 12 },
   infoText: { flex: 1, fontSize: 13, fontWeight: '600' },
-  deviceCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-  },
+  deviceCard: { padding: 16, borderRadius: 12, marginTop: 12 },
   deviceText: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   deviceSubtext: { fontSize: 13 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 24, marginBottom: 12 },
-  testButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
+  testButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
+  iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   buttonContent: { flex: 1 },
   buttonTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   buttonSubtitle: { fontSize: 13 },

@@ -1,205 +1,18 @@
 // services/exactAlarmService.ts
-import { NativeModules, Platform, AppRegistry } from 'react-native';
-import notifee, {
-  AndroidImportance,
-  AndroidStyle,
-  AndroidVisibility,
-  AndroidCategory,
-} from '@notifee/react-native';
+import { NativeModules, Platform, DeviceEventEmitter } from 'react-native';
 
 const { ExactAlarmModule } = NativeModules;
 
 /**
- * Service que usa AlarmManager nativo + Notifee
- * Garante que notificações disparem no horário EXATO
+ * Service que usa AlarmManager nativo para agendar alarmes exatos.
+ * As notificações são disparadas diretamente pelo AlarmReceiver.java
+ * via NotificationCompat — sem dependência de Notifee.
+ *
+ * O botão "Feito" na notificação envia um broadcast local
+ * "com.dtriches.myhabitstracker.HABIT_COMPLETE" que este service
+ * escuta e repassa para o JS via DeviceEventEmitter.
  */
 class ExactAlarmService {
-  
-  /**
-   * Registra a HeadlessJS task que dispara notificações
-   * DEVE ser chamado uma vez no início do app
-   */
-  registerHeadlessTask(): void {
-    if (Platform.OS !== 'android') return;
-
-    console.log('📝 Registrando HeadlessJS task: HabitAlarmTask');
-
-    AppRegistry.registerHeadlessTask('HabitAlarmTask', () => async (data: any) => {
-      console.log('🔔 HeadlessJS Task disparada!', data);
-
-      try {
-        const {
-          habitId,
-          habitName,
-          title = 'Hora do seu hábito!',
-          body = `${habitName} - Expanda para ver as opções`,
-          reminderId,
-          dayOfWeek,
-          time,
-        } = data;
-
-        console.log('📊 Criando notificação Notifee...');
-
-        // Criar notificação Notifee com BOTÕES
-        await notifee.displayNotification({
-          title,
-          body,
-          data: {
-            habitId,
-            habitName,
-            reminderId,
-            dayOfWeek,
-            time,
-            type: 'habit_reminder',
-          },
-          android: {
-            channelId: 'habits',
-            importance: AndroidImportance.HIGH,
-            
-            actions: [
-              {
-                title: 'Adiar',
-                pressAction: { id: 'snooze' },
-                icon: 'ic_launcher',
-              },
-              {
-                title: 'Feito',
-                pressAction: { id: 'complete' },
-                icon: 'ic_launcher',
-              },
-            ],
-
-            style: {
-              type: AndroidStyle.BIGTEXT,
-              text: `${habitName}\n\nToque para expandir e ver os botões de ação`,
-            },
-
-            smallIcon: 'ic_launcher',
-            color: '#3B82F6',
-            showTimestamp: true,
-            autoCancel: false,
-            ongoing: false,
-            visibility: AndroidVisibility.PUBLIC,
-            category: AndroidCategory.REMINDER,
-            
-            pressAction: {
-              id: 'default',
-              launchActivity: 'default',
-            },
-
-            sound: 'default',
-          },
-        });
-
-        console.log('✅ Notificação Notifee disparada!');
-
-      } catch (error) {
-        console.error('❌ Erro ao disparar notificação:', error);
-      }
-    });
-  }
-
-  /**
-   * Agenda um alarme exato
-   */
-  async scheduleExactAlarm(
-    alarmId: string,
-    timestamp: number,
-    data: {
-      habitId: string;
-      habitName: string;
-      title?: string;
-      body?: string;
-      reminderId?: string;
-      dayOfWeek?: string;
-      time?: string;
-    }
-  ): Promise<string> {
-    if (Platform.OS !== 'android') {
-      throw new Error('ExactAlarmService só funciona no Android');
-    }
-
-    if (!ExactAlarmModule) {
-      throw new Error('ExactAlarmModule não está disponível. Verifique a configuração nativa.');
-    }
-
-    console.log('📅 Agendando alarme exato:', {
-      alarmId,
-      timestamp,
-      scheduledFor: new Date(timestamp).toLocaleString(),
-      ...data,
-    });
-
-    try {
-      const result = await ExactAlarmModule.scheduleExactAlarm(alarmId, timestamp, data);
-      console.log('✅ Alarme agendado:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ Erro ao agendar alarme:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cancela um alarme
-   */
-  async cancelAlarm(alarmId: string): Promise<void> {
-    if (Platform.OS !== 'android') return;
-
-    if (!ExactAlarmModule) {
-      console.warn('ExactAlarmModule não disponível');
-      return;
-    }
-
-    console.log('🗑️ Cancelando alarme:', alarmId);
-
-    try {
-      await ExactAlarmModule.cancelAlarm(alarmId);
-      console.log('✅ Alarme cancelado');
-    } catch (error) {
-      console.error('❌ Erro ao cancelar alarme:', error);
-    }
-  }
-
-  /**
-   * Verifica se pode agendar alarmes exatos
-   */
-  async canScheduleExactAlarms(): Promise<boolean> {
-    if (Platform.OS !== 'android') return true;
-
-    if (!ExactAlarmModule) {
-      console.warn('ExactAlarmModule não disponível');
-      return false;
-    }
-
-    try {
-      const can = await ExactAlarmModule.canScheduleExactAlarms();
-      console.log('📱 Pode agendar alarmes exatos:', can);
-      return can;
-    } catch (error) {
-      console.error('❌ Erro ao verificar permissão:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Abre as configurações de alarmes exatos
-   */
-  async openAlarmSettings(): Promise<void> {
-    if (Platform.OS !== 'android') return;
-
-    if (!ExactAlarmModule) {
-      console.warn('ExactAlarmModule não disponível');
-      return;
-    }
-
-    try {
-      await ExactAlarmModule.openAlarmSettings();
-      console.log('✅ Configurações abertas');
-    } catch (error) {
-      console.error('❌ Erro ao abrir configurações:', error);
-    }
-  }
 
   /**
    * Agenda lembretes semanais usando AlarmManager
@@ -211,22 +24,18 @@ class ExactAlarmService {
     daysOfWeek: number[],
     reminderId: string
   ): Promise<string[]> {
+    if (Platform.OS !== 'android') return [];
+
     const [hours, minutes] = time.split(':').map(Number);
     const alarmIds: string[] = [];
 
-    console.log('🔔 Agendando lembretes semanais com AlarmManager:', {
-      habitName,
-      time,
-      daysOfWeek,
-    });
+    console.log('Agendando lembretes semanais:', { habitName, time, daysOfWeek });
 
     for (const dayOfWeek of daysOfWeek) {
       const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes);
-      const timestamp = nextOccurrence.getTime();
-
       const alarmId = `${habitId}_${dayOfWeek}`;
 
-      await this.scheduleExactAlarm(alarmId, timestamp, {
+      await this.scheduleExactAlarm(alarmId, nextOccurrence.getTime(), {
         habitId,
         habitName,
         reminderId,
@@ -237,12 +46,111 @@ class ExactAlarmService {
       alarmIds.push(alarmId);
     }
 
-    console.log(`✅ ${alarmIds.length} alarmes agendados`);
+    console.log(`${alarmIds.length} alarmes agendados`);
     return alarmIds;
   }
 
   /**
-   * Calcula próxima ocorrência
+   * Agenda um alarme exato
+   */
+  async scheduleExactAlarm(
+    alarmId: string,
+    timestamp: number,
+    data: {
+      habitId: string;
+      habitName: string;
+      reminderId?: string;
+      dayOfWeek?: string;
+      time?: string;
+    }
+  ): Promise<string> {
+    if (Platform.OS !== 'android') throw new Error('ExactAlarmService só funciona no Android');
+    if (!ExactAlarmModule) throw new Error('ExactAlarmModule não disponível');
+
+    console.log('Agendando alarme:', {
+      alarmId,
+      scheduledFor: new Date(timestamp).toLocaleString(),
+      ...data,
+    });
+
+    const result = await ExactAlarmModule.scheduleExactAlarm(alarmId, timestamp, data);
+    console.log('Alarme agendado:', result);
+    return result;
+  }
+
+  /**
+   * Cancela um alarme
+   */
+  async cancelAlarm(alarmId: string): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    if (!ExactAlarmModule) return;
+
+    try {
+      await ExactAlarmModule.cancelAlarm(alarmId);
+      console.log('Alarme cancelado:', alarmId);
+    } catch (error) {
+      console.error('Erro ao cancelar alarme:', error);
+    }
+  }
+
+  /**
+   * Cancela todos os alarmes de um hábito
+   */
+  async cancelHabitAlarms(habitId: string, daysOfWeek: number[]): Promise<void> {
+    console.log('Cancelando alarmes do hábito:', habitId);
+    for (const dayOfWeek of daysOfWeek) {
+      await this.cancelAlarm(`${habitId}_${dayOfWeek}`);
+    }
+  }
+
+  /**
+   * Verifica se pode agendar alarmes exatos
+   */
+  async canScheduleExactAlarms(): Promise<boolean> {
+    if (Platform.OS !== 'android') return true;
+    if (!ExactAlarmModule) return false;
+
+    try {
+      const can = await ExactAlarmModule.canScheduleExactAlarms();
+      console.log('Pode agendar alarmes exatos:', can);
+      return can;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Abre as configurações de alarmes exatos (Android 12+)
+   */
+  async openAlarmSettings(): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    if (!ExactAlarmModule) return;
+
+    try {
+      await ExactAlarmModule.openAlarmSettings();
+    } catch (error) {
+      console.error('Erro ao abrir configurações:', error);
+    }
+  }
+
+  /**
+   * Registra listener para o evento de conclusão vindo do botão nativo
+   * O AlarmReceiver envia broadcast "HABIT_COMPLETE" quando o usuário
+   * toca em "Feito" na notificação.
+   */
+  onHabitComplete(callback: (habitId: string, habitName: string) => void): () => void {
+    const subscription = DeviceEventEmitter.addListener(
+      'HabitCompleteFromNotification',
+      (event: { habitId: string; habitName: string }) => {
+        console.log('Evento HabitComplete recebido:', event);
+        callback(event.habitId, event.habitName);
+      }
+    );
+    return () => subscription.remove();
+  }
+
+  /**
+   * Calcula próxima ocorrência de um dia/horário
    */
   private getNextOccurrence(dayOfWeek: number, hours: number, minutes: number): Date {
     const now = new Date();
@@ -252,7 +160,6 @@ class ExactAlarmService {
 
     const currentDay = result.getDay();
     let daysUntil = dayOfWeek - currentDay;
-
     const minBuffer = 2 * 60 * 1000;
     const diffMs = result.getTime() - now.getTime();
 
@@ -260,34 +167,17 @@ class ExactAlarmService {
       daysUntil += 7;
     } else if (daysUntil === 0 && diffMs < minBuffer) {
       daysUntil += 7;
-      console.log('⚠️ Horário muito próximo! Pulando para próxima semana');
+      console.log('Horario muito proximo, pulando para proxima semana');
     }
 
     result.setDate(result.getDate() + daysUntil);
 
-    console.log('📅 Próxima ocorrência:', {
+    console.log('Proxima ocorrencia:', {
       dayOfWeek,
-      currentDay,
-      time: `${hours}:${minutes}`,
-      daysUntil,
       scheduled: result.toLocaleString(),
     });
 
     return result;
-  }
-
-  /**
-   * Cancela todos os alarmes de um hábito
-   */
-  async cancelHabitAlarms(habitId: string, daysOfWeek: number[]): Promise<void> {
-    console.log('🗑️ Cancelando alarmes do hábito:', habitId);
-
-    for (const dayOfWeek of daysOfWeek) {
-      const alarmId = `${habitId}_${dayOfWeek}`;
-      await this.cancelAlarm(alarmId);
-    }
-
-    console.log('✅ Alarmes cancelados');
   }
 }
 

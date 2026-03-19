@@ -1,15 +1,10 @@
 // services/notificationService.ts
-import { Platform } from 'react-native';
+// Wrapper unificado — usa expo-notifications em todas as plataformas.
+// O ExactAlarmService (AlarmManager nativo) é chamado internamente
+// pelo notificationNotifeeService que foi substituído pelo notifications.ts.
+
 import { notificationService as expoNotifications } from './notifications';
-import { notificationNotifeeService as notifeeReal } from './notificationsNotifee';
 
-// CONFIGURADO PARA BUILD (Notifee Real)
-const androidService = notifeeReal as any;
-
-export const notificationService = Platform.select({
-  android: androidService,
-  ios: expoNotifications,
-  default: expoNotifications,
-}) as any;
+export const notificationService = expoNotifications;
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';

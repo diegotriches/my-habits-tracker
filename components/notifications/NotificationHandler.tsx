@@ -2,13 +2,20 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
-import notifee, { EventType } from '@notifee/react-native';
+import { exactAlarmService } from '@/services/exactAlarmService';
 
 /**
- * Handler global de notificações
- * Registra onForegroundEvent dentro do componente React
+ * Handler global de notificações usando expo-notifications.
+ * Substitui o NotificationHandler baseado em Notifee.
+ *
+ * Responsabilidades:
+ * - Solicitar permissões ao montar
+ * - Escutar respostas a notificações (botões Adiar/Feito, toque no corpo)
+ * - Escutar evento nativo HabitCompleteFromNotification (botão "Feito" do AlarmReceiver)
+ * - Navegar para o hábito ao tocar na notificação
  */
 export function NotificationHandler() {
   const { user } = useAuth();
@@ -16,73 +23,67 @@ export function NotificationHandler() {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔔 Registrando onForegroundEvent no NotificationHandler...');
+    console.log('Registrando handlers de notificacao...');
 
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
-      console.log('🔔🔔🔔 [HANDLER] EVENT:', type);
-      console.log('🔔🔔🔔 [HANDLER] ACTION:', detail?.pressAction?.id);
-      console.log('🔔🔔🔔 [HANDLER] DETAIL:', JSON.stringify(detail, null, 2));
+    // Configurar handler de exibição
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
 
-      if (type === EventType.ACTION_PRESS) {
-        const actionId = detail.pressAction?.id;
-        const data = detail.notification?.data;
+    // Listener: usuário interagiu com a notificação (toque ou botão)
+    const responseListener = Notifications.addNotificationResponseReceivedListener(
+      async (response) => {
+        const actionId = response.actionIdentifier;
+        const data = response.notification.request.content.data as any;
 
-        console.log('👆 BOTÃO PRESSIONADO:', actionId);
+        console.log('Interacao com notificacao:', { actionId, habitId: data?.habitId });
 
-        if (!actionId || !data?.habitId) {
-          console.warn('⚠️ Dados insuficientes');
+        if (!data?.habitId) return;
+
+        if (actionId === 'snooze') {
+          await notificationService.handleSnooze(data.habitId, data.habitName);
           return;
         }
 
-        // Remover notificação
-        if (detail.notification?.id) {
-          notifee.cancelNotification(detail.notification.id);
+        if (actionId === 'complete') {
+          await notificationService.handleQuickComplete(data.habitId);
+          return;
         }
 
-        if (actionId === 'snooze') {
-          console.log('⏰ Snooze via foreground handler');
-          notificationService.handleSnooze(
-            data.habitId as string,
-            data.habitName as string
-          );
-        } else if (actionId === 'complete') {
-          console.log('✅ Complete via foreground handler');
-          notificationService.handleQuickComplete(data.habitId as string);
+        // Toque no corpo da notificação — navegar para o hábito
+        if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+          console.log('Navegando para habito:', data.habitId);
+          router.push(`/habits/${data.habitId}` as any);
         }
       }
+    );
 
-      if (type === EventType.PRESS && detail.notification?.data?.habitId) {
-        console.log('📱 Navegando para hábito:', detail.notification.data.habitId);
-        router.push(`/habits/${detail.notification.data.habitId}` as any);
+    // Listener: evento nativo do botão "Feito" do AlarmReceiver.java
+    const unsubscribeComplete = exactAlarmService.onHabitComplete(
+      async (habitId, habitName) => {
+        console.log('Botao Feito nativo pressionado:', habitId);
+        await notificationService.handleQuickComplete(habitId);
       }
-    });
-
-    console.log('✅ onForegroundEvent registrado no NotificationHandler');
-
-    // Inicializar serviço de notificações (canais, etc)
-    notificationService.initialize((habitId: string) => {
-      console.log('🔗 Navegando para hábito:', habitId);
-      router.push(`/habits/${habitId}` as any);
-    });
+    );
 
     // Solicitar permissões
-    setupPermissions();
+    notificationService.requestPermissions().then((granted) => {
+      console.log('Permissao de notificacao:', granted ? 'concedida' : 'negada');
+    });
+
+    console.log('Handlers de notificacao registrados');
 
     return () => {
-      console.log('🔔 Removendo onForegroundEvent');
-      unsubscribe();
+      responseListener.remove();
+      unsubscribeComplete();
     };
   }, [user]);
-
-  const setupPermissions = async () => {
-    const hasPermission = await notificationService.requestPermissions();
-
-    if (hasPermission) {
-      console.log('✅ Permissões concedidas');
-    } else {
-      console.log('❌ Permissões negadas');
-    }
-  };
 
   return null;
 }
@@ -97,9 +98,6 @@ export function useNotificationRefresh(onRefresh: () => Promise<void>) {
         await onRefresh();
       }
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, [onRefresh]);
 }
