@@ -21,17 +21,17 @@ import { hapticFeedback } from '@/utils/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -385,7 +385,7 @@ export default function HabitDetailsScreen() {
     if (goalValue && goalValue > 0) {
       const periodLabel = goalPeriod === 'week' ? 'semana'
         : goalPeriod === 'month' ? 'mês'
-        : `${goalCustomDays || '?'} dias`;
+          : `${goalCustomDays || '?'} dias`;
       return `${goalValue}x por ${periodLabel}`;
     }
     if (habit.frequency_type === 'daily') return 'Todos os dias';
@@ -553,7 +553,18 @@ export default function HabitDetailsScreen() {
             <Icon name="calendar" size={16} color={themeColor} />
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Calendário & Sequências</Text>
           </View>
-          <HabitStreakTracker data={last90DaysData} habitColor={themeColor} hasTarget={habit.has_target} targetValue={habit.target_value || 0} targetUnit={habit.target_unit || ''} onDayPress={handleCalendarDayPress} />
+          <HabitStreakTracker
+            data={last90DaysData}
+            habitColor={themeColor}
+            hasTarget={habit.has_target}
+            targetValue={habit.target_value || 0}
+            targetUnit={habit.target_unit || ''}
+            hasFrequencyGoal={!!((habit as any).frequency_goal_value)}
+            frequencyGoalValue={(habit as any).frequency_goal_value || 0}
+            frequencyGoalPeriod={(habit as any).frequency_goal_period || null}
+            frequencyGoalCustomDays={(habit as any).frequency_goal_custom_days || null}
+            onDayPress={handleCalendarDayPress}
+          />
         </View>
 
         {/* Notificações — Botão resumo */}

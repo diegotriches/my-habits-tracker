@@ -77,7 +77,6 @@ export function useHabitDetails(habitId: string) {
       setLoading(true);
       setError(null);
 
-      // 1. Buscar hábito
       const { data: habit, error: habitError } = await supabase
         .from('habits')
         .select('*')
@@ -86,7 +85,6 @@ export function useHabitDetails(habitId: string) {
 
       if (habitError) throw habitError;
 
-      // 2. Buscar completions
       const { data: completions, error: completionsError } = await supabase
         .from('completions')
         .select('*')
@@ -95,7 +93,6 @@ export function useHabitDetails(habitId: string) {
 
       if (completionsError) throw completionsError;
 
-      // 3. Buscar streak
       const { data: streak, error: streakError } = await supabase
         .from('streaks')
         .select('*')
@@ -106,15 +103,12 @@ export function useHabitDetails(habitId: string) {
         throw streakError;
       }
 
-      // 4. Calcular todas as estatísticas
       const today = new Date();
-
       const weekStart = startOfWeek(today, { weekStartsOn: 0 });
       const monthStart = subDays(today, 29);
       const semesterStart = subDays(today, 179);
       const yearStart = subDays(today, 364);
-
-      const weekEnd = addDays(weekStart, 6); // Sábado (semana completa)
+      const weekEnd = addDays(weekStart, 6);
 
       const [weekStats, monthStats, semesterStats, yearStats] = await Promise.all([
         calculatePeriodStats(habit as any, weekStart, today, completions || [], weekEnd),
@@ -123,23 +117,20 @@ export function useHabitDetails(habitId: string) {
         calculatePeriodStats(habit as any, yearStart, today, completions || []),
       ]);
 
-      // 5. Calcular estatísticas gerais
-      const overallStats = calculateOverallStats(
-        habit as any,
-        completions || []
-      );
+      const overallStats = calculateOverallStats(habit as any, completions || []);
 
-      // 6. Gerar dados para gráficos
       const last30DaysData = generateDaysData(
         subDays(today, 29),
         today,
-        completions || []
+        completions || [],
+        habit as any
       );
 
       const last90DaysData = generateDaysData(
         subDays(today, 89),
         today,
-        completions || []
+        completions || [],
+        habit as any
       );
 
       setData({
@@ -171,11 +162,6 @@ export function useHabitDetails(habitId: string) {
 
 // ========== FUNÇÕES AUXILIARES ==========
 
-/**
- * Calcula o total de dias esperados para um período,
- * considerando frequency_goal (Nx por semana/mês/custom)
- * ou frequency_days (dias específicos da semana).
- */
 function getExpectedDaysForPeriod(
   habit: any,
   startDate: Date,
@@ -185,28 +171,22 @@ function getExpectedDaysForPeriod(
   const goalPeriod = habit.frequency_goal_period;
   const goalCustomDays = habit.frequency_goal_custom_days;
 
-  // Se tem meta de frequência (ex: 3x por semana)
   if (goalValue && goalValue > 0) {
     const totalDaysInPeriod = differenceInDays(endDate, startDate) + 1;
-
     if (goalPeriod === 'week') {
-      // Ex: 3x por semana → (totalDays / 7) * goalValue
       const weeks = totalDaysInPeriod / 7;
       return Math.round(weeks * goalValue);
     }
     if (goalPeriod === 'month') {
-      // Ex: 10x por mês → (totalDays / 30) * goalValue
       const months = totalDaysInPeriod / 30;
       return Math.round(months * goalValue);
     }
     if (goalPeriod === 'custom' && goalCustomDays && goalCustomDays > 0) {
-      // Ex: 5x a cada 14 dias → (totalDays / customDays) * goalValue
       const periods = totalDaysInPeriod / goalCustomDays;
       return Math.round(periods * goalValue);
     }
   }
 
-  // Sem meta de frequência: contar dias usando shouldHabitAppearOnDate
   const allDays = eachDayOfInterval({ start: startDate, end: endDate });
   return allDays.filter(day => shouldHabitAppearOnDate(habit, day)).length;
 }
@@ -222,16 +202,13 @@ function calculatePeriodStats(
     completions.map((c: any) => c.completed_at.split('T')[0])
   );
 
-  // Count completions only up to endDate (today)
   const actualDays = eachDayOfInterval({ start: startDate, end: endDate });
   const completed = actualDays.filter(day =>
     completedDates.has(format(day, 'yyyy-MM-dd'))
   ).length;
 
-  // Total expected uses the full period (e.g. full week Sun-Sat, full 30 days)
   const totalEndDate = fullPeriodEnd || endDate;
   const total = getExpectedDaysForPeriod(habit, startDate, totalEndDate);
-
   const successRate = total > 0 ? (completed / total) * 100 : 0;
 
   return { completed, total, successRate };
@@ -242,53 +219,47 @@ function calculateOverallStats(
   completions: any[]
 ): OverallStats {
   if (!completions || completions.length === 0) {
-    return {
-      totalCompletions: 0,
-      successRate: 0,
-      totalPoints: 0,
-    };
+    return { totalCompletions: 0, successRate: 0, totalPoints: 0 };
   }
 
   const totalCompletions = completions.length;
   const totalPoints = completions.reduce(
-    (sum: number, c: any) => sum + (c.points_earned || 0),
-    0
+    (sum: number, c: any) => sum + (c.points_earned || 0), 0
   );
 
-  // Valores alcançados (para hábitos com meta)
   const valuesAchieved = completions
     .map((c: any) => c.value_achieved)
     .filter((v: any) => v !== null && v !== undefined);
 
   let averageValue, maxValue, minValue;
   if (valuesAchieved.length > 0) {
-    averageValue =
-      valuesAchieved.reduce((sum: number, v: number) => sum + v, 0) /
-      valuesAchieved.length;
+    averageValue = valuesAchieved.reduce((sum: number, v: number) => sum + v, 0) / valuesAchieved.length;
     maxValue = Math.max(...valuesAchieved);
     minValue = Math.min(...valuesAchieved);
   }
 
-  // Calcular taxa de sucesso geral (desde a criação)
   const createdDate = new Date(habit.created_at);
   const today = new Date();
   const total = getExpectedDaysForPeriod(habit, createdDate, today);
   const successRate = total > 0 ? (totalCompletions / total) * 100 : 0;
 
-  return {
-    totalCompletions,
-    successRate,
-    totalPoints,
-    averageValue,
-    maxValue,
-    minValue,
-  };
+  return { totalCompletions, successRate, totalPoints, averageValue, maxValue, minValue };
 }
 
+/**
+ * Gera dados de dias para os gráficos.
+ *
+ * - frequency_goal (3x/semana): inclui todos os dias do período,
+ *   marcando apenas os completados. Dias não completados ficam como
+ *   completed=false mas SEM aparecer como "missed" no calendário
+ *   (o componente trata isso via hasFrequencyGoal).
+ * - Dias fixos (daily/weekly): filtra por shouldHabitAppearOnDate.
+ */
 function generateDaysData(
   startDate: Date,
   endDate: Date,
-  completions: any[]
+  completions: any[],
+  habit: any
 ): DayData[] {
   const completionMap = new Map(
     completions.map((c: any) => [
@@ -297,13 +268,31 @@ function generateDaysData(
     ])
   );
 
+  const hasFrequencyGoal = habit.frequency_goal_value && habit.frequency_goal_value > 0;
   const days = eachDayOfInterval({ start: startDate, end: endDate });
-  return days.map(day => {
-    const dateStr = format(day, 'yyyy-MM-dd');
-    return {
-      date: dateStr,
-      completed: completionMap.has(dateStr),
-      value: completionMap.get(dateStr),
-    };
-  });
+
+  if (hasFrequencyGoal) {
+    // Inclui todos os dias — o calendário mostra apenas os completados
+    // e o total esperado é calculado separadamente via getExpectedDaysForPeriod
+    return days.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      return {
+        date: dateStr,
+        completed: completionMap.has(dateStr),
+        value: completionMap.get(dateStr),
+      };
+    });
+  }
+
+  // Dias fixos — filtrar por agendamento
+  return days
+    .filter(day => shouldHabitAppearOnDate(habit, day))
+    .map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      return {
+        date: dateStr,
+        completed: completionMap.has(dateStr),
+        value: completionMap.get(dateStr),
+      };
+    });
 }
