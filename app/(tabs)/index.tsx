@@ -2,6 +2,7 @@
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { WeekNavigator } from '@/components/habits/WeekNavigator';
+import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { CelebrationModal } from '@/components/ui/CelebrationModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,6 +13,7 @@ import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
 import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
 import { useHabits } from '@/hooks/useHabits';
+import { useHabitOrder } from '@/hooks/useHabitOrder';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { Habit } from '@/types/database';
@@ -20,7 +22,6 @@ import { retroactiveCompletionService } from '@/services/retroactiveCompletionSe
 import { router } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  FlatList,
   Image,
   RefreshControl,
   StyleSheet,
@@ -48,7 +49,6 @@ export default function HomeScreen() {
     refetch: refetchCompletions
   } = useCompletions();
 
-  // Week navigation state
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 0 })
   );
@@ -68,6 +68,10 @@ export default function HomeScreen() {
     closeCelebration
   } = useCelebration();
 
+  // Ordem arrastável
+  const habitIds = habits.map(h => h.id);
+  const { orderedIds, updateOrder } = useHabitOrder(habitIds);
+
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
@@ -77,7 +81,6 @@ export default function HomeScreen() {
 
   const loading = habitsLoading || completionsLoading;
 
-  // Greeting based on time of day
   const getGreeting = (): string => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
@@ -86,8 +89,6 @@ export default function HomeScreen() {
   };
 
   const firstName = profile?.display_name?.split(' ')[0] || '';
-
-  // Today's date formatted
   const todayFormatted = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
 
   useEffect(() => {
@@ -98,7 +99,6 @@ export default function HomeScreen() {
     }
   }, [habits]);
 
-  // Refetch weekly completions when week changes
   const handleWeekChange = useCallback((newWeekStart: Date) => {
     setSelectedWeekStart(newWeekStart);
     refetchWeeklyCompletions(newWeekStart);
@@ -108,13 +108,8 @@ export default function HomeScreen() {
     refetchWeeklyCompletions(selectedWeekStart);
   }, [selectedWeekStart]);
 
-  const handleCreateHabit = () => {
-    router.push('/habits/create' as any);
-  };
-
-  const handleHabitPress = (habitId: string) => {
-    router.push(`/habits/${habitId}` as any);
-  };
+  const handleCreateHabit = () => router.push('/habits/create' as any);
+  const handleHabitPress = (habitId: string) => router.push(`/habits/${habitId}` as any);
 
   const handleEditProgress = (habitId: string) => {
     const habit = habits.find(h => h.id === habitId);
@@ -130,16 +125,11 @@ export default function HomeScreen() {
 
     if (retroDate) {
       const result = await retroactiveCompletionService.completeRetroactively(
-        selectedHabit,
-        retroDate,
-        user.id,
-        value
+        selectedHabit, retroDate, user.id, value
       );
-
       if (result.success) {
         await retroactiveCompletionService.recalculateStreak(selectedHabit.id);
         await fetchStreaks([selectedHabit.id]);
-
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
@@ -148,7 +138,6 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
       }
-
       (window as any).__tempRetroDate = null;
       setShowProgressModal(false);
       setSelectedHabit(null);
@@ -156,45 +145,26 @@ export default function HomeScreen() {
     }
 
     const streak = getStreak(selectedHabit.id);
-    const { data, error } = await completeHabit(
-      selectedHabit,
-      streak,
-      value,
-      mode
-    );
+    const { data, error } = await completeHabit(selectedHabit, streak, value, mode);
 
     if (!error && data) {
       await updateStreakWithFrequency(selectedHabit.id, selectedHabit, true);
-
       const finalValue = data.achievedValue || 0;
       const percentage = selectedHabit.target_value
         ? (finalValue / selectedHabit.target_value) * 100
         : 0;
-
       const isUpdate = 'wasUpdate' in data && data.wasUpdate;
 
       if (isUpdate && mode === 'add') {
-        setSuccessMessage(
-          `Adicionado ${value} ${selectedHabit.target_unit}! Total: ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`
-        );
+        setSuccessMessage(`Adicionado ${value} ${selectedHabit.target_unit}! Total: ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
       } else if (isUpdate && mode === 'replace') {
-        setSuccessMessage(
-          `Atualizado para ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`
-        );
+        setSuccessMessage(`Atualizado para ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
       } else {
-        setSuccessMessage(
-          `Registrado ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`
-        );
+        setSuccessMessage(`Registrado ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
       }
 
       setShowSuccessToast(true);
-
-      if (percentage >= 100) {
-        setTimeout(() => {
-          checkTargetAchievement(selectedHabit.name);
-        }, 1000);
-      }
-
+      if (percentage >= 100) setTimeout(() => checkTargetAchievement(selectedHabit.name), 1000);
       await refetchWeeklyCompletions(selectedWeekStart);
     }
 
@@ -204,17 +174,10 @@ export default function HomeScreen() {
 
   const handleRetroactiveComplete = async (habit: Habit, date: Date) => {
     if (!user) return;
-
-    const result = await retroactiveCompletionService.completeRetroactively(
-      habit,
-      date,
-      user.id
-    );
-
+    const result = await retroactiveCompletionService.completeRetroactively(habit, date, user.id);
     if (result.success) {
       await retroactiveCompletionService.recalculateStreak(habit.id);
       await fetchStreaks([habit.id]);
-
       setSuccessMessage(result.message);
       setShowSuccessToast(true);
       await refetchCompletions();
@@ -225,11 +188,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleComplete = async (
-    habitId: string,
-    achievedValue?: number,
-    mode?: 'add' | 'replace'
-  ) => {
+  const handleComplete = async (habitId: string, achievedValue?: number, mode?: 'add' | 'replace') => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
 
@@ -237,39 +196,20 @@ export default function HomeScreen() {
       if (achievedValue !== undefined && achievedValue > 0 && mode) {
         const streak = getStreak(habitId);
         const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
-
         if (!error && data) {
           await updateStreakWithFrequency(habitId, habit, true);
-
           const finalValue = data.achievedValue || 0;
-          const percentage = habit.target_value
-            ? (finalValue / habit.target_value) * 100
-            : 0;
-
+          const percentage = habit.target_value ? (finalValue / habit.target_value) * 100 : 0;
           const isUpdate = 'wasUpdate' in data && data.wasUpdate;
-
           if (isUpdate && mode === 'add') {
-            setSuccessMessage(
-              `Adicionado ${achievedValue} ${habit.target_unit}! Total: ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
-            );
+            setSuccessMessage(`Adicionado ${achievedValue} ${habit.target_unit}! Total: ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
           } else if (isUpdate && mode === 'replace') {
-            setSuccessMessage(
-              `Atualizado para ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
-            );
+            setSuccessMessage(`Atualizado para ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
           } else {
-            setSuccessMessage(
-              `Registrado ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`
-            );
+            setSuccessMessage(`Registrado ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
           }
-
           setShowSuccessToast(true);
-
-          if (percentage >= 100) {
-            setTimeout(() => {
-              checkTargetAchievement(habit.name);
-            }, 1000);
-          }
-
+          if (percentage >= 100) setTimeout(() => checkTargetAchievement(habit.name), 1000);
           await refetchWeeklyCompletions(selectedWeekStart);
         } else if (error) {
           setSuccessMessage('Erro ao registrar progresso');
@@ -280,7 +220,6 @@ export default function HomeScreen() {
     }
 
     const isCompleted = isCompletedToday(habitId);
-
     if (isCompleted) {
       setSelectedHabitId(habitId);
       setShowUncompleteConfirm(true);
@@ -296,20 +235,10 @@ export default function HomeScreen() {
     } else if (data) {
       const streakResult = await updateStreakWithFrequency(habitId, habit, true);
       const updatedStreak = streakResult.data;
-
       const streakDays = updatedStreak?.current_streak || 0;
-      if (streakDays > 1) {
-        setSuccessMessage(`Completado! ${streakDays} dias seguidos!`);
-      } else {
-        setSuccessMessage('Completado!');
-      }
-
+      setSuccessMessage(streakDays > 1 ? `Completado! ${streakDays} dias seguidos!` : 'Completado!');
       setShowSuccessToast(true);
-
-      if (updatedStreak?.current_streak) {
-        checkStreakMilestone(updatedStreak.current_streak);
-      }
-
+      if (updatedStreak?.current_streak) checkStreakMilestone(updatedStreak.current_streak);
       await refetchWeeklyCompletions(selectedWeekStart);
     }
   };
@@ -352,7 +281,6 @@ export default function HomeScreen() {
 
   const handleConfirmUncomplete = async () => {
     const habit = habits.find(h => h.id === selectedHabitId);
-
     if (!habit || !user) {
       setShowUncompleteConfirm(false);
       setSelectedHabitId('');
@@ -362,16 +290,10 @@ export default function HomeScreen() {
     const retroDate = (window as any).__tempRetroDate;
 
     if (retroDate) {
-      const result = await retroactiveCompletionService.uncompleteRetroactively(
-        habit,
-        retroDate,
-        user.id
-      );
-
+      const result = await retroactiveCompletionService.uncompleteRetroactively(habit, retroDate, user.id);
       if (result.success) {
         await retroactiveCompletionService.recalculateStreak(habit.id);
         await fetchStreaks([habit.id]);
-
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
         await refetchCompletions();
@@ -380,7 +302,6 @@ export default function HomeScreen() {
         setSuccessMessage(result.message);
         setShowSuccessToast(true);
       }
-
       (window as any).__tempRetroDate = null;
       setShowUncompleteConfirm(false);
       setSelectedHabitId('');
@@ -388,15 +309,11 @@ export default function HomeScreen() {
     }
 
     const { error } = await uncompleteHabit(selectedHabitId);
-
     if (error) {
       setSuccessMessage('Erro ao desmarcar hábito');
       setShowSuccessToast(true);
     } else {
-      if (habit) {
-        await updateStreakWithFrequency(selectedHabitId, habit, false);
-      }
-
+      if (habit) await updateStreakWithFrequency(selectedHabitId, habit, false);
       setSuccessMessage('Hábito desmarcado');
       setShowSuccessToast(true);
       await refetchWeeklyCompletions(selectedWeekStart);
@@ -425,7 +342,6 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
           </View>
-
           <View style={[styles.avatarPlaceholder, { backgroundColor: colors.border }]}>
             <Icon name="profile" size={20} color={colors.textTertiary} />
           </View>
@@ -437,7 +353,6 @@ export default function HomeScreen() {
 
   const renderHabit = (item: Habit) => {
     const isDueToday = isHabitDueToday(item);
-
     return (
       <HabitWeeklyRow
         habit={item}
@@ -480,10 +395,7 @@ export default function HomeScreen() {
         cancelText="Cancelar"
         confirmColor="danger"
         onConfirm={handleConfirmUncomplete}
-        onCancel={() => {
-          setShowUncompleteConfirm(false);
-          setSelectedHabitId('');
-        }}
+        onCancel={() => { setShowUncompleteConfirm(false); setSelectedHabitId(''); }}
       />
 
       {selectedHabit && selectedHabit.has_target && (
@@ -494,10 +406,7 @@ export default function HomeScreen() {
           targetUnit={selectedHabit.target_unit || ''}
           currentValue={getCompletion(selectedHabit.id)?.value_achieved || 0}
           onConfirm={handleConfirmProgress}
-          onCancel={() => {
-            setShowProgressModal(false);
-            setSelectedHabit(null);
-          }}
+          onCancel={() => { setShowProgressModal(false); setSelectedHabit(null); }}
         />
       )}
 
@@ -535,11 +444,11 @@ export default function HomeScreen() {
           onButtonPress={handleCreateHabit}
         />
       ) : (
-        <FlatList
-          data={habits}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => renderHabit(item)}
-          contentContainerStyle={styles.listContent}
+        <DraggableHabitList
+          habits={habits}
+          orderedIds={orderedIds}
+          onOrderChange={updateOrder}
+          renderItem={renderHabit}
           refreshControl={
             <RefreshControl
               refreshing={loading}
@@ -561,10 +470,10 @@ export default function HomeScreen() {
               />
             </View>
           }
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      {/* Floating Action Button */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={handleCreateHabit}
@@ -589,55 +498,21 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 14, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: 'bold' },
-  avatarButton: {
-    padding: 2,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-  },
+  avatarButton: { padding: 2 },
+  avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2 },
   avatarPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 44, height: 44, borderRadius: 22,
+    justifyContent: 'center', alignItems: 'center',
   },
-  avatarInitial: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  todayBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  todayText: {
-    fontSize: 13,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
+  avatarInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  todayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  todayText: { fontSize: 13, fontWeight: '500', textTransform: 'capitalize' },
   fab: {
-    position: 'absolute',
-    bottom: 70,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    position: 'absolute', bottom: 70, right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  listContent: {
-    padding: 20,
-    paddingBottom: 120,
-  },
+  listContent: { padding: 20, paddingBottom: 120 },
 });
