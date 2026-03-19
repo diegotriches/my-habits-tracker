@@ -11,6 +11,7 @@ import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 /**
  * BroadcastReceiver que recebe alarmes do AlarmManager e dispara
@@ -20,6 +21,7 @@ import androidx.core.app.NotificationCompat;
 public class AlarmReceiver extends BroadcastReceiver {
     private static final String TAG = "AlarmReceiver";
     private static final String CHANNEL_ID = "habits";
+    private static final String HABIT_COMPLETE_LOCAL_ACTION = "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL";
     private static final String CHANNEL_NAME = "Lembretes de Habitos";
 
     // Actions para os botões da notificação
@@ -253,10 +255,10 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (nm != null) nm.cancel(notifId);
 
             // Enviar broadcast local para o app JS processar a conclusão
-            Intent completeEvent = new Intent("com.dtriches.myhabitstracker.HABIT_COMPLETE");
+            Intent completeEvent = new Intent(HABIT_COMPLETE_LOCAL_ACTION);
             completeEvent.putExtra("habitId", habitId);
             completeEvent.putExtra("habitName", habitName);
-            context.sendBroadcast(completeEvent);
+            LocalBroadcastManager.getInstance(context).sendBroadcast(completeEvent);
 
             Log.d(TAG, "Broadcast HABIT_COMPLETE enviado para: " + habitId);
         } catch (Exception e) {
