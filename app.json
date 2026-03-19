@@ -85,6 +85,7 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      "./plugins/withExactAlarm",
       [
         "expo-notifications",
         {
