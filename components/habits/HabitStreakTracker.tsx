@@ -36,6 +36,8 @@ interface HabitStreakTrackerProps {
   frequencyGoalValue?: number;
   frequencyGoalPeriod?: 'week' | 'month' | 'custom' | null;
   frequencyGoalCustomDays?: number | null;
+  currentMonth?: Date;
+  onMonthChange?: (month: Date) => void;
   onDayPress?: (date: Date, isCompleted: boolean, currentValue?: number) => void;
 }
 
@@ -45,10 +47,6 @@ interface Streak {
   endDate: string;
 }
 
-/**
- * Calcula quantas vezes o hábito era esperado em um período
- * baseado no frequency_goal (ex: 3x por semana)
- */
 function getExpectedForPeriod(
   startDate: Date,
   endDate: Date,
@@ -57,12 +55,8 @@ function getExpectedForPeriod(
   goalCustomDays?: number | null
 ): number {
   const totalDays = differenceInDays(endDate, startDate) + 1;
-  if (goalPeriod === 'week') {
-    return Math.round((totalDays / 7) * goalValue);
-  }
-  if (goalPeriod === 'month') {
-    return Math.round((totalDays / 30) * goalValue);
-  }
+  if (goalPeriod === 'week') return Math.round((totalDays / 7) * goalValue);
+  if (goalPeriod === 'month') return Math.round((totalDays / 30) * goalValue);
   if (goalPeriod === 'custom' && goalCustomDays && goalCustomDays > 0) {
     return Math.round((totalDays / goalCustomDays) * goalValue);
   }
@@ -79,16 +73,28 @@ export function HabitStreakTracker({
   frequencyGoalValue = 0,
   frequencyGoalPeriod = null,
   frequencyGoalCustomDays = null,
+  currentMonth: controlledMonth,
+  onMonthChange,
   onDayPress,
 }: HabitStreakTrackerProps) {
   const { colors } = useTheme();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Estado interno — usado quando o pai não controla o mês
+  const [internalMonth, setInternalMonth] = useState(controlledMonth ?? new Date());
+
+  // Mês efetivo: controlado pelo pai se passado, senão usa estado interno
+  const currentMonth = controlledMonth ?? internalMonth;
+
+  const setCurrentMonth = (month: Date) => {
+    setInternalMonth(month);
+    onMonthChange?.(month);
+  };
 
   const calculateStreaks = useMemo(() => {
     if (!data || data.length === 0) return { streaks: [], currentStreak: 0, bestStreak: 0 };
 
     const completedDays = data.filter(d => d.completed);
-    const sortedData = [...completedDays].sort((a, b) => 
+    const sortedData = [...completedDays].sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -132,11 +138,8 @@ export function HabitStreakTracker({
       const dayDate = parseISO(sortedData[i].date);
       const daysDiff = differenceInDays(today, dayDate);
       if (daysDiff > currentStreak) break;
-      if (daysDiff === currentStreak) {
-        currentStreak++;
-      } else {
-        break;
-      }
+      if (daysDiff === currentStreak) currentStreak++;
+      else break;
     }
 
     const bestStreak = streaks.length > 0 ? Math.max(...streaks.map(s => s.length)) : 0;
@@ -148,34 +151,26 @@ export function HabitStreakTracker({
     };
   }, [data]);
 
-  // Estatísticas do mês
   const monthStats = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const today = new Date();
-    // Usar o menor entre fim do mês e hoje para não contar dias futuros
     const effectiveEnd = monthEnd < today ? monthEnd : today;
 
     if (hasFrequencyGoal && frequencyGoalValue > 0 && frequencyGoalPeriod) {
-      // Para frequency_goal: contar completions no mês e calcular esperado proporcional
       const completedInMonth = data.filter(d => {
         const date = parseISO(d.date);
         return d.completed && date >= monthStart && date <= effectiveEnd;
       }).length;
 
       const expected = getExpectedForPeriod(
-        monthStart,
-        effectiveEnd,
-        frequencyGoalValue,
-        frequencyGoalPeriod,
-        frequencyGoalCustomDays
+        monthStart, effectiveEnd, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays
       );
 
       const percentage = expected > 0 ? Math.round((completedInMonth / expected) * 100) : 0;
       return { completed: completedInMonth, total: expected, percentage };
     }
 
-    // Para dias fixos: usar apenas os dias presentes em data (já filtrados)
     const monthDays = data.filter(day => {
       const date = parseISO(day.date);
       return date >= monthStart && date <= effectiveEnd;
@@ -205,7 +200,6 @@ export function HabitStreakTracker({
     const dayData = getDayData(date);
     if (!dayData) return 'empty';
     if (dayData.completed) return 'completed';
-    // frequency_goal: dias não completados são 'empty', não 'missed'
     if (hasFrequencyGoal) return 'empty';
     return 'missed';
   };

@@ -66,6 +66,7 @@ export default function HabitDetailsScreen() {
   const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
   const [pendingProgressCurrentValue, setPendingProgressCurrentValue] = useState(0);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   const {
     habit,
@@ -563,6 +564,8 @@ export default function HabitDetailsScreen() {
             frequencyGoalValue={(habit as any).frequency_goal_value || 0}
             frequencyGoalPeriod={(habit as any).frequency_goal_period || null}
             frequencyGoalCustomDays={(habit as any).frequency_goal_custom_days || null}
+            currentMonth={calendarMonth}
+            onMonthChange={setCalendarMonth}
             onDayPress={handleCalendarDayPress}
           />
         </View>
