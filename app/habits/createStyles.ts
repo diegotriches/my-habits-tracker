@@ -316,4 +316,11 @@ export const styles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
   },
+  inlinePanel: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: -4,
+    marginBottom: 10,
+  },
 });

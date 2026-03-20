@@ -2,7 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Keyboard,
   Modal,
@@ -34,25 +34,22 @@ export function TargetInput({
   const { colors } = useTheme();
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [customUnit, setCustomUnit] = useState('');
+  // Ref para evitar re-render durante digitação
+  const inputRef = useRef<TextInput>(null);
 
-  const popularUnits = [
-    'litros', 'km', 'minutos', 'horas', 'páginas', 'vezes'
-  ];
-
+  const popularUnits = ['litros', 'km', 'minutos', 'horas', 'páginas', 'vezes'];
   const otherUnits = availableUnits.filter(u => !popularUnits.includes(u));
-
-  // Check if current unit is custom (not in any list)
   const allKnownUnits = [...popularUnits, ...otherUnits];
   const isCustomUnit = unit && !allKnownUnits.includes(unit);
 
-  const handleValueChange = (text: string) => {
+  // Usar useCallback para evitar recriação da função a cada render
+  const handleValueChange = useCallback((text: string) => {
     const cleaned = text.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     if (parts.length > 2) return;
     if (parts.length === 2 && parts[1].length > 2) return;
-
     onValueChange(cleaned);
-  };
+  }, [onValueChange]);
 
   const handleSelectUnit = (u: string) => {
     hapticFeedback.selection();
@@ -71,13 +68,15 @@ export function TargetInput({
   };
 
   const handleOpenPicker = () => {
-    // If current unit is custom, pre-fill the input
+    // Fechar teclado antes de abrir o picker
+    Keyboard.dismiss();
     if (isCustomUnit) {
       setCustomUnit(unit);
     } else {
       setCustomUnit('');
     }
-    setShowUnitPicker(true);
+    // Pequeno delay para garantir que o teclado fechou antes de abrir o modal
+    setTimeout(() => setShowUnitPicker(true), Platform.OS === 'android' ? 150 : 0);
   };
 
   return (
@@ -89,17 +88,24 @@ export function TargetInput({
             Valor
           </Text>
           <TextInput
-            style={[styles.valueInput, { 
+            ref={inputRef}
+            style={[styles.valueInput, {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              color: colors.textPrimary 
+              color: colors.textPrimary,
             }]}
             placeholder="0"
             placeholderTextColor={colors.textTertiary}
-            value={value}
+            defaultValue={value}
             onChangeText={handleValueChange}
             keyboardType="decimal-pad"
             maxLength={8}
+            blurOnSubmit={false}
+            autoFocus={false}
+            // Manter foco no Android
+            onBlur={() => {
+              // Não fazer nada — evita comportamento padrão de fechar teclado
+            }}
           />
         </View>
 
@@ -109,15 +115,15 @@ export function TargetInput({
             Unidade
           </Text>
           <TouchableOpacity
-            style={[styles.unitButton, { 
+            style={[styles.unitButton, {
               backgroundColor: colors.surface,
-              borderColor: colors.border 
+              borderColor: colors.border,
             }]}
             onPress={handleOpenPicker}
           >
             <Text style={[
               styles.unitButtonText,
-              { color: unit ? colors.textPrimary : colors.textTertiary }
+              { color: unit ? colors.textPrimary : colors.textTertiary },
             ]}>
               {unit || 'Selecione'}
             </Text>
@@ -128,16 +134,12 @@ export function TargetInput({
 
       {/* Preview da Meta */}
       {value && unit && (
-        <View style={[styles.preview, { 
+        <View style={[styles.preview, {
           backgroundColor: colors.successLight,
-          borderColor: colors.success 
+          borderColor: colors.success,
         }]}>
-          <Text style={[styles.previewLabel, { color: colors.success }]}>
-            Meta diária:
-          </Text>
-          <Text style={[styles.previewValue, { color: colors.success }]}>
-            {value} {unit}
-          </Text>
+          <Text style={[styles.previewLabel, { color: colors.success }]}>Meta diária:</Text>
+          <Text style={[styles.previewValue, { color: colors.success }]}>{value} {unit}</Text>
         </View>
       )}
 
@@ -148,12 +150,12 @@ export function TargetInput({
         animationType="slide"
         onRequestClose={() => setShowUnitPicker(false)}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => { Keyboard.dismiss(); setShowUnitPicker(false); }}
         >
-          <Pressable 
-            style={[styles.modalContent, { backgroundColor: colors.background }]} 
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: colors.background }]}
             onPress={Keyboard.dismiss}
           >
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
@@ -216,10 +218,7 @@ export function TargetInput({
                       style={[
                         styles.unitOption,
                         { backgroundColor: colors.surface, borderColor: colors.border },
-                        unit === u && { 
-                          backgroundColor: colors.primaryLight,
-                          borderColor: colors.primary 
-                        },
+                        unit === u && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
                       ]}
                       onPress={() => handleSelectUnit(u)}
                     >
@@ -248,10 +247,7 @@ export function TargetInput({
                         style={[
                           styles.unitOption,
                           { backgroundColor: colors.surface, borderColor: colors.border },
-                          unit === u && { 
-                            backgroundColor: colors.primaryLight,
-                            borderColor: colors.primary 
-                          },
+                          unit === u && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
                         ]}
                         onPress={() => handleSelectUnit(u)}
                       >
@@ -340,13 +336,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
-
-  // Custom unit
-  customUnitRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
+  customUnitRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   customUnitInput: {
     flex: 1,
     borderRadius: 8,
@@ -362,7 +352,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   unitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   unitOption: {
     paddingHorizontal: 16,

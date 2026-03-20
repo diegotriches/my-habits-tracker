@@ -54,7 +54,6 @@ export default function CreateHabitScreen() {
   const { user } = useAuth();
   const { createHabit } = useHabits();
 
-  // Form state
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -65,6 +64,7 @@ export default function CreateHabitScreen() {
   const [hasTarget, setHasTarget] = useState(false);
   const [targetValue, setTargetValue] = useState('');
   const [targetUnit, setTargetUnit] = useState('');
+  const [showTargetInline, setShowTargetInline] = useState(false);
 
   // Frequency
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
@@ -93,12 +93,10 @@ export default function CreateHabitScreen() {
 
   // Modals
   const [showFrequencyModal, setShowFrequencyModal] = useState(false);
-  const [showTargetModal, setShowTargetModal] = useState(false);
   const [showRemindersModal, setShowRemindersModal] = useState(false);
 
-  // Snapshots para restaurar ao cancelar modais
+  // Snapshots
   const frequencySnapshot = useRef<any>(null);
-  const targetSnapshot = useRef<any>(null);
   const remindersSnapshot = useRef<any>(null);
 
   // Dialogs & toasts
@@ -154,7 +152,8 @@ export default function CreateHabitScreen() {
       if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
     }
 
-    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) return 'Selecione pelo menos um dia da semana';
+    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0)
+      return 'Selecione pelo menos um dia da semana';
 
     return null;
   };
@@ -165,24 +164,20 @@ export default function CreateHabitScreen() {
     return `${hours}:${minutes}`;
   };
 
-  // ===== SUMMARY HELPERS =====
+  // ===== SUMMARIES =====
 
   const getFrequencySummary = (): string => {
     if (hasFrequencyGoal) {
       const periodLabel = frequencyGoalPeriod === 'week' ? 'semana'
         : frequencyGoalPeriod === 'month' ? 'mês'
         : `${frequencyGoalCustomDays || '?'} dias`;
-      return frequencyGoalValue > 0
-        ? `${frequencyGoalValue}x por ${periodLabel}`
-        : 'Meta personalizada';
+      return frequencyGoalValue > 0 ? `${frequencyGoalValue}x por ${periodLabel}` : 'Meta personalizada';
     }
     if (frequencyType === 'weekly') {
       if (frequencyDays.length === 7) return 'Todos os dias';
       if (frequencyDays.length === 0) return 'Nenhum dia';
       const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      if (frequencyDays.length <= 3) {
-        return frequencyDays.map(d => dayLabels[d]).join(', ');
-      }
+      if (frequencyDays.length <= 3) return frequencyDays.map(d => dayLabels[d]).join(', ');
       return `${frequencyDays.length} dias/semana`;
     }
     return 'Todos os dias';
@@ -196,16 +191,12 @@ export default function CreateHabitScreen() {
 
   const getRemindersSummary = (): string => {
     const parts: string[] = [];
-    if (reminders.length > 0) {
-      parts.push(`${reminders.length} ${reminders.length === 1 ? 'lembrete' : 'lembretes'}`);
-    }
-    if (progressNotificationConfig.enabled) {
-      parts.push('progresso ativo');
-    }
+    if (reminders.length > 0) parts.push(`${reminders.length} ${reminders.length === 1 ? 'lembrete' : 'lembretes'}`);
+    if (progressNotificationConfig.enabled) parts.push('progresso ativo');
     return parts.length > 0 ? parts.join(' · ') : 'Nenhum configurado';
   };
 
-  // ===== MODAL OPEN / CANCEL / CONFIRM =====
+  // ===== MODAL HANDLERS =====
 
   const openFrequencyModal = () => {
     frequencySnapshot.current = {
@@ -232,29 +223,6 @@ export default function CreateHabitScreen() {
   const confirmFrequencyModal = () => {
     frequencySnapshot.current = null;
     setShowFrequencyModal(false);
-  };
-
-  const openTargetModal = () => {
-    targetSnapshot.current = {
-      hasTarget, targetValue, targetUnit,
-    };
-    hapticFeedback.light();
-    setShowTargetModal(true);
-  };
-
-  const cancelTargetModal = () => {
-    if (targetSnapshot.current) {
-      const s = targetSnapshot.current;
-      setHasTarget(s.hasTarget);
-      setTargetValue(s.targetValue);
-      setTargetUnit(s.targetUnit);
-    }
-    setShowTargetModal(false);
-  };
-
-  const confirmTargetModal = () => {
-    targetSnapshot.current = null;
-    setShowTargetModal(false);
   };
 
   const openRemindersModal = () => {
@@ -289,7 +257,6 @@ export default function CreateHabitScreen() {
       setShowErrorToast(true);
       return;
     }
-
     const timeString = formatTime(currentTime);
     const exists = reminders.some(r => formatTime(r.time) === timeString);
     if (exists) {
@@ -298,15 +265,12 @@ export default function CreateHabitScreen() {
       setShowErrorToast(true);
       return;
     }
-
-    const newReminderTime = new Date();
-    newReminderTime.setHours(currentTime.getHours());
-    newReminderTime.setMinutes(currentTime.getMinutes());
-    newReminderTime.setSeconds(0);
-    newReminderTime.setMilliseconds(0);
-
+    const t = new Date();
+    t.setHours(currentTime.getHours());
+    t.setMinutes(currentTime.getMinutes());
+    t.setSeconds(0); t.setMilliseconds(0);
     hapticFeedback.success();
-    setReminders([...reminders, { id: Math.random().toString(), time: newReminderTime }]);
+    setReminders([...reminders, { id: Math.random().toString(), time: t }]);
     setShowTimePicker(false);
     setCurrentTime(new Date());
   };
@@ -340,6 +304,7 @@ export default function CreateHabitScreen() {
   // ===== SUBMIT =====
 
   const handleSubmit = async () => {
+    Keyboard.dismiss();
     const validationError = validateForm();
     if (validationError) {
       hapticFeedback.error();
@@ -368,9 +333,7 @@ export default function CreateHabitScreen() {
       target_unit: hasTarget ? targetUnit.trim() : null,
       frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
       frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
-      frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom'
-        ? frequencyGoalCustomDays
-        : null,
+      frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom' ? frequencyGoalCustomDays : null,
       color: selectedColor,
       icon: habitType === 'negative' ? 'xCircle' : 'star',
     };
@@ -396,9 +359,7 @@ export default function CreateHabitScreen() {
             habit_id: habit.id, time: timeString, days_of_week: [0, 1, 2, 3, 4, 5, 6],
             is_active: true, notification_ids: notificationIds,
           });
-        } catch (reminderError) {
-          console.error('Erro ao criar lembrete:', reminderError);
-        }
+        } catch (e) { console.error('Erro ao criar lembrete:', e); }
       }
     }
 
@@ -414,15 +375,11 @@ export default function CreateHabitScreen() {
           evening_time: progressNotificationConfig.eveningTime,
         });
         await progressNotificationScheduler.scheduleProgressNotifications(habit.id, user.id);
-      } catch (progressError) {
-        console.warn('Erro ao criar notificações de progresso:', progressError);
-      }
+      } catch (e) { console.warn('Erro ao criar notificações de progresso:', e); }
     } else {
       try {
         await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
-      } catch (defaultError) {
-        console.warn('Erro ao criar configuração padrão:', defaultError);
-      }
+      } catch (e) { console.warn('Erro ao criar configuração padrão:', e); }
     }
 
     setLoading(false);
@@ -443,42 +400,30 @@ export default function CreateHabitScreen() {
   const getAllUnits = () => Object.values(TARGET_UNITS).flat();
   const styles = createStylesFn(colors);
 
-  // ===== BOTTOM SHEET MODAL WRAPPER =====
+  // ===== BOTTOM SHEET MODAL =====
 
   const BottomSheetModal = ({
-    visible,
-    onCancel,
-    onConfirm,
-    title,
-    children,
+    visible, onCancel, onConfirm, title, children,
   }: {
-    visible: boolean;
-    onCancel: () => void;
-    onConfirm: () => void;
-    title: string;
-    children: React.ReactNode;
+    visible: boolean; onCancel: () => void; onConfirm: () => void;
+    title: string; children: React.ReactNode;
   }) => (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
       <Pressable style={styles.modalOverlay} onPress={onCancel}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalKeyboardView}
         >
           <Pressable style={[styles.modalContent, { backgroundColor: colors.background }]} onPress={Keyboard.dismiss}>
-            {/* Handle bar */}
             <View style={styles.modalHandle}>
               <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
             </View>
-
-            {/* Header */}
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{title}</Text>
               <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Icon name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-
-            {/* Body */}
             <ScrollView
               style={styles.modalBody}
               showsVerticalScrollIndicator={false}
@@ -487,8 +432,6 @@ export default function CreateHabitScreen() {
               {children}
               <View style={{ height: 40 }} />
             </ScrollView>
-
-            {/* Confirm */}
             <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
               <TouchableOpacity
                 style={[styles.modalConfirmButton, { backgroundColor: colors.primary }]}
@@ -506,313 +449,318 @@ export default function CreateHabitScreen() {
   // ===== RENDER =====
 
   return (
-    <View style={styles.container}>
-      <LoadingOverlay visible={loading} message="Criando hábito..." />
-      <SuccessToast visible={showSuccessToast} message="Hábito criado com sucesso!" onHide={() => setShowSuccessToast(false)} />
-      <SuccessToast visible={showErrorToast} message={errorMessage} onHide={() => setShowErrorToast(false)} />
-      <ConfirmDialog
-        visible={showCancelConfirm}
-        title="Descartar Hábito?"
-        message="Você tem alterações não salvas. Deseja realmente sair?"
-        confirmText="Descartar"
-        cancelText="Continuar Editando"
-        confirmColor="danger"
-        onConfirm={() => { setShowCancelConfirm(false); router.back(); }}
-        onCancel={() => setShowCancelConfirm(false)}
-      />
-
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelButton}>Cancelar</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Novo Hábito</Text>
-        <TouchableOpacity onPress={handleSubmit} disabled={loading}>
-          <Text style={[styles.saveButton, loading && styles.saveButtonDisabled]}>Salvar</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {/* TIPO DE HÁBITO */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
-          <View style={styles.habitTypeContainer}>
-            <TouchableOpacity
-              style={[styles.habitTypeOption, habitType === 'positive' && styles.habitTypeOptionPositive]}
-              onPress={() => { hapticFeedback.selection(); setHabitType('positive'); }}
-            >
-              <Icon name="check" size={20} color={habitType === 'positive' ? colors.success : colors.textSecondary} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.habitTypeLabel, habitType === 'positive' && styles.habitTypeLabelPositive]}>Positivo</Text>
-                <Text style={styles.habitTypeDescription}>Criar novo hábito</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.habitTypeOption, habitType === 'negative' && styles.habitTypeOptionNegative]}
-              onPress={() => { hapticFeedback.selection(); setHabitType('negative'); }}
-            >
-              <Icon name="xCircle" size={20} color={habitType === 'negative' ? colors.warning : colors.textSecondary} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.habitTypeLabel, habitType === 'negative' && styles.habitTypeLabelNegative]}>Negativo</Text>
-                <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* NOME */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Nome *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={habitType === 'positive' ? "Ex: Meditar, Ler..." : "Ex: Não fumar..."}
-            placeholderTextColor={colors.textTertiary}
-            value={name}
-            onChangeText={setName}
-            maxLength={MAX_NAME_LENGTH}
-          />
-        </View>
-
-        {/* DESCRIÇÃO */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Descrição (opcional)</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Adicione detalhes..."
-            placeholderTextColor={colors.textTertiary}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={2}
-            maxLength={MAX_DESCRIPTION_LENGTH}
-          />
-        </View>
-
-        {/* COR */}
-        <View style={styles.section}>
-          <CompactColorSelector
-            selectedColor={selectedColor}
-            onColorSelect={(color) => { hapticFeedback.selection(); setSelectedColor(color); }}
-          />
-        </View>
-
-        {/* SEPARADOR */}
-        <View style={[styles.metaSeparator, { borderTopColor: colors.border }]} />
-
-        {/* FREQUÊNCIA — BOTÃO RESUMO */}
-        <TouchableOpacity
-          style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={openFrequencyModal}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.summaryIconCircle, { backgroundColor: colors.primaryLight }]}>
-            <Icon name="calendar" size={18} color={colors.primary} />
-          </View>
-          <View style={styles.summaryTextContainer}>
-            <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Frequência</Text>
-            <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>{getFrequencySummary()}</Text>
-          </View>
-          <Icon name="chevronRight" size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
-
-        {/* META NUMÉRICA — BOTÃO RESUMO */}
-        <TouchableOpacity
-          style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={openTargetModal}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.summaryIconCircle, { backgroundColor: hasTarget ? colors.successLight : colors.borderLight }]}>
-            <Icon name="target" size={18} color={hasTarget ? colors.success : colors.textTertiary} />
-          </View>
-          <View style={styles.summaryTextContainer}>
-            <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Meta Numérica</Text>
-            <Text style={[styles.summaryValue, { color: hasTarget ? colors.success : colors.textSecondary }]}>{getTargetSummary()}</Text>
-          </View>
-          <Icon name="chevronRight" size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
-
-        {/* LEMBRETES — BOTÃO RESUMO */}
-        <TouchableOpacity
-          style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={openRemindersModal}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.summaryIconCircle, {
-            backgroundColor: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warningLight : colors.borderLight
-          }]}>
-            <Icon name="bell" size={18} color={(reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textTertiary} />
-          </View>
-          <View style={styles.summaryTextContainer}>
-            <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Lembretes</Text>
-            <Text style={[styles.summaryValue, {
-              color: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textSecondary
-            }]}>{getRemindersSummary()}</Text>
-          </View>
-          <Icon name="chevronRight" size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-
-      {/* ===== MODAL: FREQUÊNCIA ===== */}
-      <BottomSheetModal
-        visible={showFrequencyModal}
-        onCancel={cancelFrequencyModal}
-        onConfirm={confirmFrequencyModal}
-        title="Frequência"
-      >
-        <FrequencySelector
-          frequencyType={frequencyType}
-          selectedDays={frequencyDays}
-          onFrequencyTypeChange={setFrequencyType}
-          onDaysChange={setFrequencyDays}
-          hasFrequencyGoal={hasFrequencyGoal}
-          frequencyGoalValue={frequencyGoalValue}
-          frequencyGoalPeriod={frequencyGoalPeriod}
-          frequencyGoalCustomDays={frequencyGoalCustomDays}
-          onFrequencyGoalToggle={setHasFrequencyGoal}
-          onFrequencyGoalValueChange={setFrequencyGoalValue}
-          onFrequencyGoalPeriodChange={setFrequencyGoalPeriod}
-          onFrequencyGoalCustomDaysChange={setFrequencyGoalCustomDays}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.container}>
+        <LoadingOverlay visible={loading} message="Criando hábito..." />
+        <SuccessToast visible={showSuccessToast} message="Hábito criado com sucesso!" onHide={() => setShowSuccessToast(false)} />
+        <SuccessToast visible={showErrorToast} message={errorMessage} onHide={() => setShowErrorToast(false)} />
+        <ConfirmDialog
+          visible={showCancelConfirm}
+          title="Descartar Hábito?"
+          message="Você tem alterações não salvas. Deseja realmente sair?"
+          confirmText="Descartar"
+          cancelText="Continuar Editando"
+          confirmColor="danger"
+          onConfirm={() => { setShowCancelConfirm(false); router.back(); }}
+          onCancel={() => setShowCancelConfirm(false)}
         />
-      </BottomSheetModal>
 
-      {/* ===== MODAL: META NUMÉRICA ===== */}
-      <BottomSheetModal
-        visible={showTargetModal}
-        onCancel={cancelTargetModal}
-        onConfirm={confirmTargetModal}
-        title="Meta Numérica"
-      >
-        <View style={styles.modalSection}>
-          <View style={styles.toggleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { marginBottom: 0 }]}>Ativar meta numérica</Text>
-              <Text style={[styles.helperText, { marginTop: 4 }]}>
-                {hasTarget ? 'Registre valores diários' : 'Ex: Beber 2L de água por dia'}
-              </Text>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleCancel}>
+            <Text style={styles.cancelButton}>Cancelar</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Novo Hábito</Text>
+          <TouchableOpacity onPress={handleSubmit} disabled={loading}>
+            <Text style={[styles.saveButton, loading && styles.saveButtonDisabled]}>Salvar</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+        >
+          {/* TIPO DE HÁBITO */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
+            <View style={styles.habitTypeContainer}>
+              <TouchableOpacity
+                style={[styles.habitTypeOption, habitType === 'positive' && styles.habitTypeOptionPositive]}
+                onPress={() => { hapticFeedback.selection(); setHabitType('positive'); }}
+              >
+                <Icon name="check" size={20} color={habitType === 'positive' ? colors.success : colors.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.habitTypeLabel, habitType === 'positive' && styles.habitTypeLabelPositive]}>Positivo</Text>
+                  <Text style={styles.habitTypeDescription}>Criar novo hábito</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.habitTypeOption, habitType === 'negative' && styles.habitTypeOptionNegative]}
+                onPress={() => { hapticFeedback.selection(); setHabitType('negative'); }}
+              >
+                <Icon name="xCircle" size={20} color={habitType === 'negative' ? colors.warning : colors.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.habitTypeLabel, habitType === 'negative' && styles.habitTypeLabelNegative]}>Negativo</Text>
+                  <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
+                </View>
+              </TouchableOpacity>
             </View>
-            <Switch
-              value={hasTarget}
-              onValueChange={(v) => { hapticFeedback.selection(); setHasTarget(v); }}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={hasTarget ? colors.primary : colors.surface}
+          </View>
+
+          {/* NOME */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Nome *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={habitType === 'positive' ? "Ex: Meditar, Ler..." : "Ex: Não fumar..."}
+              placeholderTextColor={colors.textTertiary}
+              value={name}
+              onChangeText={setName}
+              maxLength={MAX_NAME_LENGTH}
             />
           </View>
 
-          {hasTarget && (
-            <TargetInput
-              value={targetValue}
-              unit={targetUnit}
-              onValueChange={setTargetValue}
-              onUnitChange={setTargetUnit}
-              availableUnits={getAllUnits()}
+          {/* DESCRIÇÃO */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Descrição (opcional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Adicione detalhes..."
+              placeholderTextColor={colors.textTertiary}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={2}
+              maxLength={MAX_DESCRIPTION_LENGTH}
             />
-          )}
-        </View>
-      </BottomSheetModal>
+          </View>
 
-      {/* ===== MODAL: LEMBRETES ===== */}
-      <BottomSheetModal
-        visible={showRemindersModal}
-        onCancel={cancelRemindersModal}
-        onConfirm={confirmRemindersModal}
-        title="Lembretes"
-      >
-        {/* Permissão */}
-        {!hasPermission && (
+          {/* COR */}
+          <View style={styles.section}>
+            <CompactColorSelector
+              selectedColor={selectedColor}
+              onColorSelect={(color) => { hapticFeedback.selection(); setSelectedColor(color); }}
+            />
+          </View>
+
+          <View style={[styles.metaSeparator, { borderTopColor: colors.border }]} />
+
+          {/* FREQUÊNCIA */}
           <TouchableOpacity
-            style={[styles.permissionButton, { backgroundColor: colors.primary }]}
-            onPress={async () => { hapticFeedback.light(); await requestNotificationPermission(); }}
+            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={openFrequencyModal}
+            activeOpacity={0.7}
           >
-            <Icon name="unlock" size={16} color={colors.textInverse} />
-            <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>Permitir Notificações</Text>
+            <View style={[styles.summaryIconCircle, { backgroundColor: colors.primaryLight }]}>
+              <Icon name="calendar" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.summaryTextContainer}>
+              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Frequência</Text>
+              <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>{getFrequencySummary()}</Text>
+            </View>
+            <Icon name="chevronRight" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
-        )}
 
-        {hasPermission && (
-          <>
-            {/* Seção: Lembretes de horário */}
-            <View style={styles.modalSection}>
-              <View style={styles.modalSectionHeader}>
-                <Icon name="clock" size={16} color={colors.textPrimary} />
-                <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>Horários de Lembrete</Text>
-              </View>
-              <Text style={[styles.modalSectionSubtitle, { color: colors.textSecondary }]}>
-                Receba notificações nos horários definidos
+          {/* META NUMÉRICA — INLINE */}
+          <TouchableOpacity
+            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => { hapticFeedback.light(); setShowTargetInline(v => !v); }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.summaryIconCircle, { backgroundColor: hasTarget ? colors.successLight : colors.borderLight }]}>
+              <Icon name="target" size={18} color={hasTarget ? colors.success : colors.textTertiary} />
+            </View>
+            <View style={styles.summaryTextContainer}>
+              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Meta Numérica</Text>
+              <Text style={[styles.summaryValue, { color: hasTarget ? colors.success : colors.textSecondary }]}>
+                {getTargetSummary()}
               </Text>
+            </View>
+            <Icon name={showTargetInline ? "chevronUp" : "chevronRight"} size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
 
-              {reminders.length > 0 && (
-                <View style={styles.remindersList}>
-                  {reminders.map((reminder) => (
-                    <View key={reminder.id} style={[styles.reminderItem, { borderColor: colors.border }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Icon name="bell" size={14} color={colors.primary} />
-                        <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>{formatTime(reminder.time)}</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => handleRemoveReminder(reminder.id)}>
-                        <Icon name="trash" size={16} color={colors.danger} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+          {/* Painel inline de meta */}
+          {showTargetInline && (
+            <View style={[
+              styles.inlinePanel ?? {
+                borderRadius: 14, borderWidth: 1, padding: 16, marginTop: -4, marginBottom: 10,
+              },
+              { backgroundColor: colors.surface, borderColor: colors.border }
+            ]}>
+              <View style={styles.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.label, { marginBottom: 0 }]}>Ativar meta numérica</Text>
+                  <Text style={[styles.helperText, { marginTop: 4 }]}>
+                    {hasTarget ? 'Registre valores diários' : 'Ex: Beber 2L de água por dia'}
+                  </Text>
                 </View>
-              )}
-
-              {reminders.length < MAX_REMINDERS && (
-                <TouchableOpacity
-                  style={[styles.addButton, { borderColor: colors.primary }]}
-                  onPress={() => { hapticFeedback.light(); setShowTimePicker(true); }}
-                >
-                  <Icon name="add" size={14} color={colors.primary} />
-                  <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar horário</Text>
-                </TouchableOpacity>
-              )}
-
-              {showTimePicker && (
-                <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <DateTimePicker
-                    value={currentTime}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                  />
-                  {Platform.OS === 'ios' && (
-                    <View style={styles.pickerButtons}>
-                      <TouchableOpacity
-                        onPress={() => { hapticFeedback.light(); setShowTimePicker(false); setCurrentTime(new Date()); }}
-                        style={[styles.pickerButton, { backgroundColor: colors.surface }]}
-                      >
-                        <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => { hapticFeedback.selection(); handleAddReminder(); }}
-                        style={[styles.pickerButton, { backgroundColor: colors.primary }]}
-                      >
-                        <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>Confirmar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
+                <Switch
+                  value={hasTarget}
+                  onValueChange={(v) => { hapticFeedback.selection(); setHasTarget(v); }}
+                  trackColor={{ false: colors.border, true: colors.primaryLight }}
+                  thumbColor={hasTarget ? colors.primary : colors.surface}
+                />
+              </View>
+              {hasTarget && (
+                <TargetInput
+                  value={targetValue}
+                  unit={targetUnit}
+                  onValueChange={setTargetValue}
+                  onUnitChange={setTargetUnit}
+                  availableUnits={getAllUnits()}
+                />
               )}
             </View>
+          )}
 
-            {/* Separador visual */}
-            <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+          {/* LEMBRETES */}
+          <TouchableOpacity
+            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={openRemindersModal}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.summaryIconCircle, {
+              backgroundColor: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warningLight : colors.borderLight
+            }]}>
+              <Icon name="bell" size={18} color={(reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textTertiary} />
+            </View>
+            <View style={styles.summaryTextContainer}>
+              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Lembretes</Text>
+              <Text style={[styles.summaryValue, {
+                color: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textSecondary
+              }]}>{getRemindersSummary()}</Text>
+            </View>
+            <Icon name="chevronRight" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
 
-            {/* Seção: Notificações de Progresso */}
-            <ProgressNotificationSettings
-              config={progressNotificationConfig}
-              onChange={setProgressNotificationConfig}
-              hasPermission={hasPermission}
-              onRequestPermission={requestNotificationPermission}
-              hasTarget={hasTarget}
-              habitType={habitType}
-            />
-          </>
-        )}
-      </BottomSheetModal>
-    </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+
+        {/* MODAL: FREQUÊNCIA */}
+        <BottomSheetModal
+          visible={showFrequencyModal}
+          onCancel={cancelFrequencyModal}
+          onConfirm={confirmFrequencyModal}
+          title="Frequência"
+        >
+          <FrequencySelector
+            frequencyType={frequencyType}
+            selectedDays={frequencyDays}
+            onFrequencyTypeChange={setFrequencyType}
+            onDaysChange={setFrequencyDays}
+            hasFrequencyGoal={hasFrequencyGoal}
+            frequencyGoalValue={frequencyGoalValue}
+            frequencyGoalPeriod={frequencyGoalPeriod}
+            frequencyGoalCustomDays={frequencyGoalCustomDays}
+            onFrequencyGoalToggle={setHasFrequencyGoal}
+            onFrequencyGoalValueChange={setFrequencyGoalValue}
+            onFrequencyGoalPeriodChange={setFrequencyGoalPeriod}
+            onFrequencyGoalCustomDaysChange={setFrequencyGoalCustomDays}
+          />
+        </BottomSheetModal>
+
+        {/* MODAL: LEMBRETES */}
+        <BottomSheetModal
+          visible={showRemindersModal}
+          onCancel={cancelRemindersModal}
+          onConfirm={confirmRemindersModal}
+          title="Lembretes"
+        >
+          {!hasPermission && (
+            <TouchableOpacity
+              style={[styles.permissionButton, { backgroundColor: colors.primary }]}
+              onPress={async () => { hapticFeedback.light(); await requestNotificationPermission(); }}
+            >
+              <Icon name="unlock" size={16} color={colors.textInverse} />
+              <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>Permitir Notificações</Text>
+            </TouchableOpacity>
+          )}
+
+          {hasPermission && (
+            <>
+              <View style={styles.modalSection}>
+                <View style={styles.modalSectionHeader}>
+                  <Icon name="clock" size={16} color={colors.textPrimary} />
+                  <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>Horários de Lembrete</Text>
+                </View>
+                <Text style={[styles.modalSectionSubtitle, { color: colors.textSecondary }]}>
+                  Receba notificações nos horários definidos
+                </Text>
+
+                {reminders.length > 0 && (
+                  <View style={styles.remindersList}>
+                    {reminders.map((reminder) => (
+                      <View key={reminder.id} style={[styles.reminderItem, { borderColor: colors.border }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Icon name="bell" size={14} color={colors.primary} />
+                          <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>{formatTime(reminder.time)}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleRemoveReminder(reminder.id)}>
+                          <Icon name="trash" size={16} color={colors.danger} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {reminders.length < MAX_REMINDERS && (
+                  <TouchableOpacity
+                    style={[styles.addButton, { borderColor: colors.primary }]}
+                    onPress={() => { hapticFeedback.light(); setShowTimePicker(true); }}
+                  >
+                    <Icon name="add" size={14} color={colors.primary} />
+                    <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar horário</Text>
+                  </TouchableOpacity>
+                )}
+
+                {showTimePicker && (
+                  <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <DateTimePicker
+                      value={currentTime}
+                      mode="time"
+                      is24Hour={true}
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={onTimeChange}
+                    />
+                    {Platform.OS === 'ios' && (
+                      <View style={styles.pickerButtons}>
+                        <TouchableOpacity
+                          onPress={() => { hapticFeedback.light(); setShowTimePicker(false); setCurrentTime(new Date()); }}
+                          style={[styles.pickerButton, { backgroundColor: colors.surface }]}
+                        >
+                          <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => { hapticFeedback.selection(); handleAddReminder(); }}
+                          style={[styles.pickerButton, { backgroundColor: colors.primary }]}
+                        >
+                          <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>Confirmar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+              <ProgressNotificationSettings
+                config={progressNotificationConfig}
+                onChange={setProgressNotificationConfig}
+                hasPermission={hasPermission}
+                onRequestPermission={requestNotificationPermission}
+                hasTarget={hasTarget}
+                habitType={habitType}
+              />
+            </>
+          )}
+        </BottomSheetModal>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
