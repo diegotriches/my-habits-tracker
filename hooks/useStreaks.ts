@@ -94,7 +94,6 @@ export const useStreaks = () => {
     hasRecalculated.current = true;
 
     try {
-      console.log(`🔄 Recalculando streaks para ${habits.length} hábitos...`);
 
       for (const habit of habits) {
         // Garantir que existe registro de streak
@@ -112,7 +111,6 @@ export const useStreaks = () => {
 
       if (data) {
         setStreaks(data as Streak[]);
-        console.log(`✅ Streaks recalculados:`, 
           (data as Streak[]).map(s => ({
             habit: s.habit_id.substring(0, 8),
             current: s.current_streak,
@@ -147,7 +145,6 @@ async function ensureStreakExists(habitId: string): Promise<void> {
     .maybeSingle();
 
   if (!existing) {
-    console.log(`📝 Criando registro de streak para hábito ${habitId.substring(0, 8)}`);
     await streaksTable().insert({
       habit_id: habitId,
       current_streak: 0,

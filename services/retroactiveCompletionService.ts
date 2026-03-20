@@ -170,7 +170,6 @@ export const retroactiveCompletionService = {
           const achieved = c.value_achieved || 0;
           return achieved >= habitData.target_value!;
         });
-        console.log(`🎯 Meta numérica: ${completions.length}/${rawCompletions.length} completions atingiram 100% (meta: ${habitData.target_value} ${habitData.target_unit || ''})`);
       }
 
       if (completions.length === 0) {
@@ -195,11 +194,9 @@ export const retroactiveCompletionService = {
       // 3. Escolher estratégia de cálculo
       if (goalValue && goalValue > 0 && goalPeriod === 'week') {
         // Meta semanal: streak por semanas (ex: 3x/semana)
-        console.log(`🔢 Streak semanal: ${habitData.name} — meta=${goalValue}x/semana`);
         const result = calculateWeeklyGoalStreak(completions, goalValue);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
-        console.log(`📊 Resultado semanal: atual=${currentStreak}, melhor=${bestStreak}`);
       } else if (
         habitData.frequency_type === 'weekly' &&
         habitData.frequency_days &&
@@ -207,18 +204,14 @@ export const retroactiveCompletionService = {
         habitData.frequency_days.length < 7
       ) {
         // Dias específicos: streak por dias programados
-        console.log(`📅 Streak dias fixos: ${habitData.name}`);
         const result = calculateScheduledDaysStreak(completions, habitData);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
-        console.log(`📊 Resultado dias fixos: atual=${currentStreak}, melhor=${bestStreak}`);
       } else {
         // Diário: streak por dias consecutivos
-        console.log(`📆 Streak diário: ${habitData.name}`);
         const result = calculateDailyStreak(completions);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
-        console.log(`📊 Resultado diário: atual=${currentStreak}, melhor=${bestStreak}`);
       }
 
       // 4. Preservar melhor streak existente
@@ -254,7 +247,6 @@ export const retroactiveCompletionService = {
 // ========== ESTRATÉGIAS DE CÁLCULO DE STREAK ==========
 
 /**
- * Streak diário: dias consecutivos com completion.
  * Conta de trás pra frente a partir de hoje.
  */
 function calculateDailyStreak(
@@ -420,7 +412,6 @@ function calculateWeeklyGoalStreak(
     weeklyData.push({ weekStart: ws, count });
   }
 
-  console.log('📊 Semanas (recente→antigo):', 
     weeklyData.slice(0, 5).map(w => ({
       semana: format(w.weekStart, 'dd/MM'),
       completions: w.count,
@@ -484,7 +475,6 @@ function calculateWeeklyGoalStreak(
     }
   }
 
-  console.log(`📊 Weekly goal streak: currentDays=${currentStreakDays}, bestDays=${bestStreakDays}`);
 
   return {
     currentStreak: currentStreakDays,
