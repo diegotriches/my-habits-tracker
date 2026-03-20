@@ -34,15 +34,12 @@ export function HabitProgressInput({
 }: HabitProgressInputProps) {
   const { colors } = useTheme();
   const [inputValue, setInputValue] = useState('');
-  const [mode, setMode] = useState<'add' | 'replace'>('add');
   const [scaleAnim] = useState(new Animated.Value(0));
-
-  const hasCurrentValue = currentValue > 0;
 
   useEffect(() => {
     if (visible) {
-      setInputValue('');
-      setMode('add');
+      // Pré-preencher com o valor atual (0 se não tiver nada)
+      setInputValue(currentValue > 0 ? String(currentValue) : '');
       Animated.spring(scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
@@ -56,37 +53,29 @@ export function HabitProgressInput({
   const handleValueChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
-    
     if (parts.length > 2) return;
     if (parts.length === 2 && parts[1].length > 2) return;
-
     setInputValue(cleaned);
   };
 
   const handleConfirm = () => {
     const value = parseFloat(inputValue);
-    if (!inputValue || isNaN(value) || value <= 0) {
-      return;
-    }
-    onConfirm(value, mode);
+    if (!inputValue || isNaN(value) || value < 0) return;
+    // Sempre substitui — o usuário edita o valor diretamente
+    onConfirm(value, 'replace');
   };
 
-  const getFinalValue = () => {
+  const getFinalValue = (): number => {
     const value = parseFloat(inputValue);
-    if (!inputValue || isNaN(value)) return currentValue;
-    
-    if (mode === 'add') {
-      return currentValue + value;
-    }
+    if (!inputValue || isNaN(value)) return 0;
     return value;
   };
 
-  const getProgressPercentage = () => {
-    const finalValue = getFinalValue();
-    return Math.min((finalValue / targetValue) * 100, 100);
+  const getProgressPercentage = (): number => {
+    return Math.min((getFinalValue() / targetValue) * 100, 100);
   };
 
-  const getProgressColor = () => {
+  const getProgressColor = (): string => {
     const percentage = getProgressPercentage();
     if (percentage >= 100) return colors.success;
     if (percentage >= 80) return colors.primary;
@@ -94,12 +83,15 @@ export function HabitProgressInput({
     return colors.textSecondary;
   };
 
-  const isValid = () => {
+  const isValid = (): boolean => {
     const value = parseFloat(inputValue);
-    return inputValue && !isNaN(value) && value > 0;
+    return inputValue !== '' && !isNaN(value) && value >= 0;
   };
 
   if (!visible) return null;
+
+  const finalValue = getFinalValue();
+  const percentage = getProgressPercentage();
 
   return (
     <Modal
@@ -109,17 +101,17 @@ export function HabitProgressInput({
       onRequestClose={onCancel}
     >
       <Pressable style={styles.overlay} onPress={onCancel}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.modalContainer,
-            { backgroundColor: colors.background, transform: [{ scale: scaleAnim }] }
+            { backgroundColor: colors.background, transform: [{ scale: scaleAnim }] },
           ]}
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
               <Text style={[styles.title, { color: colors.textPrimary }]}>
-                {hasCurrentValue ? 'Atualizar Progresso' : 'Registrar Progresso'}
+                {currentValue > 0 ? 'Atualizar Progresso' : 'Registrar Progresso'}
               </Text>
               <Text style={[styles.habitName, { color: colors.textSecondary }]}>
                 {habitName}
@@ -128,83 +120,11 @@ export function HabitProgressInput({
 
             {/* Content */}
             <View style={styles.content}>
-              {/* Valor Atual */}
-              {hasCurrentValue && (
-                <View style={[styles.currentValueCard, { 
-                  backgroundColor: colors.infoLight,
-                  borderColor: colors.info 
-                }]}>
-                  <Text style={[styles.currentValueLabel, { color: colors.info }]}>
-                    Progresso atual:
-                  </Text>
-                  <Text style={[styles.currentValueText, { color: colors.info }]}>
-                    {currentValue} {targetUnit}
-                  </Text>
-                  <View style={[styles.currentProgressBar, { backgroundColor: colors.primaryLight }]}>
-                    <View 
-                      style={[
-                        styles.currentProgressFill,
-                        { 
-                          width: `${Math.min((currentValue / targetValue) * 100, 100)}%`,
-                          backgroundColor: colors.primary,
-                        }
-                      ]}
-                    />
-                  </View>
-                </View>
-              )}
 
-              {/* Modo: Adicionar ou Substituir */}
-              {hasCurrentValue && (
-                <View style={styles.modeSelector}>
-                  <TouchableOpacity
-                    style={[
-                      styles.modeButton,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
-                      mode === 'add' && { 
-                        backgroundColor: colors.primaryLight,
-                        borderColor: colors.primary 
-                      },
-                    ]}
-                    onPress={() => setMode('add')}
-                  >
-                    <Icon name="add" size={16} color={mode === 'add' ? colors.primary : colors.textSecondary} />
-                    <Text style={[
-                      styles.modeButtonText,
-                      { color: colors.textSecondary },
-                      mode === 'add' && { color: colors.primary },
-                    ]}>
-                      Adicionar
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.modeButton,
-                      { backgroundColor: colors.surface, borderColor: colors.border },
-                      mode === 'replace' && { 
-                        backgroundColor: colors.primaryLight,
-                        borderColor: colors.primary 
-                      },
-                    ]}
-                    onPress={() => setMode('replace')}
-                  >
-                    <Icon name="refresh" size={16} color={mode === 'replace' ? colors.primary : colors.textSecondary} />
-                    <Text style={[
-                      styles.modeButtonText,
-                      { color: colors.textSecondary },
-                      mode === 'replace' && { color: colors.primary },
-                    ]}>
-                      Substituir
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Input */}
-              <View style={[styles.inputContainer, { 
+              {/* Input — pré-preenchido com valor atual */}
+              <View style={[styles.inputContainer, {
                 backgroundColor: colors.surface,
-                borderColor: colors.border 
+                borderColor: colors.border,
               }]}>
                 <TextInput
                   style={[styles.input, { color: colors.textPrimary }]}
@@ -215,25 +135,17 @@ export function HabitProgressInput({
                   keyboardType="decimal-pad"
                   maxLength={8}
                   autoFocus
+                  selectTextOnFocus
                 />
                 <Text style={[styles.unit, { color: colors.textSecondary }]}>
                   {targetUnit}
                 </Text>
               </View>
 
-              {/* Preview do cálculo */}
-              {hasCurrentValue && mode === 'add' && inputValue && (
-                <View style={[styles.calculationPreview, { backgroundColor: colors.successLight }]}>
-                  <Text style={[styles.calculationText, { color: colors.success }]}>
-                    {currentValue} + {inputValue} = {getFinalValue()} {targetUnit}
-                  </Text>
-                </View>
-              )}
-
-              {/* Meta */}
-              <View style={[styles.targetInfo, { 
+              {/* Meta do dia */}
+              <View style={[styles.targetInfo, {
                 backgroundColor: colors.surface,
-                borderColor: colors.border 
+                borderColor: colors.border,
               }]}>
                 <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>
                   Meta do dia:
@@ -243,28 +155,28 @@ export function HabitProgressInput({
                 </Text>
               </View>
 
-              {/* Barra de Progresso */}
-              {inputValue && (
+              {/* Barra de progresso */}
+              {inputValue !== '' && (
                 <View style={styles.progressContainer}>
                   <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-                    <View 
+                    <View
                       style={[
                         styles.progressFill,
-                        { 
-                          width: `${getProgressPercentage()}%`,
+                        {
+                          width: `${percentage}%`,
                           backgroundColor: getProgressColor(),
-                        }
+                        },
                       ]}
                     />
                   </View>
                   <Text style={[styles.progressText, { color: getProgressColor() }]}>
-                    {getFinalValue().toFixed(1)} {targetUnit} • {getProgressPercentage().toFixed(0)}% da meta
+                    {finalValue} {targetUnit} • {percentage.toFixed(0)}% da meta
                   </Text>
                 </View>
               )}
 
               {/* Badge de conquista */}
-              {getProgressPercentage() >= 100 && (
+              {percentage >= 100 && (
                 <View style={[styles.achievementBadge, { backgroundColor: colors.successLight }]}>
                   <Icon name="sparkles" size={20} color={colors.success} />
                   <Text style={[styles.achievementText, { color: colors.success }]}>
@@ -343,60 +255,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
-  currentValueCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  currentValueLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  currentValueText: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  currentProgressBar: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  currentProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  modeSelector: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  modeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-  },
-  modeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  calculationPreview: {
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  calculationText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -426,16 +284,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
   },
-  targetLabel: {
-    fontSize: 14,
-  },
-  targetValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  progressContainer: {
-    marginBottom: 8,
-  },
+  targetLabel: { fontSize: 14 },
+  targetValue: { fontSize: 16, fontWeight: '600' },
+  progressContainer: { marginBottom: 8 },
   progressBar: {
     height: 8,
     borderRadius: 4,
@@ -461,10 +312,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 8,
   },
-  achievementText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  achievementText: { fontSize: 14, fontWeight: '600' },
   buttons: {
     flexDirection: 'row',
     padding: 20,
@@ -477,18 +325,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  cancelText: { fontSize: 16, fontWeight: '600' },
   confirmButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
-  confirmText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  confirmText: { fontSize: 16, fontWeight: '600' },
 });

@@ -4,10 +4,10 @@ import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { WeekNavigator } from '@/components/habits/WeekNavigator';
 import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
-import { CelebrationModal } from '@/components/ui/CelebrationModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
+import { Confetti } from '@/components/ui/Confetti';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
 import { useCompletions } from '@/hooks/useCompletions';
@@ -58,14 +58,12 @@ export default function HomeScreen() {
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
 
-  const { streaks, fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
+  const { fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
   const {
-    celebrationData,
-    isVisible: showCelebration,
-    checkStreakMilestone,
-    checkTargetAchievement,
-    closeCelebration
+    isVisible: showConfetti,
+    celebrate,
+    closeCelebration,
   } = useCelebration();
 
   // Ordem arrastável
@@ -164,7 +162,7 @@ export default function HomeScreen() {
       }
 
       setShowSuccessToast(true);
-      if (percentage >= 100) setTimeout(() => checkTargetAchievement(selectedHabit.name), 1000);
+      setTimeout(() => celebrate(), 1000);
       await refetchWeeklyCompletions(selectedWeekStart);
     }
 
@@ -209,7 +207,7 @@ export default function HomeScreen() {
             setSuccessMessage(`Registrado ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
           }
           setShowSuccessToast(true);
-          if (percentage >= 100) setTimeout(() => checkTargetAchievement(habit.name), 1000);
+          setTimeout(() => celebrate(), 1000);
           await refetchWeeklyCompletions(selectedWeekStart);
         } else if (error) {
           setSuccessMessage('Erro ao registrar progresso');
@@ -238,7 +236,7 @@ export default function HomeScreen() {
       const streakDays = updatedStreak?.current_streak || 0;
       setSuccessMessage(streakDays > 1 ? `Completado! ${streakDays} dias seguidos!` : 'Completado!');
       setShowSuccessToast(true);
-      if (updatedStreak?.current_streak) checkStreakMilestone(updatedStreak.current_streak);
+      setTimeout(() => celebrate(), 1000);
       await refetchWeeklyCompletions(selectedWeekStart);
     }
   };
@@ -369,16 +367,8 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {celebrationData && (
-        <CelebrationModal
-          visible={showCelebration}
-          onClose={closeCelebration}
-          title={celebrationData.title}
-          message={celebrationData.message}
-          icon={celebrationData.icon}
-          streak={celebrationData.streak}
-        />
-      )}
+
+      <Confetti visible={showConfetti} onComplete={closeCelebration} particleCount={60} />
 
       <SuccessToast
         visible={showSuccessToast}
