@@ -14,7 +14,6 @@ export const useStreaks = () => {
   const [error, setError] = useState<string | null>(null);
   const hasRecalculated = useRef(false);
 
-  // Buscar streaks de múltiplos hábitos
   const fetchStreaks = async (habitIds: string[]) => {
     if (!user || habitIds.length === 0) return;
 
@@ -36,30 +35,19 @@ export const useStreaks = () => {
     }
   };
 
-  // Buscar streak de um hábito específico
   const getStreak = (habitId: string): Streak | undefined => {
     return streaks.find(s => s.habit_id === habitId);
   };
 
-  /**
-   * Atualizar streak após completar/descompletar.
-   * Delega para recalculateStreak que usa a lógica correta
-   * baseada no tipo de frequência do hábito.
-   */
   const updateStreakWithFrequency = async (
     habitId: string,
     habit: Habit,
     wasCompleted: boolean
   ) => {
     try {
-      // Garantir que o streak existe antes de recalcular
       await ensureStreakExists(habitId);
-
-      // Delegar para recalculateStreak que tem a lógica
-      // correta para cada tipo de frequência
       await retroactiveCompletionService.recalculateStreak(habitId);
 
-      // Buscar o streak atualizado do banco
       const { data: updatedData } = await streaksTable()
         .select('*')
         .eq('habit_id', habitId)
@@ -68,7 +56,6 @@ export const useStreaks = () => {
       const updatedStreak = updatedData as Streak | null;
 
       if (updatedStreak) {
-        // Atualizar lista local
         setStreaks(prev => {
           const filtered = prev.filter(s => s.habit_id !== habitId);
           return [...filtered, updatedStreak];
@@ -83,27 +70,16 @@ export const useStreaks = () => {
     }
   };
 
-  /**
-   * Recalcular todos os streaks ao abrir o app.
-   * Garante que cada hábito tenha um registro de streak e
-   * recalcula usando a lógica unificada.
-   */
   const checkExpiredStreaks = async (habits: Habit[]) => {
-    // Evitar recalcular múltiplas vezes na mesma sessão
     if (hasRecalculated.current || habits.length === 0) return;
     hasRecalculated.current = true;
 
     try {
-
       for (const habit of habits) {
-        // Garantir que existe registro de streak
         await ensureStreakExists(habit.id);
-
-        // Recalcular usando a lógica unificada
         await retroactiveCompletionService.recalculateStreak(habit.id);
       }
 
-      // Refetch todos os streaks atualizados
       const habitIds = habits.map(h => h.id);
       const { data } = await streaksTable()
         .select('*')
@@ -111,12 +87,6 @@ export const useStreaks = () => {
 
       if (data) {
         setStreaks(data as Streak[]);
-          (data as Streak[]).map(s => ({
-            habit: s.habit_id.substring(0, 8),
-            current: s.current_streak,
-            best: s.best_streak,
-          }))
-        );
       }
     } catch (err) {
       console.error('Erro ao verificar streaks expirados:', err);
@@ -134,10 +104,6 @@ export const useStreaks = () => {
   };
 };
 
-/**
- * Garante que existe um registro de streak para o hábito.
- * Cria um novo se não existir (com valores zerados).
- */
 async function ensureStreakExists(habitId: string): Promise<void> {
   const { data: existing } = await streaksTable()
     .select('id')
