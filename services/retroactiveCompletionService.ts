@@ -412,13 +412,6 @@ function calculateWeeklyGoalStreak(
     weeklyData.push({ weekStart: ws, count });
   }
 
-    weeklyData.slice(0, 5).map(w => ({
-      semana: format(w.weekStart, 'dd/MM'),
-      completions: w.count,
-      meta: w.count >= goalValue ? '✅' : '❌',
-    }))
-  );
-
   // --- CURRENT STREAK (em dias) ---
   // Semana atual (index 0): se ainda não atingiu a meta, tolerar (semana em andamento)
   // e somar os dias completados até agora
