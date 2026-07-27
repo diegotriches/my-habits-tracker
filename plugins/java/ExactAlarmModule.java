@@ -94,13 +94,19 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
             intent.putExtra("alarmId", alarmId);
             intent.putExtra("timestamp", (long) timestamp);
 
-            if (data.hasKey("habitId"))    intent.putExtra("habitId",    data.getString("habitId"));
-            if (data.hasKey("habitName"))  intent.putExtra("habitName",  data.getString("habitName"));
-            if (data.hasKey("title"))      intent.putExtra("title",      data.getString("title"));
-            if (data.hasKey("body"))       intent.putExtra("body",       data.getString("body"));
-            if (data.hasKey("reminderId")) intent.putExtra("reminderId", data.getString("reminderId"));
-            if (data.hasKey("dayOfWeek"))  intent.putExtra("dayOfWeek",  data.getString("dayOfWeek"));
-            if (data.hasKey("time"))       intent.putExtra("time",       data.getString("time"));
+            String habitId    = data.hasKey("habitId")    ? data.getString("habitId")    : null;
+            String habitName  = data.hasKey("habitName")  ? data.getString("habitName")  : null;
+            String reminderId = data.hasKey("reminderId") ? data.getString("reminderId") : null;
+            String dayOfWeek  = data.hasKey("dayOfWeek")  ? data.getString("dayOfWeek")  : null;
+            String time       = data.hasKey("time")       ? data.getString("time")       : null;
+
+            if (habitId != null)    intent.putExtra("habitId", habitId);
+            if (habitName != null)  intent.putExtra("habitName", habitName);
+            if (data.hasKey("title")) intent.putExtra("title", data.getString("title"));
+            if (data.hasKey("body"))  intent.putExtra("body", data.getString("body"));
+            if (reminderId != null) intent.putExtra("reminderId", reminderId);
+            if (dayOfWeek != null)  intent.putExtra("dayOfWeek", dayOfWeek);
+            if (time != null)       intent.putExtra("time", time);
 
             int requestCode = alarmId.hashCode();
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
@@ -121,6 +127,11 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
             } else {
                 alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
             }
+
+            // Persiste os dados do alarme para que o BootReceiver consiga
+            // reagendar após reboot ou atualização do app (AlarmManager
+            // descarta todos os alarmes pendentes nesses dois casos).
+            AlarmStorage.save(reactContext, alarmId, triggerTime, habitId, habitName, reminderId, dayOfWeek, time);
 
             Log.d(TAG, "Alarme agendado: " + alarmId);
             promise.resolve(alarmId);
@@ -152,6 +163,8 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
                 alarmManager.cancel(pendingIntent);
                 pendingIntent.cancel();
             }
+
+            AlarmStorage.remove(reactContext, alarmId);
 
             Log.d(TAG, "Alarme cancelado: " + alarmId);
             promise.resolve(true);

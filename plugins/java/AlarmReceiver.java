@@ -191,6 +191,12 @@ public class AlarmReceiver extends BroadcastReceiver {
                 alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextTrigger, pending);
             }
 
+            // Mantém o storage atualizado com o novo horário, para que o
+            // BootReceiver sempre reagende a partir da ocorrência mais recente.
+            if (alarmId != null) {
+                AlarmStorage.save(context, alarmId, nextTrigger, habitId, habitName, reminderId, dayOfWeek, time);
+            }
+
             Log.d(TAG, "Proximo alarme agendado para 7 dias: " + alarmId);
         } catch (Exception e) {
             Log.e(TAG, "Erro ao re-agendar: " + e.getMessage(), e);
@@ -234,6 +240,11 @@ public class AlarmReceiver extends BroadcastReceiver {
             } else {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, snoozeTime, pending);
             }
+
+            // Snooze é efêmero (10 min) — não persiste no storage de boot.
+            // Se o celular reiniciar exatamente nesses 10 min, o pior caso é
+            // perder esse lembrete pontual; a corrente semanal principal
+            // permanece intacta pois seu registro no storage não é tocado aqui.
 
             Log.d(TAG, "Snooze agendado para 10 minutos: " + habitName);
         } catch (Exception e) {

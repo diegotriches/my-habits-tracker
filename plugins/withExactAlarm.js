@@ -15,7 +15,13 @@ function withJavaFiles(config) {
       fs.mkdirSync(destDir, { recursive: true });
     }
 
-    const javaFiles = ['AlarmReceiver.java', 'ExactAlarmModule.java', 'ExactAlarmPackage.java'];
+    const javaFiles = [
+      'AlarmReceiver.java',
+      'ExactAlarmModule.java',
+      'ExactAlarmPackage.java',
+      'AlarmStorage.java',
+      'BootReceiver.java',
+    ];
     const srcDir = path.join(mod.modRequest.projectRoot, 'plugins', 'java');
 
     for (const file of javaFiles) {
@@ -94,6 +100,23 @@ function withAlarmManifest(config) {
         }],
       });
       console.log('[withExactAlarm] AlarmReceiver adicionado');
+    }
+
+    // BootReceiver: reagenda todos os alarmes persistidos após o
+    // dispositivo reiniciar ou o app ser atualizado. Precisa de
+    // android:exported="true" porque BOOT_COMPLETED e
+    // MY_PACKAGE_REPLACED são broadcasts do sistema (fonte externa ao app).
+    if (!app.receiver.some((r) => r.$['android:name'] === '.BootReceiver')) {
+      app.receiver.push({
+        $: { 'android:name': '.BootReceiver', 'android:enabled': 'true', 'android:exported': 'true' },
+        'intent-filter': [{
+          action: [
+            { $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } },
+            { $: { 'android:name': 'android.intent.action.MY_PACKAGE_REPLACED' } },
+          ],
+        }],
+      });
+      console.log('[withExactAlarm] BootReceiver adicionado');
     }
 
     return mod;
