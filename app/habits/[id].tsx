@@ -23,6 +23,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   Modal,
   Platform,
@@ -67,6 +68,11 @@ export default function HabitDetailsScreen() {
   const [pendingProgressCurrentValue, setPendingProgressCurrentValue] = useState(0);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+
+  // ========== MENU DE AÇÕES (Editar / Excluir) ==========
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+  const dotsScale = useRef(new Animated.Value(1)).current;
 
   const {
     habit,
@@ -341,6 +347,53 @@ export default function HabitDetailsScreen() {
     router.back();
   };
 
+  // ========== HANDLERS DO MENU DE AÇÕES ==========
+
+  const openActionsMenu = () => {
+    hapticFeedback.light();
+    setShowActionsMenu(true);
+    Animated.spring(menuAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 9,
+      tension: 90,
+    }).start();
+  };
+
+  const closeActionsMenu = () => {
+    Animated.timing(menuAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => setShowActionsMenu(false));
+  };
+
+  const toggleActionsMenu = () => {
+    if (showActionsMenu) {
+      closeActionsMenu();
+    } else {
+      openActionsMenu();
+    }
+  };
+
+  const handleDotsPressIn = () => {
+    Animated.spring(dotsScale, { toValue: 0.85, useNativeDriver: true, friction: 5 }).start();
+  };
+
+  const handleDotsPressOut = () => {
+    Animated.spring(dotsScale, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+  };
+
+  const handleMenuEdit = () => {
+    closeActionsMenu();
+    handleEdit();
+  };
+
+  const handleMenuDelete = () => {
+    closeActionsMenu();
+    handleDelete();
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -445,18 +498,61 @@ export default function HabitDetailsScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>{habit.name}</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleDelete} style={styles.headerIconButton} disabled={deleting}>
-            {deleting ? (
-              <ActivityIndicator size={18} color={colors.danger} />
-            ) : (
-              <Icon name="trash" size={20} color={colors.danger} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleEdit} style={styles.headerIconButton}>
-            <Icon name="edit" size={20} color={themeColor} />
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: dotsScale }] }}>
+            <TouchableOpacity
+              onPress={toggleActionsMenu}
+              onPressIn={handleDotsPressIn}
+              onPressOut={handleDotsPressOut}
+              style={styles.headerIconButton}
+              disabled={deleting}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {deleting ? (
+                <ActivityIndicator size={18} color={colors.danger} />
+              ) : (
+                <Icon name="more" size={22} color={colors.textPrimary} />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </View>
+
+      {/* Menu dropdown: Editar / Excluir */}
+      <Modal
+        visible={showActionsMenu}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeActionsMenu}
+      >
+        <Pressable style={styles.actionsMenuOverlay} onPress={closeActionsMenu}>
+          <Animated.View
+            style={[
+              styles.actionsMenu,
+              {
+                top: insets.top + 56,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                opacity: menuAnim,
+                transform: [
+                  { scale: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+                  { translateY: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity style={styles.actionsMenuItem} onPress={handleMenuEdit} activeOpacity={0.7}>
+              <Icon name="edit" size={18} color={themeColor} />
+              <Text style={[styles.actionsMenuItemText, { color: colors.textPrimary }]}>Editar</Text>
+            </TouchableOpacity>
+            <View style={[styles.actionsMenuDivider, { backgroundColor: colors.border }]} />
+            <TouchableOpacity style={styles.actionsMenuItem} onPress={handleMenuDelete} activeOpacity={0.7}>
+              <Icon name="trash" size={18} color={colors.danger} />
+              <Text style={[styles.actionsMenuItemText, { color: colors.danger }]}>Excluir</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
+      </Modal>
 
       <ScrollView
         ref={scrollViewRef}
@@ -780,6 +876,39 @@ const styles = StyleSheet.create({
   },
   notifButtonLabel: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   notifButtonSummary: { fontSize: 12, fontWeight: '500' },
+
+  // Menu de ações (Editar / Excluir)
+  actionsMenuOverlay: {
+    flex: 1,
+  },
+  actionsMenu: {
+    position: 'absolute',
+    right: 20,
+    minWidth: 170,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  actionsMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  actionsMenuItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  actionsMenuDivider: {
+    height: 1,
+    marginHorizontal: 8,
+  },
 
   // Modal
   modalOverlay: {
