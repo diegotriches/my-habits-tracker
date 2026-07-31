@@ -1,13 +1,9 @@
 // app/habits/edit/[id].tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -18,300 +14,45 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
-import { HABIT_COLORS } from '@/constants/GameConfig';
-import { useHabits } from '@/hooks/useHabits';
-import { useAuth } from '@/hooks/useAuth';
-import { Habit, FrequencyGoalPeriod } from '@/types/database';
+import { HabitTypeIndicator } from '@/components/habits/HabitTypeIndicator';
+import { useEditHabitForm, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@/hooks/useEditHabitForm';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
-
-const TARGET_UNITS = {
-  volume: ['litros', 'ml', 'copos'],
-  distance: ['km', 'metros', 'passos'],
-  time: ['horas', 'minutos'],
-  count: ['páginas', 'exercícios', 'vezes', 'unidades'],
-  weight: ['kg', 'gramas'],
-};
-
-const MIN_NAME_LENGTH = 3;
-const MAX_NAME_LENGTH = 50;
-const MAX_DESCRIPTION_LENGTH = 200;
 
 export default function EditHabitScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
-  const { getHabit, updateHabit } = useHabits();
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // Basic state
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
-  const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
-
-  // Target
-  const [hasTarget, setHasTarget] = useState(false);
-  const [targetValue, setTargetValue] = useState('');
-  const [targetUnit, setTargetUnit] = useState('');
-  const [showTargetInline, setShowTargetInline] = useState(false);
-
-  // Frequency
-  const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
-  const [frequencyDays, setFrequencyDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
-  const [hasFrequencyGoal, setHasFrequencyGoal] = useState(false);
-  const [frequencyGoalValue, setFrequencyGoalValue] = useState(0);
-  const [frequencyGoalPeriod, setFrequencyGoalPeriod] = useState<FrequencyGoalPeriod>('week');
-  const [frequencyGoalCustomDays, setFrequencyGoalCustomDays] = useState(0);
-
-  // Modals
-  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
-
-  // Snapshot for frequency cancel
-  const frequencySnapshot = useRef<any>(null);
-
-  useEffect(() => {
-    loadHabit();
-  }, [id]);
-
-  const loadHabit = async () => {
-    const { data, error } = await getHabit(id as string);
-
-    if (error || !data) {
-      Alert.alert('Erro', 'Não foi possível carregar o hábito');
-      router.back();
-      return;
-    }
-
-    const h = data as Habit;
-
-    setName(h.name);
-    setDescription(h.description || '');
-    setHabitType(h.type);
-    setSelectedColor(h.color);
-
-    setHasTarget(h.has_target);
-    if (h.has_target) {
-      setTargetValue(h.target_value?.toString() || '');
-      setTargetUnit(h.target_unit || '');
-    }
-
-    setFrequencyType(h.frequency_type || 'daily');
-    setFrequencyDays(h.frequency_days || [0, 1, 2, 3, 4, 5, 6]);
-
-    const goalValue = (h as any).frequency_goal_value;
-    const goalPeriod = (h as any).frequency_goal_period;
-    const goalCustomDays = (h as any).frequency_goal_custom_days;
-
-    if (goalValue && goalValue > 0) {
-      setHasFrequencyGoal(true);
-      setFrequencyGoalValue(goalValue);
-      setFrequencyGoalPeriod(goalPeriod || 'week');
-      setFrequencyGoalCustomDays(goalCustomDays || 0);
-    }
-
-    setLoading(false);
-  };
-
-  // ===== SUMMARIES =====
-
-  const getFrequencySummary = (): string => {
-    if (hasFrequencyGoal) {
-      const periodLabel = frequencyGoalPeriod === 'week' ? 'semana'
-        : frequencyGoalPeriod === 'month' ? 'mês'
-        : `${frequencyGoalCustomDays || '?'} dias`;
-      return frequencyGoalValue > 0
-        ? `${frequencyGoalValue}x por ${periodLabel}`
-        : 'Meta personalizada';
-    }
-    if (frequencyType === 'weekly') {
-      if (frequencyDays.length === 7) return 'Todos os dias';
-      if (frequencyDays.length === 0) return 'Nenhum dia';
-      const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      if (frequencyDays.length <= 3) {
-        return frequencyDays.map(d => dayLabels[d]).join(', ');
-      }
-      return `${frequencyDays.length} dias/semana`;
-    }
-    return 'Todos os dias';
-  };
-
-  const getTargetSummary = (): string => {
-    if (!hasTarget) return 'Desativada';
-    if (targetValue && targetUnit) return `${targetValue} ${targetUnit}/dia`;
-    return 'Configurar...';
-  };
-
-  // ===== FREQUENCY MODAL HANDLERS =====
-
-  const openFrequencyModal = () => {
-    frequencySnapshot.current = {
-      frequencyType, frequencyDays: [...frequencyDays],
-      hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays,
-    };
-    hapticFeedback.light();
-    setShowFrequencyModal(true);
-  };
-
-  const cancelFrequencyModal = () => {
-    if (frequencySnapshot.current) {
-      const s = frequencySnapshot.current;
-      setFrequencyType(s.frequencyType);
-      setFrequencyDays(s.frequencyDays);
-      setHasFrequencyGoal(s.hasFrequencyGoal);
-      setFrequencyGoalValue(s.frequencyGoalValue);
-      setFrequencyGoalPeriod(s.frequencyGoalPeriod);
-      setFrequencyGoalCustomDays(s.frequencyGoalCustomDays);
-    }
-    setShowFrequencyModal(false);
-  };
-
-  const confirmFrequencyModal = () => {
-    frequencySnapshot.current = null;
-    setShowFrequencyModal(false);
-  };
-
-  // ===== VALIDATION & SUBMIT =====
-
-  const getMaxForPeriod = (): number => {
-    switch (frequencyGoalPeriod) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return frequencyGoalCustomDays || 9999;
-    }
-  };
-
-  const validateForm = (): string | null => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return 'Digite um nome para o hábito';
-    if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
-    if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
-    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
-
-    if (hasTarget) {
-      const value = parseFloat(targetValue);
-      if (!targetValue || isNaN(value)) return 'Digite um valor válido para a meta';
-      if (value <= 0) return 'O valor da meta deve ser maior que zero';
-      if (value > 999999) return 'O valor da meta é muito alto';
-      if (!targetUnit.trim()) return 'Selecione uma unidade para a meta';
-    }
-
-    if (hasFrequencyGoal) {
-      if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
-      if (frequencyGoalValue > getMaxForPeriod()) return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
-      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
-    }
-
-    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) return 'Selecione pelo menos um dia da semana';
-
-    return null;
-  };
-
-  const handleSubmit = async () => {
-    Keyboard.dismiss();
-    const validationError = validateForm();
-    if (validationError) {
-      hapticFeedback.error();
-      Alert.alert('Erro', validationError);
-      return;
-    }
-
-    if (!user?.id) {
-      Alert.alert('Erro', 'Usuário não autenticado');
-      return;
-    }
-
-    hapticFeedback.medium();
-    setSaving(true);
-
-    try {
-      const updates: any = {
-        name: name.trim(),
-        description: description.trim() || null,
-        color: selectedColor,
-        has_target: hasTarget,
-        target_value: hasTarget ? parseFloat(targetValue) : null,
-        target_unit: hasTarget ? targetUnit.trim() : null,
-        frequency_type: frequencyType,
-        frequency_days: frequencyType === 'weekly' ? frequencyDays : null,
-        frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
-        frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
-        frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom'
-          ? frequencyGoalCustomDays : null,
-      };
-
-      const { error: habitError } = await updateHabit(id as string, updates);
-
-      if (habitError) {
-        setSaving(false);
-        Alert.alert('Erro', habitError);
-        return;
-      }
-
-      setSaving(false);
-      hapticFeedback.success();
-      Alert.alert('Sucesso!', 'Hábito atualizado com sucesso!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } catch (error) {
-      setSaving(false);
-      Alert.alert('Erro', 'Ocorreu um erro ao salvar o hábito');
-    }
-  };
-
-  const getAllUnits = () => Object.values(TARGET_UNITS).flat();
-
-  // ===== BOTTOM SHEET MODAL (apenas frequência) =====
-
-  const BottomSheetModal = ({
-    visible, onCancel, onConfirm, title, children,
-  }: {
-    visible: boolean; onCancel: () => void; onConfirm: () => void;
-    title: string; children: React.ReactNode;
-  }) => (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
-      <View style={styles.modalOverlay}>
-        <Pressable style={{ flex: 1 }} onPress={onCancel} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <View style={styles.modalHandle}>
-              <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
-            </View>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{title}</Text>
-              <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Icon name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              style={{ maxHeight: 400 }}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              bounces={false}
-            >
-              {children}
-            </ScrollView>
-            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-              <TouchableOpacity
-                style={[styles.modalConfirmButton, { backgroundColor: colors.primary }]}
-                onPress={onConfirm}
-              >
-                <Text style={styles.modalConfirmText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
-  );
-
-  // ===== RENDER =====
+  const {
+    loading,
+    saving,
+    name, setName,
+    description, setDescription,
+    habitType,
+    selectedColor, setSelectedColor,
+    hasTarget, setHasTarget,
+    targetValue, setTargetValue,
+    targetUnit, setTargetUnit,
+    showTargetInline, setShowTargetInline,
+    frequencyType, setFrequencyType,
+    frequencyDays, setFrequencyDays,
+    hasFrequencyGoal, setHasFrequencyGoal,
+    frequencyGoalValue, setFrequencyGoalValue,
+    frequencyGoalPeriod, setFrequencyGoalPeriod,
+    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    showFrequencyModal,
+    openFrequencyModal,
+    cancelFrequencyModal,
+    confirmFrequencyModal,
+    getFrequencySummary,
+    getTargetSummary,
+    getAllUnits,
+    handleSubmit,
+  } = useEditHabitForm(id as string);
 
   if (loading) {
     return (
@@ -324,10 +65,7 @@ export default function EditHabitScreen() {
   const isNegative = habitType === 'negative';
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* HEADER */}
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -353,26 +91,7 @@ export default function EditHabitScreen() {
           {/* TIPO */}
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>Tipo de Hábito</Text>
-            <View style={[
-              styles.typeIndicator,
-              {
-                backgroundColor: isNegative ? colors.warningLight : colors.successLight,
-                borderColor: isNegative ? colors.warning : colors.success,
-              }
-            ]}>
-              <Icon name={isNegative ? "xCircle" : "check"} size={20} color={isNegative ? colors.warning : colors.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.typeLabel, { color: isNegative ? colors.warning : colors.success }]}>
-                  {isNegative ? 'Hábito Negativo' : 'Hábito Positivo'}
-                </Text>
-                <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
-                  {isNegative ? 'Evitar algo que você quer parar' : 'Criar um novo hábito saudável'}
-                </Text>
-              </View>
-              <View style={[styles.lockBadge, { backgroundColor: colors.surface }]}>
-                <Icon name="lock" size={12} color={colors.textTertiary} />
-              </View>
-            </View>
+            <HabitTypeIndicator isNegative={isNegative} />
           </View>
 
           {/* NOME */}
@@ -520,13 +239,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   cancelButton: { fontSize: 16 },
@@ -535,103 +249,23 @@ const styles = StyleSheet.create({
   section: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
   helperText: { fontSize: 12, marginTop: 4 },
-  input: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    borderWidth: 1,
-  },
+  input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, borderWidth: 1 },
   textArea: { height: 70, textAlignVertical: 'top' },
-  typeIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
-  typeLabel: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  typeDescription: { fontSize: 12 },
-  lockBadge: { padding: 6, borderRadius: 6 },
   separator: { borderTopWidth: 1, marginVertical: 8, marginBottom: 16 },
   summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 10,
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14,
+    borderWidth: 1, marginBottom: 10, gap: 12,
   },
-  summaryIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  summaryIconCircle: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   summaryTextContainer: { flex: 1 },
   summaryLabel: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   summaryValue: { fontSize: 12, fontWeight: '500' },
-  inlinePanel: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-    marginTop: -4,
-    marginBottom: 10,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 4,
-  },
+  inlinePanel: { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: -4, marginBottom: 10 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1.5,
-    marginTop: 8,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12,
+    padding: 14, borderWidth: 1.5, marginTop: 8,
   },
   tipText: { flex: 1, fontSize: 13, lineHeight: 19 },
   tipBold: { fontWeight: '700' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  modalHandle: { alignItems: 'center', paddingTop: 12, paddingBottom: 4 },
-  modalHandleBar: { width: 40, height: 4, borderRadius: 2 },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  modalTitle: { fontSize: 18, fontWeight: '700' },
-  modalFooter: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'android' ? 48 : 16,
-    borderTopWidth: 1,
-  },
-  modalConfirmButton: {
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalConfirmText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
 });
