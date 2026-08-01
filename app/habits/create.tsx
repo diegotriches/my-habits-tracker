@@ -1,28 +1,8 @@
 // app/habits/create.tsx
-import { FrequencySelector } from '@/components/habits/FrequencySelector';
-import { TargetInput } from '@/components/habits/TargetInput';
-import { ProgressNotificationSettings, ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
-import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Icon } from '@/components/ui/Icon';
-import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
-import { SuccessToast } from '@/components/ui/SuccessToast';
-import { HABIT_COLORS } from '@/constants/GameConfig';
-import { useHabits } from '@/hooks/useHabits';
-import { notificationService } from '@/services/notificationService';
-import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
-import { supabase } from '@/services/supabase';
-import { FrequencyGoalPeriod } from '@/types/database';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { hapticFeedback } from '@/utils/haptics';
+import React, { useMemo } from 'react';
 import {
-  Keyboard,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   Switch,
   Text,
@@ -30,429 +10,81 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { FrequencySelector } from '@/components/habits/FrequencySelector';
+import { TargetInput } from '@/components/habits/TargetInput';
+import { ProgressNotificationSettings } from '@/components/habits/ProgressNotificationSettings';
+import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
+import { HabitTypeSelector } from '@/components/habits/HabitTypeSelector';
+import { CreateFormBottomSheetModal } from '@/components/habits/CreateFormBottomSheetModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Icon } from '@/components/ui/Icon';
+import { LoadingOverlay } from '@/components/ui/LoadingOverlay';
+import { SuccessToast } from '@/components/ui/SuccessToast';
+import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@/constants/HabitForm';
+import { MAX_REMINDERS, useCreateHabitForm } from '@/hooks/useCreateHabitForm';
+import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '@/hooks/useAuth';
 import { styles as createStylesFn } from './createStyles';
-
-const remindersTable = () => (supabase.from('reminders') as any);
-
-const MAX_REMINDERS = 5;
-const MIN_NAME_LENGTH = 3;
-const MAX_NAME_LENGTH = 50;
-const MAX_DESCRIPTION_LENGTH = 200;
-
-const TARGET_UNITS = {
-  volume: ['litros', 'ml', 'copos'],
-  distance: ['km', 'metros', 'passos'],
-  time: ['horas', 'minutos'],
-  count: ['páginas', 'exercícios', 'vezes', 'unidades'],
-  weight: ['kg', 'gramas'],
-};
 
 export default function CreateHabitScreen() {
   const { colors } = useTheme();
-  const { user } = useAuth();
-  const { createHabit } = useHabits();
+  // Memoizado: createStylesFn(colors) recriava o objeto de estilos
+  // inteiro a cada render (a cada tecla digitada em qualquer campo),
+  // o que também anula a memoização dos componentes filhos que
+  // recebem `styles` como prop.
+  const styles = useMemo(() => createStylesFn(colors), [colors]);
 
-  const [loading, setLoading] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [habitType, setHabitType] = useState<'positive' | 'negative'>('positive');
-  const [selectedColor, setSelectedColor] = useState<string>(HABIT_COLORS[0]);
-
-  // Target
-  const [hasTarget, setHasTarget] = useState(false);
-  const [targetValue, setTargetValue] = useState('');
-  const [targetUnit, setTargetUnit] = useState('');
-  const [showTargetInline, setShowTargetInline] = useState(false);
-
-  // Frequency
-  const [frequencyType, setFrequencyType] = useState<'daily' | 'weekly' | 'custom'>('daily');
-  const [frequencyDays, setFrequencyDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
-  const [hasFrequencyGoal, setHasFrequencyGoal] = useState(false);
-  const [frequencyGoalValue, setFrequencyGoalValue] = useState(0);
-  const [frequencyGoalPeriod, setFrequencyGoalPeriod] = useState<FrequencyGoalPeriod>('week');
-  const [frequencyGoalCustomDays, setFrequencyGoalCustomDays] = useState(0);
-
-  // Reminders
-  const [hasPermission, setHasPermission] = useState(false);
-  const [reminders, setReminders] = useState<Array<{ id: string; time: Date }>>([]);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Progress notifications
-  const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>({
-    enabled: false,
-    morningEnabled: true,
-    morningTime: '08:00:00',
-    afternoonEnabled: true,
-    afternoonTime: '15:00:00',
-    eveningEnabled: true,
-    eveningTime: '21:00:00',
-  });
-
-  // Modals
-  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
-  const [showRemindersModal, setShowRemindersModal] = useState(false);
-
-  // Snapshots
-  const frequencySnapshot = useRef<any>(null);
-  const remindersSnapshot = useRef<any>(null);
-
-  // Dialogs & toasts
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [showErrorToast, setShowErrorToast] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
-    checkNotificationPermission();
-  }, []);
-
-  const checkNotificationPermission = async () => {
-    const permission = await notificationService.hasPermission();
-    setHasPermission(permission);
-  };
-
-  const requestNotificationPermission = async () => {
-    const granted = await notificationService.requestPermissions();
-    setHasPermission(granted);
-    if (!granted) {
-      setErrorMessage('Permissão de notificações negada. Ative nas configurações do dispositivo.');
-      setShowErrorToast(true);
-    }
-  };
-
-  const getMaxForPeriod = (): number => {
-    switch (frequencyGoalPeriod) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return frequencyGoalCustomDays || 9999;
-    }
-  };
-
-  const validateForm = (): string | null => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return 'Digite um nome para o hábito';
-    if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
-    if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
-    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
-
-    if (hasTarget) {
-      const value = parseFloat(targetValue);
-      if (!targetValue || isNaN(value)) return 'Digite um valor válido para a meta';
-      if (value <= 0) return 'O valor da meta deve ser maior que zero';
-      if (value > 999999) return 'O valor da meta é muito alto';
-      if (!targetUnit.trim()) return 'Selecione uma unidade para a meta';
-    }
-
-    if (hasFrequencyGoal) {
-      if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
-      if (frequencyGoalValue > getMaxForPeriod()) return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
-      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
-    }
-
-    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0)
-      return 'Selecione pelo menos um dia da semana';
-
-    return null;
-  };
-
-  const formatTime = (date: Date) => {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
-
-  // ===== SUMMARIES =====
-
-  const getFrequencySummary = (): string => {
-    if (hasFrequencyGoal) {
-      const periodLabel = frequencyGoalPeriod === 'week' ? 'semana'
-        : frequencyGoalPeriod === 'month' ? 'mês'
-        : `${frequencyGoalCustomDays || '?'} dias`;
-      return frequencyGoalValue > 0 ? `${frequencyGoalValue}x por ${periodLabel}` : 'Meta personalizada';
-    }
-    if (frequencyType === 'weekly') {
-      if (frequencyDays.length === 7) return 'Todos os dias';
-      if (frequencyDays.length === 0) return 'Nenhum dia';
-      const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      if (frequencyDays.length <= 3) return frequencyDays.map(d => dayLabels[d]).join(', ');
-      return `${frequencyDays.length} dias/semana`;
-    }
-    return 'Todos os dias';
-  };
-
-  const getTargetSummary = (): string => {
-    if (!hasTarget) return 'Desativada';
-    if (targetValue && targetUnit) return `${targetValue} ${targetUnit}/dia`;
-    return 'Configurar...';
-  };
-
-  const getRemindersSummary = (): string => {
-    const parts: string[] = [];
-    if (reminders.length > 0) parts.push(`${reminders.length} ${reminders.length === 1 ? 'lembrete' : 'lembretes'}`);
-    if (progressNotificationConfig.enabled) parts.push('progresso ativo');
-    return parts.length > 0 ? parts.join(' · ') : 'Nenhum configurado';
-  };
-
-  // ===== MODAL HANDLERS =====
-
-  const openFrequencyModal = () => {
-    frequencySnapshot.current = {
-      frequencyType, frequencyDays: [...frequencyDays],
-      hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays,
-    };
-    hapticFeedback.light();
-    setShowFrequencyModal(true);
-  };
-
-  const cancelFrequencyModal = () => {
-    if (frequencySnapshot.current) {
-      const s = frequencySnapshot.current;
-      setFrequencyType(s.frequencyType);
-      setFrequencyDays(s.frequencyDays);
-      setHasFrequencyGoal(s.hasFrequencyGoal);
-      setFrequencyGoalValue(s.frequencyGoalValue);
-      setFrequencyGoalPeriod(s.frequencyGoalPeriod);
-      setFrequencyGoalCustomDays(s.frequencyGoalCustomDays);
-    }
-    setShowFrequencyModal(false);
-  };
-
-  const confirmFrequencyModal = () => {
-    frequencySnapshot.current = null;
-    setShowFrequencyModal(false);
-  };
-
-  const openRemindersModal = () => {
-    remindersSnapshot.current = {
-      reminders: reminders.map(r => ({ ...r })),
-      progressNotificationConfig: { ...progressNotificationConfig },
-    };
-    hapticFeedback.light();
-    setShowRemindersModal(true);
-  };
-
-  const cancelRemindersModal = () => {
-    if (remindersSnapshot.current) {
-      const s = remindersSnapshot.current;
-      setReminders(s.reminders);
-      setProgressNotificationConfig(s.progressNotificationConfig);
-    }
-    setShowTimePicker(false);
-    setShowRemindersModal(false);
-  };
-
-  const confirmRemindersModal = () => {
-    remindersSnapshot.current = null;
-    setShowTimePicker(false);
-    setShowRemindersModal(false);
-  };
-
-  const handleAddReminder = () => {
-    if (reminders.length >= MAX_REMINDERS) {
-      hapticFeedback.error();
-      setErrorMessage(`Você pode ter no máximo ${MAX_REMINDERS} lembretes por hábito`);
-      setShowErrorToast(true);
-      return;
-    }
-    const timeString = formatTime(currentTime);
-    const exists = reminders.some(r => formatTime(r.time) === timeString);
-    if (exists) {
-      hapticFeedback.warning();
-      setErrorMessage('Já existe um lembrete neste horário');
-      setShowErrorToast(true);
-      return;
-    }
-    const t = new Date();
-    t.setHours(currentTime.getHours());
-    t.setMinutes(currentTime.getMinutes());
-    t.setSeconds(0); t.setMilliseconds(0);
-    hapticFeedback.success();
-    setReminders([...reminders, { id: Math.random().toString(), time: t }]);
-    setShowTimePicker(false);
-    setCurrentTime(new Date());
-  };
-
-  const handleRemoveReminder = (id: string) => {
-    hapticFeedback.medium();
-    setReminders(reminders.filter(r => r.id !== id));
-  };
-
-  const onTimeChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-      if (event.type === 'set' && date) {
-        setCurrentTime(date);
-        setTimeout(() => {
-          const timeString = formatTime(date);
-          const exists = reminders.some(r => formatTime(r.time) === timeString);
-          if (exists) { hapticFeedback.warning(); setErrorMessage('Já existe um lembrete neste horário'); setShowErrorToast(true); return; }
-          if (reminders.length >= MAX_REMINDERS) { hapticFeedback.error(); setErrorMessage(`Máximo ${MAX_REMINDERS} lembretes`); setShowErrorToast(true); return; }
-          const t = new Date(); t.setHours(date.getHours()); t.setMinutes(date.getMinutes()); t.setSeconds(0); t.setMilliseconds(0);
-          hapticFeedback.success();
-          setReminders(prev => [...prev, { id: Math.random().toString(), time: t }]);
-          setCurrentTime(new Date());
-        }, 100);
-      } else { hapticFeedback.light(); }
-    } else {
-      if (date) setCurrentTime(date);
-    }
-  };
-
-  // ===== SUBMIT =====
-
-  const handleSubmit = async () => {
-    Keyboard.dismiss();
-    const validationError = validateForm();
-    if (validationError) {
-      hapticFeedback.error();
-      setErrorMessage(validationError);
-      setShowErrorToast(true);
-      return;
-    }
-
-    if (!user?.id) {
-      setErrorMessage('Usuário não autenticado');
-      setShowErrorToast(true);
-      return;
-    }
-
-    hapticFeedback.medium();
-    setLoading(true);
-
-    const habitData: any = {
-      name: name.trim(),
-      description: description.trim() || undefined,
-      type: habitType,
-      frequency_type: frequencyType,
-      frequency_days: frequencyType === 'weekly' ? frequencyDays : null,
-      has_target: hasTarget,
-      target_value: hasTarget ? parseFloat(targetValue) : null,
-      target_unit: hasTarget ? targetUnit.trim() : null,
-      frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
-      frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
-      frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom' ? frequencyGoalCustomDays : null,
-      color: selectedColor,
-      icon: habitType === 'negative' ? 'xCircle' : 'star',
-    };
-
-    const { data: habit, error } = await createHabit(habitData);
-
-    if (error || !habit) {
-      setLoading(false);
-      hapticFeedback.error();
-      setErrorMessage('Não foi possível criar o hábito. Tente novamente.');
-      setShowErrorToast(true);
-      return;
-    }
-
-    if (reminders.length > 0) {
-      for (const reminder of reminders) {
-        const timeString = formatTime(reminder.time);
-        try {
-          const notificationIds = await notificationService.scheduleWeeklyReminder(
-            habit.id, habit.name, timeString, [0, 1, 2, 3, 4, 5, 6], reminder.id
-          );
-          await remindersTable().insert({
-            habit_id: habit.id, time: timeString, days_of_week: [0, 1, 2, 3, 4, 5, 6],
-            is_active: true, notification_ids: notificationIds,
-          });
-        } catch (e) { console.error('Erro ao criar lembrete:', e); }
-      }
-    }
-
-    if (progressNotificationConfig.enabled) {
-      try {
-        await (supabase.from('habit_progress_notifications') as any).insert({
-          habit_id: habit.id, user_id: user.id, enabled: true,
-          morning_enabled: progressNotificationConfig.morningEnabled,
-          morning_time: progressNotificationConfig.morningTime,
-          afternoon_enabled: progressNotificationConfig.afternoonEnabled,
-          afternoon_time: progressNotificationConfig.afternoonTime,
-          evening_enabled: progressNotificationConfig.eveningEnabled,
-          evening_time: progressNotificationConfig.eveningTime,
-        });
-        await progressNotificationScheduler.scheduleProgressNotifications(habit.id, user.id);
-      } catch (e) { console.warn('Erro ao criar notificações de progresso:', e); }
-    } else {
-      try {
-        await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
-      } catch (e) { console.warn('Erro ao criar configuração padrão:', e); }
-    }
-
-    setLoading(false);
-    hapticFeedback.success();
-    setShowSuccessToast(true);
-    setTimeout(() => router.back(), 1500);
-  };
-
-  const handleCancel = () => {
-    hapticFeedback.light();
-    if (name.trim() || description.trim() || reminders.length > 0) {
-      setShowCancelConfirm(true);
-    } else {
-      router.back();
-    }
-  };
-
-  const getAllUnits = () => Object.values(TARGET_UNITS).flat();
-  const styles = createStylesFn(colors);
-
-  // ===== BOTTOM SHEET MODAL =====
-
-  const BottomSheetModal = ({
-    visible, onCancel, onConfirm, title, children,
-  }: {
-    visible: boolean; onCancel: () => void; onConfirm: () => void;
-    title: string; children: React.ReactNode;
-  }) => (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
-      <Pressable style={styles.modalOverlay} onPress={onCancel}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalKeyboardView}
-        >
-          <Pressable style={[styles.modalContent, { backgroundColor: colors.background }]} onPress={Keyboard.dismiss}>
-            <View style={styles.modalHandle}>
-              <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
-            </View>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{title}</Text>
-              <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Icon name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              style={styles.modalBody}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {children}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-            <View style={[styles.modalFooter, { borderTopColor: colors.border }]}>
-              <TouchableOpacity
-                style={[styles.modalConfirmButton, { backgroundColor: colors.primary }]}
-                onPress={onConfirm}
-              >
-                <Text style={styles.modalConfirmText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Pressable>
-    </Modal>
-  );
-
-  // ===== RENDER =====
+  const {
+    loading,
+    name, setName,
+    description, setDescription,
+    habitType, setHabitType,
+    selectedColor, setSelectedColor,
+    hasTarget, setHasTarget,
+    targetValue, setTargetValue,
+    targetUnit, setTargetUnit,
+    showTargetInline, setShowTargetInline,
+    frequencyType, setFrequencyType,
+    frequencyDays, setFrequencyDays,
+    hasFrequencyGoal, setHasFrequencyGoal,
+    frequencyGoalValue, setFrequencyGoalValue,
+    frequencyGoalPeriod, setFrequencyGoalPeriod,
+    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    hasPermission,
+    requestNotificationPermission,
+    reminders,
+    showTimePicker, setShowTimePicker,
+    currentTime, setCurrentTime,
+    progressNotificationConfig, setProgressNotificationConfig,
+    showFrequencyModal,
+    openFrequencyModal,
+    cancelFrequencyModal,
+    confirmFrequencyModal,
+    showRemindersModal,
+    openRemindersModal,
+    cancelRemindersModal,
+    confirmRemindersModal,
+    handleAddReminder,
+    handleRemoveReminder,
+    onTimeChange,
+    formatTime,
+    getFrequencySummary,
+    getTargetSummary,
+    getRemindersSummary,
+    getAllUnits,
+    handleSubmit,
+    handleCancel,
+    showCancelConfirm,
+    confirmDiscard,
+    dismissDiscardConfirm,
+    showSuccessToast, setShowSuccessToast,
+    showErrorToast, setShowErrorToast,
+    errorMessage,
+  } = useCreateHabitForm();
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.container}>
         <LoadingOverlay visible={loading} message="Criando hábito..." />
         <SuccessToast visible={showSuccessToast} message="Hábito criado com sucesso!" onHide={() => setShowSuccessToast(false)} />
@@ -464,8 +96,8 @@ export default function CreateHabitScreen() {
           confirmText="Descartar"
           cancelText="Continuar Editando"
           confirmColor="danger"
-          onConfirm={() => { setShowCancelConfirm(false); router.back(); }}
-          onCancel={() => setShowCancelConfirm(false)}
+          onConfirm={confirmDiscard}
+          onCancel={dismissDiscardConfirm}
         />
 
         {/* HEADER */}
@@ -488,28 +120,7 @@ export default function CreateHabitScreen() {
           {/* TIPO DE HÁBITO */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
-            <View style={styles.habitTypeContainer}>
-              <TouchableOpacity
-                style={[styles.habitTypeOption, habitType === 'positive' && styles.habitTypeOptionPositive]}
-                onPress={() => { hapticFeedback.selection(); setHabitType('positive'); }}
-              >
-                <Icon name="check" size={20} color={habitType === 'positive' ? colors.success : colors.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.habitTypeLabel, habitType === 'positive' && styles.habitTypeLabelPositive]}>Positivo</Text>
-                  <Text style={styles.habitTypeDescription}>Criar novo hábito</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.habitTypeOption, habitType === 'negative' && styles.habitTypeOptionNegative]}
-                onPress={() => { hapticFeedback.selection(); setHabitType('negative'); }}
-              >
-                <Icon name="xCircle" size={20} color={habitType === 'negative' ? colors.warning : colors.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.habitTypeLabel, habitType === 'negative' && styles.habitTypeLabelNegative]}>Negativo</Text>
-                  <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+            <HabitTypeSelector habitType={habitType} onChange={setHabitType} styles={styles} colors={colors} />
           </View>
 
           {/* NOME */}
@@ -642,11 +253,13 @@ export default function CreateHabitScreen() {
         </ScrollView>
 
         {/* MODAL: FREQUÊNCIA */}
-        <BottomSheetModal
+        <CreateFormBottomSheetModal
           visible={showFrequencyModal}
           onCancel={cancelFrequencyModal}
           onConfirm={confirmFrequencyModal}
           title="Frequência"
+          styles={styles}
+          colors={colors}
         >
           <FrequencySelector
             frequencyType={frequencyType}
@@ -662,14 +275,16 @@ export default function CreateHabitScreen() {
             onFrequencyGoalPeriodChange={setFrequencyGoalPeriod}
             onFrequencyGoalCustomDaysChange={setFrequencyGoalCustomDays}
           />
-        </BottomSheetModal>
+        </CreateFormBottomSheetModal>
 
         {/* MODAL: LEMBRETES */}
-        <BottomSheetModal
+        <CreateFormBottomSheetModal
           visible={showRemindersModal}
           onCancel={cancelRemindersModal}
           onConfirm={confirmRemindersModal}
           title="Lembretes"
+          styles={styles}
+          colors={colors}
         >
           {!hasPermission && (
             <TouchableOpacity
@@ -759,7 +374,7 @@ export default function CreateHabitScreen() {
               />
             </>
           )}
-        </BottomSheetModal>
+        </CreateFormBottomSheetModal>
       </View>
     </KeyboardAvoidingView>
   );
