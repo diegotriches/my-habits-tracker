@@ -16,11 +16,11 @@ import { useHabits } from '@/hooks/useHabits';
 import { useHabitOrder } from '@/hooks/useHabitOrder';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
+import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
-import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 import { router } from 'expo-router';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Image,
   RefreshControl,
@@ -66,16 +66,32 @@ export default function HomeScreen() {
     closeCelebration,
   } = useCelebration();
 
-  // Ordem arrastável
-  const habitIds = habits.map(h => h.id);
+  // Ordem arrastável — memoizado para não recalcular a cada render,
+  // só quando a lista de hábitos de fato mudar.
+  const habitIds = useMemo(() => habits.map(h => h.id), [habits]);
   const { orderedIds, updateOrder } = useHabitOrder(habitIds);
 
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [showUncompleteConfirm, setShowUncompleteConfirm] = useState(false);
-  const [selectedHabitId, setSelectedHabitId] = useState('');
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+  const {
+    showSuccessToast, setShowSuccessToast, successMessage,
+    showUncompleteConfirm, handleConfirmUncomplete, cancelUncomplete,
+    showProgressModal, selectedHabit, handleConfirmProgress, cancelProgress,
+    handleDayPress,
+    handleComplete,
+  } = useHabitCompletionActions({
+    habits,
+    userId: user?.id,
+    weeklyCompletions,
+    selectedWeekStart,
+    getStreak,
+    completeHabit,
+    uncompleteHabit,
+    isCompletedToday,
+    updateStreakWithFrequency,
+    fetchStreaks,
+    celebrate,
+    refetchCompletions,
+    refetchWeeklyCompletions,
+  });
 
   const loading = habitsLoading || completionsLoading;
 
@@ -91,8 +107,8 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (habits.length > 0) {
-      const habitIds = habits.map(h => h.id);
-      fetchStreaks(habitIds);
+      const ids = habits.map(h => h.id);
+      fetchStreaks(ids);
       checkExpiredStreaks(habits);
     }
   }, [habits]);
@@ -106,229 +122,33 @@ export default function HomeScreen() {
     refetchWeeklyCompletions(selectedWeekStart);
   }, [selectedWeekStart]);
 
-  const handleCreateHabit = () => router.push('/habits/create' as any);
-  const handleHabitPress = (habitId: string) => router.push(`/habits/${habitId}` as any);
+  const handleCreateHabit = useCallback(() => router.push('/habits/create' as any), []);
+  const handleHabitPress = useCallback((habitId: string) => router.push(`/habits/${habitId}` as any), []);
 
-  const handleEditProgress = (habitId: string) => {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit || !habit.has_target) return;
-    setSelectedHabit(habit);
-    setShowProgressModal(true);
-  };
-
-  const handleConfirmProgress = async (value: number, mode: 'add' | 'replace') => {
-    if (!selectedHabit || !user) return;
-
-    const retroDate = (window as any).__tempRetroDate;
-
-    if (retroDate) {
-      const result = await retroactiveCompletionService.completeRetroactively(
-        selectedHabit, retroDate, user.id, value
-      );
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(selectedHabit.id);
-        await fetchStreaks([selectedHabit.id]);
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-        await refetchCompletions();
-        await refetchWeeklyCompletions(selectedWeekStart);
-      } else {
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-      }
-      (window as any).__tempRetroDate = null;
-      setShowProgressModal(false);
-      setSelectedHabit(null);
-      return;
-    }
-
-    const streak = getStreak(selectedHabit.id);
-    const { data, error } = await completeHabit(selectedHabit, streak, value, mode);
-
-    if (!error && data) {
-      await updateStreakWithFrequency(selectedHabit.id, selectedHabit, true);
-      const finalValue = data.achievedValue || 0;
-      const percentage = selectedHabit.target_value
-        ? (finalValue / selectedHabit.target_value) * 100
-        : 0;
-      const isUpdate = 'wasUpdate' in data && data.wasUpdate;
-
-      if (isUpdate && mode === 'add') {
-        setSuccessMessage(`Adicionado ${value} ${selectedHabit.target_unit}! Total: ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
-      } else if (isUpdate && mode === 'replace') {
-        setSuccessMessage(`Atualizado para ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
-      } else {
-        setSuccessMessage(`Registrado ${finalValue} ${selectedHabit.target_unit} (${percentage.toFixed(0)}%)`);
-      }
-
-      setShowSuccessToast(true);
-      setTimeout(() => celebrate(), 1000);
-      await refetchWeeklyCompletions(selectedWeekStart);
-    }
-
-    setShowProgressModal(false);
-    setSelectedHabit(null);
-  };
-
-  const handleRetroactiveComplete = async (habit: Habit, date: Date) => {
-    if (!user) return;
-    const result = await retroactiveCompletionService.completeRetroactively(habit, date, user.id);
-    if (result.success) {
-      await retroactiveCompletionService.recalculateStreak(habit.id);
-      await fetchStreaks([habit.id]);
-      setSuccessMessage(result.message);
-      setShowSuccessToast(true);
-      await refetchCompletions();
-      await refetchWeeklyCompletions(selectedWeekStart);
-    } else {
-      setSuccessMessage(result.message);
-      setShowSuccessToast(true);
-    }
-  };
-
-  const handleComplete = async (habitId: string, achievedValue?: number, mode?: 'add' | 'replace') => {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit) return;
-
-    if (habit.has_target) {
-      if (achievedValue !== undefined && achievedValue > 0 && mode) {
-        const streak = getStreak(habitId);
-        const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
-        if (!error && data) {
-          await updateStreakWithFrequency(habitId, habit, true);
-          const finalValue = data.achievedValue || 0;
-          const percentage = habit.target_value ? (finalValue / habit.target_value) * 100 : 0;
-          const isUpdate = 'wasUpdate' in data && data.wasUpdate;
-          if (isUpdate && mode === 'add') {
-            setSuccessMessage(`Adicionado ${achievedValue} ${habit.target_unit}! Total: ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
-          } else if (isUpdate && mode === 'replace') {
-            setSuccessMessage(`Atualizado para ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
-          } else {
-            setSuccessMessage(`Registrado ${finalValue} ${habit.target_unit} (${percentage.toFixed(0)}%)`);
-          }
-          setShowSuccessToast(true);
-          setTimeout(() => celebrate(), 1000);
-          await refetchWeeklyCompletions(selectedWeekStart);
-        } else if (error) {
-          setSuccessMessage('Erro ao registrar progresso');
-          setShowSuccessToast(true);
-        }
-      }
-      return;
-    }
-
-    const isCompleted = isCompletedToday(habitId);
-    if (isCompleted) {
-      setSelectedHabitId(habitId);
-      setShowUncompleteConfirm(true);
-      return;
-    }
-
-    const streak = getStreak(habitId);
-    const { data, error } = await completeHabit(habit, streak, achievedValue, mode);
-
-    if (error) {
-      setSuccessMessage('Erro ao completar hábito');
-      setShowSuccessToast(true);
-    } else if (data) {
-      const streakResult = await updateStreakWithFrequency(habitId, habit, true);
-      const updatedStreak = streakResult.data;
-      const streakDays = updatedStreak?.current_streak || 0;
-      setSuccessMessage(streakDays > 1 ? `Completado! ${streakDays} dias seguidos!` : 'Completado!');
-      setShowSuccessToast(true);
-      setTimeout(() => celebrate(), 1000);
-      await refetchWeeklyCompletions(selectedWeekStart);
-    }
-  };
-
-  const handleDayPress = async (habit: Habit, date: Date) => {
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
-    const isPast = date < today && !isToday;
-
-    if (isPast && user) {
-      const completion = weeklyCompletions.find(c => {
-        const compDate = new Date(c.completed_at);
-        return compDate.toDateString() === date.toDateString() && c.habit_id === habit.id;
-      });
-
-      if (completion) {
-        setShowUncompleteConfirm(true);
-        setSelectedHabitId(habit.id);
-        (window as any).__tempRetroDate = date;
-      } else {
-        if (habit.has_target) {
-          setSelectedHabit(habit);
-          (window as any).__tempRetroDate = date;
-          setShowProgressModal(true);
-        } else {
-          await handleRetroactiveComplete(habit, date);
-        }
-      }
-      return;
-    }
-
-    if (isToday) {
-      if (habit.has_target) {
-        handleEditProgress(habit.id);
-      } else {
-        await handleComplete(habit.id);
-      }
-    }
-  };
-
-  const handleConfirmUncomplete = async () => {
-    const habit = habits.find(h => h.id === selectedHabitId);
-    if (!habit || !user) {
-      setShowUncompleteConfirm(false);
-      setSelectedHabitId('');
-      return;
-    }
-
-    const retroDate = (window as any).__tempRetroDate;
-
-    if (retroDate) {
-      const result = await retroactiveCompletionService.uncompleteRetroactively(habit, retroDate, user.id);
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        await fetchStreaks([habit.id]);
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-        await refetchCompletions();
-        await refetchWeeklyCompletions(selectedWeekStart);
-      } else {
-        setSuccessMessage(result.message);
-        setShowSuccessToast(true);
-      }
-      (window as any).__tempRetroDate = null;
-      setShowUncompleteConfirm(false);
-      setSelectedHabitId('');
-      return;
-    }
-
-    const { error } = await uncompleteHabit(selectedHabitId);
-    if (error) {
-      setSuccessMessage('Erro ao desmarcar hábito');
-      setShowSuccessToast(true);
-    } else {
-      if (habit) await updateStreakWithFrequency(selectedHabitId, habit, false);
-      setSuccessMessage('Hábito desmarcado');
-      setShowSuccessToast(true);
-      await refetchWeeklyCompletions(selectedWeekStart);
-    }
-
-    setShowUncompleteConfirm(false);
-    setSelectedHabitId('');
-  };
-
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     await Promise.all([
       refetchHabits(),
       refetchCompletions(),
       refetchWeeklyCompletions(selectedWeekStart),
       refetchProfile(),
     ]);
-  };
+  }, [refetchHabits, refetchCompletions, refetchWeeklyCompletions, selectedWeekStart, refetchProfile]);
+
+  const renderHabit = useCallback((item: Habit) => {
+    const isDueToday = isHabitDueToday(item);
+    return (
+      <HabitWeeklyRow
+        habit={item}
+        streak={getStreak(item.id)}
+        completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
+        onDayPress={handleDayPress}
+        onHabitPress={handleHabitPress}
+        isDueToday={isDueToday}
+        weekStart={selectedWeekStart}
+        onWeekChange={handleWeekChange}
+      />
+    );
+  }, [getStreak, weeklyCompletions, handleDayPress, handleHabitPress, selectedWeekStart, handleWeekChange]);
 
   if (habitsLoading && habits.length === 0) {
     return (
@@ -348,22 +168,6 @@ export default function HomeScreen() {
       </View>
     );
   }
-
-  const renderHabit = (item: Habit) => {
-    const isDueToday = isHabitDueToday(item);
-    return (
-      <HabitWeeklyRow
-        habit={item}
-        streak={getStreak(item.id)}
-        completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
-        onDayPress={handleDayPress}
-        onHabitPress={handleHabitPress}
-        isDueToday={isDueToday}
-        weekStart={selectedWeekStart}
-        onWeekChange={handleWeekChange}
-      />
-    );
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -385,7 +189,7 @@ export default function HomeScreen() {
         cancelText="Cancelar"
         confirmColor="danger"
         onConfirm={handleConfirmUncomplete}
-        onCancel={() => { setShowUncompleteConfirm(false); setSelectedHabitId(''); }}
+        onCancel={cancelUncomplete}
       />
 
       {selectedHabit && selectedHabit.has_target && (
@@ -396,7 +200,7 @@ export default function HomeScreen() {
           targetUnit={selectedHabit.target_unit || ''}
           currentValue={getCompletion(selectedHabit.id)?.value_achieved || 0}
           onConfirm={handleConfirmProgress}
-          onCancel={() => { setShowProgressModal(false); setSelectedHabit(null); }}
+          onCancel={cancelProgress}
         />
       )}
 
