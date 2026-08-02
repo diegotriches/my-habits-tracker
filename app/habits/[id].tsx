@@ -19,7 +19,7 @@ import { useHabitProgressNotifications } from '@/hooks/useHabitProgressNotificat
 import { useHabitCalendarActions } from '@/hooks/useHabitCalendarActions';
 import { hapticFeedback } from '@/utils/haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -30,8 +30,6 @@ export default function HabitDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { deleteHabit } = useHabits();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const scrollPositionRef = useRef(0);
 
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -40,6 +38,7 @@ export default function HabitDetailsScreen() {
 
   const {
     habit,
+    completions,
     streak,
     weekStats,
     monthStats,
@@ -50,7 +49,10 @@ export default function HabitDetailsScreen() {
     last90DaysData,
     loading,
     error,
-    refetch,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
+    refetchStreak,
   } = useHabitDetails(id as string);
 
   const { deleting, confirmDelete } = useDeleteHabitConfirm(id as string, habit?.name, deleteHabit);
@@ -69,15 +71,6 @@ export default function HabitDetailsScreen() {
     setShowSuccessToast(true);
   }, []);
 
-  // ========== REFETCH SEM PERDER SCROLL ==========
-  const refetchKeepingScroll = useCallback(async () => {
-    const savedPosition = scrollPositionRef.current;
-    await refetch();
-    requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollTo({ y: savedPosition, animated: false });
-    });
-  }, [refetch]);
-
   const {
     handleCalendarDayPress,
     showUncompleteConfirm,
@@ -90,8 +83,12 @@ export default function HabitDetailsScreen() {
   } = useHabitCalendarActions({
     habit,
     userId: user?.id,
+    completions,
     onSuccessMessage: showResultMessage,
-    refetch: refetchKeepingScroll,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
+    refetchStreak,
   });
 
   const handleEdit = useCallback(() => {
@@ -177,11 +174,8 @@ export default function HabitDetailsScreen() {
       </View>
 
       <ScrollView
-        ref={scrollViewRef}
         style={[styles.content, { backgroundColor: tintBg }]}
         showsVerticalScrollIndicator={false}
-        onScroll={(e) => { scrollPositionRef.current = e.nativeEvent.contentOffset.y; }}
-        scrollEventThrottle={16}
       >
         <HabitInfoCard habit={habit} isNegative={isNegative} themeColor={themeColor} tintBorder={tintBorder} />
 

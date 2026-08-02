@@ -55,6 +55,9 @@ export default function HomeScreen() {
 
   const {
     completions: weeklyCompletions,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
 
@@ -91,6 +94,9 @@ export default function HomeScreen() {
     celebrate,
     refetchCompletions,
     refetchWeeklyCompletions,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
   });
 
   const loading = habitsLoading || completionsLoading;

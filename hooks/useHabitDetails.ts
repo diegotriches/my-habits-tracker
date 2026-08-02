@@ -1,5 +1,4 @@
-// hooks/useHabitDetails.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { Habit, Completion, Streak } from '@/types/database';
@@ -45,6 +44,31 @@ interface HabitDetailsData {
   overallStats: OverallStats | null;
   last30DaysData: DayData[];
   last90DaysData: DayData[];
+}
+
+// Campos derivados de `completions` — recalculados tanto no fetch
+// completo quanto nas mutações otimistas locais, sem round-trip ao
+// servidor.
+type DerivedFields = Omit<HabitDetailsData, 'habit' | 'completions' | 'streak'>;
+
+function computeDerivedFields(habit: Habit, completions: Completion[]): DerivedFields {
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 0 });
+  const monthStart = subDays(today, 29);
+  const semesterStart = subDays(today, 179);
+  const yearStart = subDays(today, 364);
+  const weekEnd = addDays(weekStart, 6);
+
+  const weekStats = calculatePeriodStats(habit as any, weekStart, today, completions, weekEnd);
+  const monthStats = calculatePeriodStats(habit as any, monthStart, today, completions);
+  const semesterStats = calculatePeriodStats(habit as any, semesterStart, today, completions);
+  const yearStats = calculatePeriodStats(habit as any, yearStart, today, completions);
+  const overallStats = calculateOverallStats(habit as any, completions);
+
+  const last30DaysData = generateDaysData(subDays(today, 29), today, completions, habit as any);
+  const last90DaysData = generateDaysData(subDays(today, 89), today, completions, habit as any);
+
+  return { weekStats, monthStats, semesterStats, yearStats, overallStats, last30DaysData, last90DaysData };
 }
 
 export function useHabitDetails(habitId: string) {
@@ -103,47 +127,13 @@ export function useHabitDetails(habitId: string) {
         throw streakError;
       }
 
-      const today = new Date();
-      const weekStart = startOfWeek(today, { weekStartsOn: 0 });
-      const monthStart = subDays(today, 29);
-      const semesterStart = subDays(today, 179);
-      const yearStart = subDays(today, 364);
-      const weekEnd = addDays(weekStart, 6);
-
-      const [weekStats, monthStats, semesterStats, yearStats] = await Promise.all([
-        calculatePeriodStats(habit as any, weekStart, today, completions || [], weekEnd),
-        calculatePeriodStats(habit as any, monthStart, today, completions || []),
-        calculatePeriodStats(habit as any, semesterStart, today, completions || []),
-        calculatePeriodStats(habit as any, yearStart, today, completions || []),
-      ]);
-
-      const overallStats = calculateOverallStats(habit as any, completions || []);
-
-      const last30DaysData = generateDaysData(
-        subDays(today, 29),
-        today,
-        completions || [],
-        habit as any
-      );
-
-      const last90DaysData = generateDaysData(
-        subDays(today, 89),
-        today,
-        completions || [],
-        habit as any
-      );
+      const derived = computeDerivedFields(habit as Habit, (completions as Completion[]) || []);
 
       setData({
         habit: habit as Habit,
-        completions: completions as Completion[] || [],
+        completions: (completions as Completion[]) || [],
         streak: streak ? (streak as Streak) : null,
-        weekStats,
-        monthStats,
-        semesterStats,
-        yearStats,
-        overallStats,
-        last30DaysData,
-        last90DaysData,
+        ...derived,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar detalhes');
@@ -152,11 +142,66 @@ export function useHabitDetails(habitId: string) {
     }
   };
 
+  // ===== MUTAÇÃO OTIMISTA (local, sem rede) =====
+  // Atualiza `completions` e recalcula todos os stats/gráficos
+  // derivados na hora, sem passar por `loading` — é isso que evita a
+  // tela de "Carregando detalhes..." reaparecer a cada dia marcado.
+
+  const addOptimisticCompletion = useCallback((completion: Completion) => {
+    setData(prev => {
+      if (!prev.habit) return prev;
+      const newCompletions = [completion, ...prev.completions];
+      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+    });
+  }, []);
+
+  const removeCompletionById = useCallback((id: string) => {
+    setData(prev => {
+      if (!prev.habit) return prev;
+      const newCompletions = prev.completions.filter(c => c.id !== id);
+      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+    });
+  }, []);
+
+  const removeCompletionForDate = useCallback((date: Date) => {
+    setData(prev => {
+      if (!prev.habit) return prev;
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const newCompletions = prev.completions.filter(c => c.completed_at.split('T')[0] !== dateStr);
+      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+    });
+  }, []);
+
+  /**
+   * Rebusca só a linha de streak (current_streak/best_streak), sem
+   * mexer em `loading` nem refazer o resto do fetch. Usado depois que
+   * uma marcação retroativa recalcula o streak no servidor em segundo
+   * plano, para sincronizar o badge sem re-disparar a tela de loading.
+   */
+  const refetchStreak = useCallback(async () => {
+    try {
+      const { data: streak, error: streakError } = await supabase
+        .from('streaks')
+        .select('*')
+        .eq('habit_id', habitId)
+        .maybeSingle();
+
+      if (streakError) return;
+      setData(prev => ({ ...prev, streak: streak ? (streak as Streak) : null }));
+    } catch {
+      // Silencioso — o próximo fetch completo (ex: reabrir a tela) corrige.
+    }
+  }, [habitId]);
+
   return {
     ...data,
     loading,
     error,
     refetch: fetchAllData,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
+    refetchStreak,
   };
 }
 

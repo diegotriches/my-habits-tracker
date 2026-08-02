@@ -1,4 +1,3 @@
-// hooks/useWeeklyCompletions.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Completion } from '@/types/database';
@@ -79,6 +78,32 @@ export const useWeeklyCompletions = () => {
     return completions.length;
   };
 
+  // ===== MUTAÇÃO OTIMISTA (local, sem rede) =====
+  // Usadas para refletir marcações/desmarcações retroativas na UI
+  // imediatamente, antes/independente da requisição de rede terminar.
+
+  /**
+   * Adiciona uma completion "otimista" (ainda não confirmada pelo
+   * servidor) ao estado local. Use um id temporário único; se a
+   * requisição falhar, remova com removeCompletionById.
+   */
+  const addOptimisticCompletion = useCallback((completion: Completion) => {
+    setCompletions(prev => [completion, ...prev]);
+  }, []);
+
+  /** Remove uma completion do estado local pelo id (real ou otimista). */
+  const removeCompletionById = useCallback((id: string) => {
+    setCompletions(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  /** Remove a completion de um hábito numa data específica, se existir. */
+  const removeCompletionForDate = useCallback((habitId: string, date: Date) => {
+    setCompletions(prev => prev.filter(c => {
+      if (c.habit_id !== habitId) return true;
+      return new Date(c.completed_at).toDateString() !== date.toDateString();
+    }));
+  }, []);
+
   // Fetch da semana atual no mount
   useEffect(() => {
     if (user) {
@@ -94,6 +119,9 @@ export const useWeeklyCompletions = () => {
     isCompletedOnDate,
     getCompletionOnDate,
     getWeeklyCount,
+    addOptimisticCompletion,
+    removeCompletionById,
+    removeCompletionForDate,
     refetch: fetchWeeklyCompletions,
   };
 };
