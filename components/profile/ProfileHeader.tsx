@@ -1,4 +1,3 @@
-// components/profile/ProfileHeader.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -105,7 +104,7 @@ export default function ProfileHeader({ profile, onAvatarUpdated }: ProfileHeade
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={styles.container}>
       <TouchableOpacity
         style={styles.avatarContainer}
         onPress={handleAvatarPress}

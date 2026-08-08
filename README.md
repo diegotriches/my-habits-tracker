@@ -1,1 +1,145 @@
-# my-habits-tracker
+# My Habits Tracker
+
+App de rastreamento de hábitos para Android/iOS, construído com React Native (Expo) e Supabase.
+
+## Stack
+
+- **React Native** 0.81.5 + **Expo SDK 54** (managed workflow, EAS Build)
+- **Expo Router** 6 (roteamento baseado em arquivos, `typedRoutes` habilitado)
+- **Supabase** — PostgreSQL + Row Level Security + Auth + Storage (avatares)
+- **TypeScript**
+- **Notificações**: `expo-notifications` para permissões/canal, mas o agendamento em si roda sobre **`AlarmManager` nativo (módulo Java custom)** — ver [Sistema de notificações](#sistema-de-notificações) abaixo
+- **EAS Build / EAS Update** para builds e distribuição OTA
+
+## Estrutura de pastas
+
+```
+app/                  # Telas (Expo Router — cada arquivo é uma rota)
+  (tabs)/              # Tabs principais (home, perfil)
+  habits/               # Detalhes, edição e criação de hábito
+  settings/             # Configurações (notificações, privacidade)
+components/
+  habits/               # Componentes específicos de hábitos
+  ui/                    # Componentes genéricos reutilizáveis (BottomSheetModal, Icon, etc.)
+  profile/, skeletons/
+hooks/                 # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
+services/              # Chamadas ao Supabase e serviços de domínio
+  retroactiveCompletionService.ts   # completar/desmarcar dias retroativos, cálculo de streak
+  notificationService.ts, exactAlarmService.ts
+constants/             # Ícones, cores, constantes de formulário compartilhadas
+contexts/              # ThemeContext (claro/escuro/automático)
+types/database.ts      # Tipos gerados a partir do schema do Supabase
+plugins/                # Config plugin do Expo para o módulo nativo de alarmes
+  withExactAlarm.js
+  java/                 # AlarmReceiver, AlarmStorage, BootReceiver, ExactAlarmModule (Java)
+assets/images/          # Ícones, splash, favicon
+```
+
+`android/` é gerado via `expo prebuild` e **não é commitado** — qualquer mudança em `plugins/` ou `app.json` que afete o nativo exige `npx expo prebuild --clean` antes do próximo build.
+
+## Pré-requisitos
+
+- Node 24+
+- Java JDK (o Android Studio já traz um embutido em `Android Studio/jbr`)
+- Android Studio com Android SDK instalado
+- Conta Expo + acesso ao projeto no EAS (`eas login`)
+- Acesso ao projeto Supabase (URL + anon key)
+
+⚠️ **Evite espaços no caminho da pasta do projeto** (ex: `C:\...\My Habits Tracker`). Isso já causou falhas de resolução de dependências no Gradle/autolinking do React Native (`No matching variant... No variants exist`). Use algo como `my-habits-tracker`, sem espaço.
+
+## Configuração do ambiente
+
+1. Instale as dependências:
+   ```bash
+   npm install
+   ```
+
+2. Crie um `.env.local` na raiz com as credenciais do Supabase:
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=...
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+   ```
+
+3. Peça o `google-services.json` (necessário para o build Android — referenciado em `app.json`) e coloque na raiz do projeto.
+
+4. Variáveis de sistema (Windows), se for buildar localmente com `expo run:android`:
+   - `JAVA_HOME` → pasta `jbr` (ou `jre`) dentro da instalação do Android Studio
+   - `ANDROID_HOME` → pasta do Android SDK (geralmente `%LOCALAPPDATA%\Android\Sdk`)
+   - Adicione `%JAVA_HOME%\bin` e `%ANDROID_HOME%\platform-tools` ao `Path`
+   - Feche e reabra o terminal (e o VS Code, se estiver usando o terminal integrado) depois de configurar
+
+## Rodando o projeto
+
+Se já existe uma build de desenvolvedor instalada no celular/emulador:
+```bash
+npx expo start --dev-client
+```
+
+Se precisar gerar/instalar a build de desenvolvedor pela primeira vez (ou depois de mudanças nativas):
+```bash
+npx expo run:android
+```
+
+## Build e distribuição
+
+O projeto usa três profiles no `eas.json`:
+
+| Profile | Uso |
+|---|---|
+| `development` | Build com dev client embutido, para desenvolvimento local com hot reload |
+| `preview` | Build de teste (APK), canal `preview` — use este para validar mudanças antes de produção |
+| `production` | Build final, canal `production`, incrementa `versionCode` automaticamente |
+
+```bash
+eas build --platform android --profile preview
+```
+
+Para mudanças **só em JS/TSX** (sem tocar em `plugins/`, `app.json` nativo, ou dependências nativas), não é preciso gerar build novo — publique via OTA:
+```bash
+eas update --branch preview --platform android --message "descrição da mudança"
+```
+> Use sempre `--platform android` — o export da versão Web está atualmente quebrado (ver [Problemas conhecidos](#problemas-conhecidos)).
+
+## Padrão de arquitetura
+
+Cada tela grande segue o padrão: **hook(s) para lógica + componentes memoizados para UI**, mantendo o arquivo de tela como orquestrador fino. Exemplos:
+
+- `app/habits/[id].tsx` → `useHabitDetails`, `useHabitCalendarActions`, `useHabitProgressNotifications`, `useDeleteHabitConfirm`, `useActionsMenu`
+- `app/habits/edit/[id].tsx` → `useEditHabitForm`
+- `app/habits/create.tsx` → `useCreateHabitForm`
+- `app/(tabs)/index.tsx` → `useHabitCompletionActions`
+
+Componentes extraídos de UI repetida ou pesada usam `React.memo`. Evite definir componentes (ex: modais) dentro do corpo de outro componente de tela — isso faz o React recriá-los a cada render, causando remount desnecessário da subárvore.
+
+### UI otimista
+
+Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendário de detalhes) **não espera a rede**: o estado local é atualizado na hora (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`, expostos por `useWeeklyCompletions` e `useHabitDetails`), a requisição roda em segundo plano, e só reverte visualmente se der erro. Isso evita travar a UI ao marcar vários dias em sequência. Como consequência, **não há refetch completo após cada sucesso individual** — o estado local se autocorrige na próxima atualização natural (pull-to-refresh, reabrir a tela).
+
+### Sistema de notificações
+
+`expo-notifications` cuida só de permissões e do canal Android. O agendamento em si usa um módulo nativo Java (`ExactAlarmModule` + `AlarmReceiver`) sobre `AlarmManager`, porque o agendamento via JS puro não sobrevivia de forma confiável em background. Dois pontos importantes:
+
+- **`AlarmStorage.java`** persiste os dados de cada alarme em `SharedPreferences`
+- **`BootReceiver.java`** escuta `BOOT_COMPLETED` e `MY_PACKAGE_REPLACED` e reagenda tudo — sem isso, o `AlarmManager` perde todos os alarmes pendentes num reboot ou atualização do app, e a corrente de lembretes semanais morre para sempre
+
+Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
+
+## Problemas conhecidos
+
+- **Export Web quebrado**: `eas update` sem `--platform android` falha, porque o cliente Supabase acessa `AsyncStorage`/`window` durante a renderização estática (SSR) do `expo-router`, e `window` não existe em Node. Não afeta Android/iOS.
+- **Ícone de notificação precisa ser monocromático**: silhueta branca sobre transparente — o Android ignora cor em ícones de notificação e usa o alpha channel para desenhar. Um ícone colorido vira um quadrado genérico na barra de status.
+- **Otimização de bateria de fabricante** (Xiaomi/MIUI, Samsung) pode ainda encerrar o app e cancelar alarmes mesmo com o `BootReceiver` funcionando — pendente adicionar um prompt pedindo para o usuário desativar a otimização de bateria (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
+
+## Pendências conhecidas
+
+- Prompt de desativação de otimização de bateria (ver acima)
+- Migration SQL no Supabase para remover tabelas de gamificação (removida do produto)
+- Remover arquivos obsoletos relacionados à gamificação
+- Confirmar se `checkExpiredStreaks` ainda é necessário após a remoção da gamificação
+- Testar upload de avatar e edição de perfil de ponta a ponta
+
+## Contribuindo
+
+- Branches: `refactor/`, `fix/`, `feat/` como prefixo (ex: `refactor/habit-details-screen`)
+- Commits seguem o padrão `tipo: descrição curta` (`feat`, `fix`, `refactor`, `chore`) com corpo explicando o *porquê*, não só o *o quê* — especialmente quando a mudança corrige um bug real, não só reorganiza código
+- Antes de abrir PR com mudanças nativas (`plugins/`, `app.json`), rode `npx expo prebuild --clean` e confirme que builda
