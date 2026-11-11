@@ -2,7 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, subWeeks } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachWeekOfInterval, subWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import React, { useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -64,7 +64,9 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
 
       // Filtrar dados desta semana
       const weekDays = data.filter(day => {
-        const dayDate = new Date(day.date);
+        // parseISO trata 'yyyy-MM-dd' como data local; new Date() usaria
+        // meia-noite UTC e jogaria o domingo para a semana anterior.
+        const dayDate = parseISO(day.date);
         return dayDate >= weekStart && dayDate <= weekEnd;
       });
 

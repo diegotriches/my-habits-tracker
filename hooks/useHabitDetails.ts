@@ -46,6 +46,15 @@ interface HabitDetailsData {
   last90DaysData: DayData[];
 }
 
+/**
+ * Dia local (yyyy-MM-dd) de uma conclusão. O Supabase devolve
+ * `completed_at` em UTC; cortar a string no 'T' daria o dia UTC, e uma
+ * conclusão feita após as 21h (UTC-3) cairia no dia seguinte.
+ */
+function completionDateKey(completion: Pick<Completion, 'completed_at'>): string {
+  return format(new Date(completion.completed_at), 'yyyy-MM-dd');
+}
+
 // Campos derivados de `completions` — recalculados tanto no fetch
 // completo quanto nas mutações otimistas locais, sem round-trip ao
 // servidor.
@@ -167,7 +176,7 @@ export function useHabitDetails(habitId: string) {
     setData(prev => {
       if (!prev.habit) return prev;
       const dateStr = format(date, 'yyyy-MM-dd');
-      const newCompletions = prev.completions.filter(c => c.completed_at.split('T')[0] !== dateStr);
+      const newCompletions = prev.completions.filter(c => completionDateKey(c) !== dateStr);
       return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
     });
   }, []);
@@ -244,7 +253,7 @@ function calculatePeriodStats(
   fullPeriodEnd?: Date
 ): PeriodStats {
   const completedDates = new Set(
-    completions.map((c: any) => c.completed_at.split('T')[0])
+    completions.map(completionDateKey)
   );
 
   const actualDays = eachDayOfInterval({ start: startDate, end: endDate });
@@ -308,7 +317,7 @@ function generateDaysData(
 ): DayData[] {
   const completionMap = new Map(
     completions.map((c: any) => [
-      c.completed_at.split('T')[0],
+      completionDateKey(c),
       c.value_achieved,
     ])
   );
