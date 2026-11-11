@@ -116,9 +116,13 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         // Tocar na notificação abre os detalhes do hábito. O deep link é
         // roteado pelo Expo Router (scheme "habittracker" do app.json).
+        // FLAG_CANCEL_CURRENT (e não UPDATE_CURRENT) nos PendingIntents que
+        // abrem o app: UPDATE_CURRENT reaproveita um PendingIntent existente
+        // com o mesmo requestCode/link e só troca os extras, mantendo as flags
+        // do intent antigo — inclusive de builds anteriores do app.
         PendingIntent openPending = PendingIntent.getActivity(
-            context, notifId, buildOpenHabitIntent(context, habitId),
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            context, notifId, buildOpenHabitIntent(context, habitId, false),
+            PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
         // PendingIntent — botão Adiar
@@ -151,8 +155,13 @@ public class AlarmReceiver extends BroadcastReceiver {
             .addAction(0, "Adiar", snoozePending);
 
         if (hasTarget) {
-            // Meta numérica precisa de um valor: o botão abre o hábito.
-            builder.addAction(0, "Registrar", openPending);
+            // Meta numérica precisa de um valor: o botão abre o hábito já
+            // com o modal de progresso de hoje (?action=register).
+            PendingIntent registerPending = PendingIntent.getActivity(
+                context, notifId + 2, buildOpenHabitIntent(context, habitId, true),
+                PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            builder.addAction(0, "Registrar", registerPending);
         } else {
             Intent completeIntent = new Intent(context, AlarmReceiver.class);
             completeIntent.setAction(ACTION_COMPLETE);
@@ -169,16 +178,23 @@ public class AlarmReceiver extends BroadcastReceiver {
         Log.d(TAG, "Notificacao exibida: " + notifId + " (canal " + channelId + ")");
     }
 
-    private static Intent buildOpenHabitIntent(Context context, String habitId) {
+    private static Intent buildOpenHabitIntent(Context context, String habitId, boolean register) {
         Intent intent;
         if (habitId != null) {
-            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("habittracker://habits/" + habitId));
+            String url = "habittracker://habits/" + habitId + (register ? "?action=register" : "");
+            intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             intent.setPackage(context.getPackageName());
         } else {
             intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
             if (intent == null) intent = new Intent();
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        // CLEAR_TASK é necessário: com o processo do app morto mas a tarefa
+        // ainda nos recentes, o Android só traz a tarefa antiga para frente
+        // e descarta o deep link (testado com NEW_TASK, SINGLE_TOP e
+        // CLEAR_TOP). Recriando a tarefa, o link vira a URL inicial. Com o
+        // app aberto, a interface é recriada (mesmo processo) e o link
+        // também chega.
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         return intent;
     }
 

@@ -202,11 +202,31 @@ export function useHabitDetails(habitId: string) {
     }
   }, [habitId]);
 
+  /**
+   * Recarrega só o hábito, sem passar por `loading`. Usado ao voltar para a
+   * tela (ex.: depois de editar): sem isso o nome antigo continuava no
+   * cabeçalho e era repassado ao reagendar os lembretes.
+   */
+  const refetchHabit = useCallback(async () => {
+    const { data: habit, error: habitError } = await supabase
+      .from('habits')
+      .select('*')
+      .eq('id', habitId)
+      .single();
+    if (habitError || !habit) return;
+    setData(prev => ({
+      ...prev,
+      habit: habit as Habit,
+      ...computeDerivedFields(habit as Habit, prev.completions),
+    }));
+  }, [habitId]);
+
   return {
     ...data,
     loading,
     error,
     refetch: fetchAllData,
+    refetchHabit,
     addOptimisticCompletion,
     removeCompletionById,
     removeCompletionForDate,

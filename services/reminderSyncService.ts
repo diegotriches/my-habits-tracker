@@ -11,6 +11,7 @@ const sameIds = (a: string[] | null, b: string[]) =>
   !!a && a.length === b.length && a.every((id, i) => id === b[i]);
 
 let inFlight: Promise<void> | null = null;
+let rerunRequested = false;
 
 /**
  * Ressincroniza os alarmes nativos do aparelho com os lembretes ativos do
@@ -26,14 +27,25 @@ let inFlight: Promise<void> | null = null;
  * notificações de progresso, e um "cancelar tudo" as apagaria.
  */
 export const reminderSyncService = {
+  /**
+   * Chamado ao abrir o app e depois de editar um hábito (o nome e a meta vão
+   * gravados no alarme). Nunca roda duas vezes em paralelo; se for chamado
+   * durante uma sincronização, roda mais uma vez depois dela, porque a atual
+   * pode ter lido o banco antes da mudança.
+   */
   syncReminders(userId: string): Promise<void> {
-    // Evita duas sincronizações simultâneas (ex.: o efeito do usuário
-    // disparar de novo enquanto a anterior ainda roda).
-    if (!inFlight) {
-      inFlight = runSync(userId).finally(() => {
-        inFlight = null;
-      });
+    if (inFlight) {
+      rerunRequested = true;
+      return inFlight;
     }
+    inFlight = (async () => {
+      do {
+        rerunRequested = false;
+        await runSync(userId);
+      } while (rerunRequested);
+    })().finally(() => {
+      inFlight = null;
+    });
     return inFlight;
   },
 };

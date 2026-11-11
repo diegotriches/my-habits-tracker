@@ -17,9 +17,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDeleteHabitConfirm } from '@/hooks/useDeleteHabitConfirm';
 import { useHabitProgressNotifications } from '@/hooks/useHabitProgressNotifications';
 import { useHabitCalendarActions } from '@/hooks/useHabitCalendarActions';
+import { useRegisterProgressAction } from '@/hooks/useRegisterProgressAction';
 import { hapticFeedback } from '@/utils/haptics';
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -27,7 +28,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 export default function HabitDetailsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, action } = useLocalSearchParams<{ id: string; action?: string }>();
   const { user } = useAuth();
   const { deleteHabit } = useHabits();
 
@@ -53,8 +54,21 @@ export default function HabitDetailsScreen() {
     removeCompletionById,
     removeCompletionForDate,
     refetchStreak,
+    refetchHabit,
   } = useHabitDetails(id as string);
 
+  // Ao voltar para a tela (ex.: depois de editar o hábito), recarrega o
+  // hábito em silêncio. O primeiro foco é coberto pelo fetch inicial.
+  const focusedOnceRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnceRef.current) {
+        focusedOnceRef.current = true;
+        return;
+      }
+      refetchHabit();
+    }, [refetchHabit])
+  );
   const { deleting, confirmDelete } = useDeleteHabitConfirm(id as string, habit?.name, deleteHabit);
 
   const {
@@ -89,6 +103,14 @@ export default function HabitDetailsScreen() {
     removeCompletionById,
     removeCompletionForDate,
     refetchStreak,
+  });
+
+  useRegisterProgressAction({
+    action,
+    habit,
+    completions,
+    loading,
+    openProgressForDay: handleCalendarDayPress,
   });
 
   const handleEdit = useCallback(() => {

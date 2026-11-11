@@ -5,6 +5,7 @@ import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
 import { Habit, FrequencyGoalPeriod } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 const TARGET_UNITS = {
   volume: ['litros', 'ml', 'copos'],
@@ -238,6 +239,11 @@ export function useEditHabitForm(habitId: string) {
         Alert.alert('Erro', habitError);
         return;
       }
+
+      // Nome e meta numérica vão gravados nos alarmes ("Feito" x
+      // "Registrar"): reagenda em segundo plano para refletir a edição já
+      // na próxima notificação.
+      reminderSyncService.syncReminders(user.id);
 
       setSaving(false);
       hapticFeedback.success();
