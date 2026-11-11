@@ -21,6 +21,7 @@ function withJavaFiles(config) {
       'ExactAlarmPackage.java',
       'AlarmStorage.java',
       'BootReceiver.java',
+      'PendingCompletionStorage.java',
     ];
     const srcDir = path.join(mod.modRequest.projectRoot, 'plugins', 'java');
 

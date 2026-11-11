@@ -1,7 +1,7 @@
 // services/soundPreview.ts
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { NotificationSound } from './notifications';
+import { NotificationSound, getReminderChannelId } from './notifications';
 
 /**
  * Serviço para reproduzir preview dos sons de notificação.
@@ -38,8 +38,10 @@ class SoundPreviewService {
           body: habitName ? `Som para: ${habitName}` : 'Testando som da notificação',
           sound: soundFile,
           priority: Notifications.AndroidNotificationPriority.HIGH,
+          // No Android o som é o do canal, não o da notificação: usa o
+          // mesmo canal do lembrete com esse som.
           ...(Platform.OS === 'android' && {
-            channelId: 'sound-preview',
+            channelId: getReminderChannelId(sound),
           }),
         },
         trigger: null, // Instantâneo

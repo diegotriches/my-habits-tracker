@@ -3,7 +3,9 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
-import { startOfDay, endOfDay } from 'date-fns';
+import { completeHabitFromNotification } from './pendingCompletionService';
+import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { Habit } from '@/types/database';
 
 // Configurar handler padrão
 Notifications.setNotificationHandler({
@@ -17,6 +19,24 @@ Notifications.setNotificationHandler({
 });
 
 export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silence';
+
+/**
+ * Canais de lembrete, um por som: no Android 8+ o som pertence ao canal (e
+ * não muda depois de criado). Os ids e sons precisam bater com
+ * AlarmReceiver.ensureChannel (Java), que cria o mesmo canal se o JS ainda
+ * não o tiver criado.
+ */
+const REMINDER_CHANNELS: Record<NotificationSound, { id: string; name: string; sound: string | null }> = {
+  default: { id: 'habits',        name: 'Lembretes de Habitos',    sound: 'default' },
+  water:   { id: 'habits-water',  name: "Lembretes (Gota d'água)", sound: 'water_drop.wav' },
+  bell:    { id: 'habits-bell',   name: 'Lembretes (Sino)',        sound: 'bell.wav' },
+  chime:   { id: 'habits-chime',  name: 'Lembretes (Carrilhão)',   sound: 'chime.wav' },
+  silence: { id: 'habits-silent', name: 'Lembretes (Silencioso)',  sound: null },
+};
+
+export function getReminderChannelId(sound: NotificationSound): string {
+  return (REMINDER_CHANNELS[sound] ?? REMINDER_CHANNELS.default).id;
+}
 
 class NotificationService {
 
@@ -40,16 +60,18 @@ class NotificationService {
       }
 
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('habits', {
-          name: 'Lembretes de Habitos',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#3b82f6',
-          sound: 'default',
-          enableVibrate: true,
-          enableLights: true,
-          showBadge: true,
-        });
+        for (const channel of Object.values(REMINDER_CHANNELS)) {
+          await Notifications.setNotificationChannelAsync(channel.id, {
+            name: channel.name,
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#3b82f6',
+            sound: channel.sound,
+            enableVibrate: true,
+            enableLights: true,
+            showBadge: true,
+          });
+        }
 
         await Notifications.setNotificationChannelAsync('habits-progress', {
           name: 'Atualizacoes de Progresso',
@@ -79,6 +101,9 @@ class NotificationService {
    * Agenda lembretes semanais.
    * Android: usa ExactAlarmService (AlarmManager nativo) para horário preciso.
    * iOS: usa expo-notifications com trigger CALENDAR.
+   *
+   * `options.hasTarget`: se o hábito tem meta numérica (a notificação mostra
+   * "Registrar" em vez de "Feito"). Quando omitido, é lido do banco.
    */
   async scheduleWeeklyReminder(
     habitId: string,
@@ -86,19 +111,22 @@ class NotificationService {
     time: string,
     daysOfWeek: number[],
     reminderId: string,
-    sound: NotificationSound = 'default'
+    sound: NotificationSound = 'default',
+    options: { hasTarget?: boolean; minLeadMs?: number } = {}
   ): Promise<string[]> {
     try {
       const hasPermission = await this.hasPermission();
       if (!hasPermission) return [];
 
       if (Platform.OS === 'android') {
+        const hasTarget = options.hasTarget ?? (await this.fetchHasTarget(habitId));
         return await exactAlarmService.scheduleWeeklyReminders(
           habitId,
           habitName,
           time,
           daysOfWeek,
-          reminderId
+          reminderId,
+          { sound, hasTarget, minLeadMs: options.minLeadMs }
         );
       }
 
@@ -216,6 +244,11 @@ class NotificationService {
     }
   }
 
+  /**
+   * Ação "Marcar como feito" da notificação do expo-notifications (iOS). No
+   * Android o botão "Feito" é nativo e passa pela fila local
+   * (services/pendingCompletionService.ts).
+   */
   async handleQuickComplete(habitId: string): Promise<void> {
     try {
       const habit = await this.getHabitData(habitId);
@@ -237,16 +270,9 @@ class NotificationService {
         return;
       }
 
-      const today = new Date();
-      const { data: existing } = await supabase
-        .from('completions')
-        .select('id')
-        .eq('habit_id', habitId)
-        .gte('completed_at', startOfDay(today).toISOString())
-        .lte('completed_at', endOfDay(today).toISOString())
-        .maybeSingle();
+      const result = await completeHabitFromNotification(habitId, new Date());
 
-      if (existing) {
+      if (result === 'skipped') {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: 'Ja completado!',
@@ -258,13 +284,9 @@ class NotificationService {
         return;
       }
 
-      const { error: insertError } = await (supabase.from('completions') as any).insert({
-        habit_id: habitId,
-        completed_at: new Date().toISOString(),
-        was_synced: true,
-      });
+      if (result === 'retry') throw new Error('Falha ao registrar conclusao');
 
-      if (insertError) throw insertError;
+      await retroactiveCompletionService.recalculateStreak(habitId);
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -346,6 +368,16 @@ class NotificationService {
   // Mantido para compatibilidade
   async initialize(_navigationCallback: (habitId: string) => void): Promise<void> {
     await this.requestPermissions();
+  }
+
+  private async fetchHasTarget(habitId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('habits')
+      .select('has_target')
+      .eq('id', habitId)
+      .maybeSingle();
+    if (error) console.warn('Erro ao ler meta do habito:', error);
+    return !!(data as Pick<Habit, 'has_target'> | null)?.has_target;
   }
 
   private async getHabitData(habitId: string): Promise<{

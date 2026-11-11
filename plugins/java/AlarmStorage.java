@@ -37,7 +37,9 @@ public class AlarmStorage {
         String habitName,
         String reminderId,
         String dayOfWeek,
-        String time
+        String time,
+        String sound,
+        boolean hasTarget
     ) {
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -54,6 +56,8 @@ public class AlarmStorage {
             obj.put("reminderId", reminderId);
             obj.put("dayOfWeek", dayOfWeek);
             obj.put("time", time);
+            obj.put("sound", sound);
+            obj.put("hasTarget", hasTarget);
 
             editor.putString("alarm_" + alarmId, obj.toString());
             editor.apply();

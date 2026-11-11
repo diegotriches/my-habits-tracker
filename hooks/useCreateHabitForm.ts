@@ -359,7 +359,8 @@ export function useCreateHabitForm() {
 
           const reminderId = (created as Pick<Reminder, 'id'>).id;
           const notificationIds = await notificationService.scheduleWeeklyReminder(
-            habit.id, habit.name, timeString, daysOfWeek, reminderId
+            habit.id, habit.name, timeString, daysOfWeek, reminderId,
+            'default', { hasTarget: habit.has_target }
           );
           if (notificationIds.length > 0) {
             await remindersTable()

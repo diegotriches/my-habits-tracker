@@ -92,7 +92,11 @@
           "icon": "./assets/images/notification-icon.png",
           "color": "#4CAF50",
           "defaultChannel": "default",
-          "sounds": []
+          "sounds": [
+            "./assets/sounds/water_drop.wav",
+            "./assets/sounds/bell.wav",
+            "./assets/sounds/chime.wav"
+          ]
         }
       ],
       "@react-native-community/datetimepicker",

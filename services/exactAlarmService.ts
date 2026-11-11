@@ -8,22 +8,41 @@ const { ExactAlarmModule } = NativeModules;
  * As notificações são disparadas diretamente pelo AlarmReceiver.java
  * via NotificationCompat — sem dependência de Notifee.
  *
- * O botão "Feito" na notificação faz o AlarmReceiver enviar, via
+ * O botão "Feito" na notificação não depende do JS: o AlarmReceiver grava a
+ * conclusão numa fila local (PendingCompletionStorage) e envia, via
  * LocalBroadcastManager, o broadcast
- * "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL". O ExactAlarmModule
- * (Java) recebe esse broadcast e o repassa ao JS como o evento
- * "HabitCompleteFromNotification" do DeviceEventEmitter, que este service
- * escuta em onHabitComplete().
+ * "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL". Se o app estiver
+ * aberto, o ExactAlarmModule o repassa ao JS como o evento
+ * "PendingCompletionsChanged" (onPendingCompletionsChanged); a fila é lida
+ * com getPendingCompletions() — ver services/pendingCompletionService.ts.
  */
+
+/** Conclusão feita pelo botão "Feito" e ainda não enviada ao banco. */
+export interface PendingCompletion {
+  id: string;
+  habitId: string;
+  /** Horário do toque, em ms desde a epoch. */
+  completedAt: number;
+}
+
+export interface ScheduleReminderOptions {
+  /** Som do lembrete; define o canal de notificação no Android. */
+  sound?: string;
+  /** Hábito com meta numérica: a notificação mostra "Registrar" em vez de "Feito". */
+  hasTarget?: boolean;
+  /**
+   * Antecedência mínima para agendar ainda hoje; abaixo dela a ocorrência vai
+   * para a semana seguinte. O padrão (2 min) é para quando o usuário
+   * cria/edita o lembrete; a ressincronização usa 0 para não pular um
+   * lembrete de hoje que está prestes a disparar.
+   */
+  minLeadMs?: number;
+}
+
 class ExactAlarmService {
 
   /**
    * Agenda lembretes semanais usando AlarmManager.
-   *
-   * `minLeadMs`: antecedência mínima para agendar ainda hoje; abaixo dela a
-   * ocorrência vai para a semana seguinte. O padrão (2 min) é para quando o
-   * usuário cria/edita o lembrete; a ressincronização usa 0 para não pular
-   * um lembrete de hoje que está prestes a disparar.
    */
   async scheduleWeeklyReminders(
     habitId: string,
@@ -31,7 +50,7 @@ class ExactAlarmService {
     time: string,
     daysOfWeek: number[],
     reminderId: string,
-    minLeadMs: number = 2 * 60 * 1000
+    { sound = 'default', hasTarget = false, minLeadMs = 2 * 60 * 1000 }: ScheduleReminderOptions = {}
   ): Promise<string[]> {
     if (Platform.OS !== 'android') return [];
 
@@ -52,6 +71,8 @@ class ExactAlarmService {
         reminderId,
         dayOfWeek: String(dayOfWeek),
         time,
+        sound,
+        hasTarget,
       });
 
       alarmIds.push(alarmId);
@@ -73,6 +94,8 @@ class ExactAlarmService {
       reminderId?: string;
       dayOfWeek?: string;
       time?: string;
+      sound?: string;
+      hasTarget?: boolean;
     }
   ): Promise<string> {
     if (Platform.OS !== 'android') throw new Error('ExactAlarmService só funciona no Android');
@@ -165,20 +188,27 @@ class ExactAlarmService {
     }
   }
 
+  /** Lê a fila de conclusões feitas pelo botão "Feito". */
+  async getPendingCompletions(): Promise<PendingCompletion[]> {
+    if (Platform.OS !== 'android' || !ExactAlarmModule) return [];
+    return await ExactAlarmModule.getPendingCompletions();
+  }
+
+  /** Remove da fila as conclusões já processadas. */
+  async removePendingCompletions(ids: string[]): Promise<void> {
+    if (Platform.OS !== 'android' || !ExactAlarmModule || ids.length === 0) return;
+    await ExactAlarmModule.removePendingCompletions(ids);
+  }
+
   /**
-   * Registra listener para o evento de conclusão vindo do botão nativo
-   * Quando o usuário toca em "Feito" na notificação, o AlarmReceiver envia o
-   * broadcast local "HABIT_COMPLETE_LOCAL", que o ExactAlarmModule repassa
-   * como o evento JS "HabitCompleteFromNotification".
+   * Avisa quando o botão "Feito" enfileira uma conclusão com o app aberto
+   * (evento "PendingCompletionsChanged" emitido pelo ExactAlarmModule).
    */
-  onHabitComplete(callback: (habitId: string, habitName: string) => void): () => void {
-    const subscription = DeviceEventEmitter.addListener(
-      'HabitCompleteFromNotification',
-      (event: { habitId: string; habitName: string }) => {
-        console.log('Evento HabitComplete recebido:', event);
-        callback(event.habitId, event.habitName);
-      }
-    );
+  onPendingCompletionsChanged(callback: () => void): () => void {
+    const subscription = DeviceEventEmitter.addListener('PendingCompletionsChanged', () => {
+      console.log('Fila de conclusoes da notificacao alterada');
+      callback();
+    });
     return () => subscription.remove();
   }
 

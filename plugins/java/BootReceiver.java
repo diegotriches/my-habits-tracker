@@ -1,11 +1,8 @@
 package com.dtriches.myhabitstracker;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -37,12 +34,6 @@ public class BootReceiver extends BroadcastReceiver {
 
         try {
             JSONArray alarms = AlarmStorage.getAll(context);
-            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            if (alarmManager == null) {
-                Log.w(TAG, "AlarmManager indisponivel, abortando reagendamento");
-                return;
-            }
-
             long now = System.currentTimeMillis();
             int rescheduled = 0;
 
@@ -54,6 +45,8 @@ public class BootReceiver extends BroadcastReceiver {
                 String reminderId = obj.optString("reminderId", null);
                 String dayOfWeek  = obj.optString("dayOfWeek", null);
                 String time       = obj.optString("time", null);
+                String sound      = obj.optString("sound", null);
+                boolean hasTarget = obj.optBoolean("hasTarget", false);
                 long timestamp    = obj.optLong("timestamp", 0);
 
                 if (alarmId == null || timestamp <= 0) {
@@ -68,43 +61,17 @@ public class BootReceiver extends BroadcastReceiver {
                     continue;
                 }
 
-                // Se o dispositivo ficou desligado por mais de uma semana,
-                // o horario salvo pode estar no passado. Empurra para a
-                // proxima ocorrencia do mesmo dia/horario em vez de disparar
-                // tudo de uma vez ao ligar o aparelho.
-                while (timestamp <= now) {
-                    timestamp += 7L * 24 * 60 * 60 * 1000;
+                // Ainda no futuro: mantém o horário salvo. Já passou (aparelho
+                // desligado no horário): vai para a próxima ocorrência do mesmo
+                // dia/horário, em vez de disparar tudo de uma vez ao ligar.
+                if (timestamp <= now) {
+                    timestamp = AlarmReceiver.nextWeeklyTrigger(dayOfWeek, time, timestamp, now);
                 }
 
-                Intent alarmIntent = new Intent(context, AlarmReceiver.class);
-                alarmIntent.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
-                alarmIntent.putExtra("alarmId", alarmId);
-                alarmIntent.putExtra("habitId", habitId);
-                alarmIntent.putExtra("habitName", habitName);
-                alarmIntent.putExtra("reminderId", reminderId);
-                alarmIntent.putExtra("dayOfWeek", dayOfWeek);
-                alarmIntent.putExtra("time", time);
-                alarmIntent.putExtra("timestamp", timestamp);
-
-                PendingIntent pending = PendingIntent.getBroadcast(
-                    context, alarmId.hashCode(), alarmIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-                );
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timestamp, pending);
-                    } else {
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timestamp, pending);
-                    }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timestamp, pending);
-                } else {
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, timestamp, pending);
-                }
+                AlarmReceiver.scheduleAlarm(context, alarmId, timestamp, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget);
 
                 // Atualiza o storage com o novo timestamp calculado
-                AlarmStorage.save(context, alarmId, timestamp, habitId, habitName, reminderId, dayOfWeek, time);
+                AlarmStorage.save(context, alarmId, timestamp, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget);
 
                 rescheduled++;
             }

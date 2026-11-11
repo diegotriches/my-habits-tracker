@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { exactAlarmService } from '@/services/exactAlarmService';
 import { reminderSyncService } from '@/services/reminderSyncService';
+import { pendingCompletionService } from '@/services/pendingCompletionService';
 
 /**
  * Handler global de notificações usando expo-notifications.
@@ -15,7 +16,9 @@ import { reminderSyncService } from '@/services/reminderSyncService';
  * Responsabilidades:
  * - Solicitar permissões ao montar
  * - Escutar respostas a notificações (botões Adiar/Feito, toque no corpo)
- * - Escutar evento nativo HabitCompleteFromNotification (botão "Feito" do AlarmReceiver)
+ * - Enviar ao banco as conclusões do botão "Feito" nativo (fila local do
+ *   AlarmReceiver): ao abrir, ao voltar ao primeiro plano e no evento
+ *   PendingCompletionsChanged
  * - Navegar para o hábito ao tocar na notificação
  * - Ressincronizar os alarmes nativos com os lembretes do banco (Android)
  */
@@ -66,13 +69,14 @@ export function NotificationHandler() {
       }
     );
 
-    // Listener: evento nativo do botão "Feito" do AlarmReceiver.java
-    const unsubscribeComplete = exactAlarmService.onHabitComplete(
-      async (habitId, habitName) => {
-        console.log('Botao Feito nativo pressionado:', habitId);
-        await notificationService.handleQuickComplete(habitId);
-      }
-    );
+    // Botão "Feito" nativo: a conclusão fica na fila local até o JS enviá-la.
+    pendingCompletionService.drain();
+    const unsubscribeComplete = exactAlarmService.onPendingCompletionsChanged(() => {
+      pendingCompletionService.drain();
+    });
+    const appStateSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') pendingCompletionService.drain();
+    });
 
     // Solicitar permissões e, com elas, reagendar os lembretes ativos — os
     // alarmes nativos se perdem ao reinstalar o app ou trocar de celular.
@@ -86,6 +90,7 @@ export function NotificationHandler() {
     return () => {
       responseListener.remove();
       unsubscribeComplete();
+      appStateSubscription.remove();
     };
   }, [user]);
 

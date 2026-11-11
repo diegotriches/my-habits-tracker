@@ -98,7 +98,12 @@ export default function HabitDetailsScreen() {
 
   const handleBack = useCallback(() => {
     hapticFeedback.light();
-    router.back();
+    // Aberto pela notificação com o app fechado, não há tela anterior.
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   }, []);
 
   const actionsMenuItems: HabitActionsMenuItem[] = useMemo(() => [

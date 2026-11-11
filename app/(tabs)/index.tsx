@@ -18,11 +18,13 @@ import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { useCurrentDay } from '@/hooks/useCurrentDay';
+import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  DeviceEventEmitter,
   Image,
   RefreshControl,
   StyleSheet,
@@ -154,6 +156,17 @@ export default function HomeScreen() {
       refetchProfile(),
     ]);
   }, [refetchHabits, refetchCompletions, refetchWeeklyCompletions, selectedWeekStart, refetchProfile]);
+
+  // Conclusões feitas pelo botão "Feito" da notificação chegam ao banco pela
+  // fila local (pendingCompletionService); atualiza a home quando isso ocorre.
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(COMPLETIONS_SYNCED_EVENT, () => {
+      refetchCompletions();
+      refetchWeeklyCompletions(selectedWeekStart);
+      fetchStreaks(habitIds);
+    });
+    return () => subscription.remove();
+  }, [refetchCompletions, refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
 
   const renderHabit = useCallback((item: Habit) => {
     const isDueToday = isHabitDueToday(item);

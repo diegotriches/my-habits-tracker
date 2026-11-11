@@ -17,7 +17,9 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -29,8 +31,7 @@ import java.util.Set;
 
 public class ExactAlarmModule extends ReactContextBaseJavaModule {
     private static final String TAG = "ExactAlarmModule";
-    private static final String HABIT_COMPLETE_ACTION = "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL";
-    private static final String JS_EVENT_NAME = "HabitCompleteFromNotification";
+    private static final String JS_EVENT_NAME = "PendingCompletionsChanged";
 
     private final ReactApplicationContext reactContext;
     private BroadcastReceiver habitCompleteReceiver;
@@ -51,33 +52,69 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
     // Ponte: LocalBroadcastManager → DeviceEventEmitter → JS
     // -------------------------------------------------------------------------
 
+    /**
+     * O botão "Feito" enfileira a conclusão no PendingCompletionStorage e
+     * envia este broadcast local. Se o React Native estiver rodando, o JS é
+     * avisado para esvaziar a fila na hora; se não, a fila é lida na próxima
+     * abertura do app.
+     */
     private void registerHabitCompleteReceiver() {
         habitCompleteReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                String habitId   = intent.getStringExtra("habitId");
-                String habitName = intent.getStringExtra("habitName");
-
-                Log.d(TAG, "LocalBroadcast HABIT_COMPLETE recebido: " + habitId);
-
-                if (habitId == null) return;
-
-                WritableMap params = Arguments.createMap();
-                params.putString("habitId", habitId);
-                params.putString("habitName", habitName != null ? habitName : "");
+                Log.d(TAG, "Fila de conclusoes alterada");
+                if (!reactContext.hasActiveReactInstance()) return;
 
                 reactContext
                     .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit(JS_EVENT_NAME, params);
-
-                Log.d(TAG, "Evento " + JS_EVENT_NAME + " emitido para JS: " + habitId);
+                    .emit(JS_EVENT_NAME, null);
             }
         };
 
         LocalBroadcastManager.getInstance(reactContext)
-            .registerReceiver(habitCompleteReceiver, new IntentFilter(HABIT_COMPLETE_ACTION));
+            .registerReceiver(habitCompleteReceiver, new IntentFilter(AlarmReceiver.PENDING_COMPLETIONS_CHANGED));
 
         Log.d(TAG, "HabitCompleteReceiver registrado via LocalBroadcastManager");
+    }
+
+    // -------------------------------------------------------------------------
+    // Fila de conclusões do botão "Feito"
+    // -------------------------------------------------------------------------
+
+    @ReactMethod
+    public void getPendingCompletions(Promise promise) {
+        try {
+            JSONArray items = PendingCompletionStorage.getAll(reactContext);
+            WritableArray result = Arguments.createArray();
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject obj = items.optJSONObject(i);
+                if (obj == null) continue;
+                WritableMap map = Arguments.createMap();
+                map.putString("id", obj.optString("id"));
+                map.putString("habitId", obj.optString("habitId"));
+                map.putDouble("completedAt", (double) obj.optLong("completedAt"));
+                result.pushMap(map);
+            }
+            promise.resolve(result);
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao ler fila de conclusoes: " + e.getMessage(), e);
+            promise.reject("PENDING_READ_ERROR", e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void removePendingCompletions(ReadableArray ids, Promise promise) {
+        try {
+            Set<String> toRemove = new HashSet<>();
+            for (int i = 0; i < ids.size(); i++) {
+                toRemove.add(ids.getString(i));
+            }
+            PendingCompletionStorage.remove(reactContext, toRemove);
+            promise.resolve(toRemove.size());
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao limpar fila de conclusoes: " + e.getMessage(), e);
+            promise.reject("PENDING_REMOVE_ERROR", e.getMessage(), e);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -95,49 +132,23 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            Intent intent = new Intent(reactContext, AlarmReceiver.class);
-            intent.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
-            intent.putExtra("alarmId", alarmId);
-            intent.putExtra("timestamp", (long) timestamp);
-
             String habitId    = data.hasKey("habitId")    ? data.getString("habitId")    : null;
             String habitName  = data.hasKey("habitName")  ? data.getString("habitName")  : null;
             String reminderId = data.hasKey("reminderId") ? data.getString("reminderId") : null;
             String dayOfWeek  = data.hasKey("dayOfWeek")  ? data.getString("dayOfWeek")  : null;
             String time       = data.hasKey("time")       ? data.getString("time")       : null;
-
-            if (habitId != null)    intent.putExtra("habitId", habitId);
-            if (habitName != null)  intent.putExtra("habitName", habitName);
-            if (data.hasKey("title")) intent.putExtra("title", data.getString("title"));
-            if (data.hasKey("body"))  intent.putExtra("body", data.getString("body"));
-            if (reminderId != null) intent.putExtra("reminderId", reminderId);
-            if (dayOfWeek != null)  intent.putExtra("dayOfWeek", dayOfWeek);
-            if (time != null)       intent.putExtra("time", time);
-
-            int requestCode = alarmId.hashCode();
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                reactContext, requestCode, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
+            String sound      = data.hasKey("sound")      ? data.getString("sound")      : null;
+            boolean hasTarget = data.hasKey("hasTarget") && data.getBoolean("hasTarget");
 
             long triggerTime = (long) timestamp;
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-                }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-            } else {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-            }
+            AlarmReceiver.scheduleAlarm(
+                reactContext, alarmId, triggerTime, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget
+            );
 
             // Persiste os dados do alarme para que o BootReceiver consiga
             // reagendar após reboot ou atualização do app (AlarmManager
             // descarta todos os alarmes pendentes nesses dois casos).
-            AlarmStorage.save(reactContext, alarmId, triggerTime, habitId, habitName, reminderId, dayOfWeek, time);
+            AlarmStorage.save(reactContext, alarmId, triggerTime, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget);
 
             Log.d(TAG, "Alarme agendado: " + alarmId);
             promise.resolve(alarmId);

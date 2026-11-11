@@ -46,15 +46,15 @@ async function runSync(userId: string): Promise<void> {
 
     const { data: habitsData, error: habitsError } = await supabase
       .from('habits')
-      .select('id, name')
+      .select('id, name, has_target')
       .eq('user_id', userId)
       .eq('is_active', true);
     // Sem os dados do banco (ex.: offline) não mexe em nada: cancelar e não
     // conseguir reagendar deixaria o usuário sem lembretes.
     if (habitsError) throw habitsError;
 
-    const habits = (habitsData ?? []) as Pick<Habit, 'id' | 'name'>[];
-    const habitNames = new Map(habits.map(h => [h.id, h.name]));
+    const habits = (habitsData ?? []) as Pick<Habit, 'id' | 'name' | 'has_target'>[];
+    const habitsById = new Map(habits.map(h => [h.id, h]));
 
     let reminders: Reminder[] = [];
     if (habits.length > 0) {
@@ -73,18 +73,18 @@ async function runSync(userId: string): Promise<void> {
 
     let scheduled = 0;
     for (const reminder of reminders) {
-      const habitName = habitNames.get(reminder.habit_id);
+      const habit = habitsById.get(reminder.habit_id);
       const days = reminder.days_of_week ?? ALL_DAYS;
-      if (!habitName || days.length === 0) continue;
+      if (!habit || days.length === 0) continue;
 
       try {
         const alarmIds = await exactAlarmService.scheduleWeeklyReminders(
           reminder.habit_id,
-          habitName,
+          habit.name,
           reminder.time,
           days,
           reminder.id,
-          0
+          { sound: reminder.sound ?? 'default', hasTarget: habit.has_target, minLeadMs: 0 }
         );
         scheduled += alarmIds.length;
 

@@ -7,11 +7,16 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import java.util.Calendar;
 
 /**
  * BroadcastReceiver que recebe alarmes do AlarmManager e dispara
@@ -20,9 +25,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
  */
 public class AlarmReceiver extends BroadcastReceiver {
     private static final String TAG = "AlarmReceiver";
-    private static final String CHANNEL_ID = "habits";
-    private static final String HABIT_COMPLETE_LOCAL_ACTION = "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL";
-    private static final String CHANNEL_NAME = "Lembretes de Habitos";
+    static final String ACTION_EXACT_ALARM = "com.dtriches.myhabitstracker.EXACT_ALARM";
+    static final String PENDING_COMPLETIONS_CHANGED = "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL";
 
     // Actions para os botões da notificação
     public static final String ACTION_SNOOZE = "com.dtriches.myhabitstracker.ACTION_SNOOZE";
@@ -30,6 +34,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     private static final String EXTRA_IS_SNOOZE = "isSnooze";
     private static final String SNOOZE_SUFFIX = "_snooze";
+    private static final long WEEK_MS = 7L * 24 * 60 * 60 * 1000;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -54,18 +59,21 @@ public class AlarmReceiver extends BroadcastReceiver {
         }
 
         // Alarme principal
-        if (!action.equals("com.dtriches.myhabitstracker.EXACT_ALARM")) {
+        if (!action.equals(ACTION_EXACT_ALARM)) {
             Log.w(TAG, "Action desconhecida: " + action);
             return;
         }
 
         try {
-            String alarmId   = intent.getStringExtra("alarmId");
-            String habitId   = intent.getStringExtra("habitId");
-            String habitName = intent.getStringExtra("habitName");
+            String alarmId    = intent.getStringExtra("alarmId");
+            String habitId    = intent.getStringExtra("habitId");
+            String habitName  = intent.getStringExtra("habitName");
             String reminderId = intent.getStringExtra("reminderId");
-            String dayOfWeek = intent.getStringExtra("dayOfWeek");
-            String time      = intent.getStringExtra("time");
+            String dayOfWeek  = intent.getStringExtra("dayOfWeek");
+            String time       = intent.getStringExtra("time");
+            String sound      = intent.getStringExtra("sound");
+            boolean hasTarget = intent.getBooleanExtra("hasTarget", false);
+            long scheduledAt  = intent.getLongExtra("timestamp", 0);
 
             Log.d(TAG, "Dados: alarmId=" + alarmId + " habitId=" + habitId + " habitName=" + habitName);
 
@@ -75,13 +83,12 @@ public class AlarmReceiver extends BroadcastReceiver {
             boolean isSnooze = intent.getBooleanExtra(EXTRA_IS_SNOOZE, false)
                 || (alarmId != null && alarmId.endsWith(SNOOZE_SUFFIX));
 
-            ensureChannel(context);
-            showNotification(context, alarmId, habitId, habitName, reminderId, dayOfWeek, time);
+            showNotification(context, alarmId, habitId, habitName, sound, hasTarget);
 
             if (isSnooze) {
                 if (alarmId != null) AlarmStorage.remove(context, alarmId);
             } else {
-                rescheduleNextWeek(context, intent, alarmId, habitId, habitName, reminderId, dayOfWeek, time);
+                rescheduleNextWeek(context, alarmId, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget, scheduledAt);
             }
 
         } catch (Exception e) {
@@ -97,9 +104,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         String alarmId,
         String habitId,
         String habitName,
-        String reminderId,
-        String dayOfWeek,
-        String time
+        String sound,
+        boolean hasTarget
     ) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
@@ -108,15 +114,10 @@ public class AlarmReceiver extends BroadcastReceiver {
         String title = "Hora do seu habito!";
         String body  = habitName != null ? habitName : "Hora de praticar";
 
-        // Intent para abrir o app ao tocar na notificação
-        Intent openIntent = context.getPackageManager()
-            .getLaunchIntentForPackage(context.getPackageName());
-        if (openIntent != null) {
-            openIntent.putExtra("habitId", habitId);
-            openIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        }
+        // Tocar na notificação abre os detalhes do hábito. O deep link é
+        // roteado pelo Expo Router (scheme "habittracker" do app.json).
         PendingIntent openPending = PendingIntent.getActivity(
-            context, notifId, openIntent != null ? openIntent : new Intent(),
+            context, notifId, buildOpenHabitIntent(context, habitId),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
@@ -125,25 +126,21 @@ public class AlarmReceiver extends BroadcastReceiver {
         snoozeIntent.setAction(ACTION_SNOOZE);
         snoozeIntent.putExtra("habitId", habitId);
         snoozeIntent.putExtra("habitName", habitName);
+        snoozeIntent.putExtra("sound", sound);
+        snoozeIntent.putExtra("hasTarget", hasTarget);
         snoozeIntent.putExtra("notifId", notifId);
         PendingIntent snoozePending = PendingIntent.getBroadcast(
             context, notifId + 1, snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // PendingIntent — botão Feito
-        Intent completeIntent = new Intent(context, AlarmReceiver.class);
-        completeIntent.setAction(ACTION_COMPLETE);
-        completeIntent.putExtra("habitId", habitId);
-        completeIntent.putExtra("habitName", habitName);
-        completeIntent.putExtra("notifId", notifId);
-        PendingIntent completePending = PendingIntent.getBroadcast(
-            context, notifId + 2, completeIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
+        String channelId = ensureChannel(context, sound);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
+            // Silhueta monocromática gerada pelo plugin do expo-notifications
+            // (o ic_launcher colorido vira um quadrado na barra de status).
+            .setSmallIcon(R.drawable.notification_icon)
+            .setColor(ContextCompat.getColor(context, R.color.notification_icon_color))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
@@ -151,69 +148,152 @@ public class AlarmReceiver extends BroadcastReceiver {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(openPending)
-            .addAction(0, "Adiar", snoozePending)
-            .addAction(0, "Feito", completePending);
+            .addAction(0, "Adiar", snoozePending);
+
+        if (hasTarget) {
+            // Meta numérica precisa de um valor: o botão abre o hábito.
+            builder.addAction(0, "Registrar", openPending);
+        } else {
+            Intent completeIntent = new Intent(context, AlarmReceiver.class);
+            completeIntent.setAction(ACTION_COMPLETE);
+            completeIntent.putExtra("habitId", habitId);
+            completeIntent.putExtra("notifId", notifId);
+            PendingIntent completePending = PendingIntent.getBroadcast(
+                context, notifId + 2, completeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            builder.addAction(0, "Feito", completePending);
+        }
 
         nm.notify(notifId, builder.build());
-        Log.d(TAG, "Notificacao exibida: " + notifId);
+        Log.d(TAG, "Notificacao exibida: " + notifId + " (canal " + channelId + ")");
+    }
+
+    private static Intent buildOpenHabitIntent(Context context, String habitId) {
+        Intent intent;
+        if (habitId != null) {
+            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("habittracker://habits/" + habitId));
+            intent.setPackage(context.getPackageName());
+        } else {
+            intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            if (intent == null) intent = new Intent();
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return intent;
     }
 
     // -------------------------------------------------------------------------
-    // Re-agendar para daqui 7 dias (AlarmManager é one-shot)
+    // Re-agendar a próxima ocorrência (AlarmManager é one-shot)
     // -------------------------------------------------------------------------
     private void rescheduleNextWeek(
         Context context,
-        Intent originalIntent,
         String alarmId,
         String habitId,
         String habitName,
         String reminderId,
         String dayOfWeek,
-        String time
+        String time,
+        String sound,
+        boolean hasTarget,
+        long scheduledAt
     ) {
         try {
-            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            if (alarmManager == null) return;
+            if (alarmId == null) return;
 
-            long nextTrigger = System.currentTimeMillis() + (7L * 24 * 60 * 60 * 1000);
-
-            Intent nextIntent = new Intent(context, AlarmReceiver.class);
-            nextIntent.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
-            nextIntent.putExtra("alarmId", alarmId);
-            nextIntent.putExtra("habitId", habitId);
-            nextIntent.putExtra("habitName", habitName);
-            nextIntent.putExtra("reminderId", reminderId);
-            nextIntent.putExtra("dayOfWeek", dayOfWeek);
-            nextIntent.putExtra("time", time);
-            nextIntent.putExtra("timestamp", nextTrigger);
-
-            int requestCode = alarmId != null ? alarmId.hashCode() : habitId.hashCode();
-            PendingIntent pending = PendingIntent.getBroadcast(
-                context, requestCode, nextIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTrigger, pending);
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTrigger, pending);
-                }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTrigger, pending);
-            } else {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextTrigger, pending);
-            }
+            long nextTrigger = nextWeeklyTrigger(dayOfWeek, time, scheduledAt, System.currentTimeMillis());
+            scheduleAlarm(context, alarmId, nextTrigger, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget);
 
             // Mantém o storage atualizado com o novo horário, para que o
             // BootReceiver sempre reagende a partir da ocorrência mais recente.
-            if (alarmId != null) {
-                AlarmStorage.save(context, alarmId, nextTrigger, habitId, habitName, reminderId, dayOfWeek, time);
-            }
+            AlarmStorage.save(context, alarmId, nextTrigger, habitId, habitName, reminderId, dayOfWeek, time, sound, hasTarget);
 
-            Log.d(TAG, "Proximo alarme agendado para 7 dias: " + alarmId);
+            Log.d(TAG, "Proximo alarme agendado: " + alarmId + " para " + nextTrigger);
         } catch (Exception e) {
             Log.e(TAG, "Erro ao re-agendar: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Próxima ocorrência semanal estritamente no futuro, calculada a partir
+     * do dia da semana (0 = domingo, como no JS) e do horário "HH:mm" do
+     * lembrete. Usar "agora + 7 dias" fazia o horário derivar a cada semana
+     * (atrasos de Doze ou de alarmes inexatos se acumulavam). Sem dia/horário
+     * válidos (alarmes antigos), soma semanas ao horário previsto.
+     */
+    static long nextWeeklyTrigger(String dayOfWeek, String time, long scheduledAt, long now) {
+        // Nunca antes do horário previsto: se este disparo chegou adiantado em
+        // relação ao relógio, a ocorrência de hoje não pode ser repetida.
+        long after = Math.max(now, scheduledAt);
+        try {
+            int jsDay = Integer.parseInt(dayOfWeek);
+            String[] parts = time.split(":");
+            int hours = Integer.parseInt(parts[0]);
+            int minutes = Integer.parseInt(parts[1]);
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(after);
+            cal.set(Calendar.HOUR_OF_DAY, hours);
+            cal.set(Calendar.MINUTE, minutes);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+
+            int diff = (jsDay + 1) - cal.get(Calendar.DAY_OF_WEEK); // Calendar.SUNDAY = 1
+            if (diff < 0) diff += 7;
+            cal.add(Calendar.DAY_OF_YEAR, diff);
+            if (cal.getTimeInMillis() <= after) cal.add(Calendar.DAY_OF_YEAR, 7);
+            return cal.getTimeInMillis();
+        } catch (Exception e) {
+            long next = scheduledAt > 0 ? scheduledAt : now;
+            do {
+                next += WEEK_MS;
+            } while (next <= after);
+            return next;
+        }
+    }
+
+    /** Agenda (ou substitui) o alarme semanal com o id dado. */
+    static void scheduleAlarm(
+        Context context,
+        String alarmId,
+        long triggerAt,
+        String habitId,
+        String habitName,
+        String reminderId,
+        String dayOfWeek,
+        String time,
+        String sound,
+        boolean hasTarget
+    ) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction(ACTION_EXACT_ALARM);
+        intent.putExtra("alarmId", alarmId);
+        intent.putExtra("habitId", habitId);
+        intent.putExtra("habitName", habitName);
+        intent.putExtra("reminderId", reminderId);
+        intent.putExtra("dayOfWeek", dayOfWeek);
+        intent.putExtra("time", time);
+        intent.putExtra("sound", sound);
+        intent.putExtra("hasTarget", hasTarget);
+        intent.putExtra("timestamp", triggerAt);
+
+        PendingIntent pending = PendingIntent.getBroadcast(
+            context, alarmId.hashCode(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending);
+        } else {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pending);
         }
     }
 
@@ -222,9 +302,11 @@ public class AlarmReceiver extends BroadcastReceiver {
     // -------------------------------------------------------------------------
     private void handleSnooze(Context context, Intent intent) {
         try {
-            String habitId   = intent.getStringExtra("habitId");
-            String habitName = intent.getStringExtra("habitName");
-            int    notifId   = intent.getIntExtra("notifId", 0);
+            String habitId    = intent.getStringExtra("habitId");
+            String habitName  = intent.getStringExtra("habitName");
+            String sound      = intent.getStringExtra("sound");
+            boolean hasTarget = intent.getBooleanExtra("hasTarget", false);
+            int    notifId    = intent.getIntExtra("notifId", 0);
 
             // Cancelar notificação atual
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -238,10 +320,12 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (alarmManager == null) return;
 
             Intent snoozeAlarm = new Intent(context, AlarmReceiver.class);
-            snoozeAlarm.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
+            snoozeAlarm.setAction(ACTION_EXACT_ALARM);
             snoozeAlarm.putExtra("alarmId", snoozeAlarmId);
             snoozeAlarm.putExtra("habitId", habitId);
             snoozeAlarm.putExtra("habitName", habitName);
+            snoozeAlarm.putExtra("sound", sound);
+            snoozeAlarm.putExtra("hasTarget", hasTarget);
             snoozeAlarm.putExtra("timestamp", snoozeTime);
             snoozeAlarm.putExtra(EXTRA_IS_SNOOZE, true);
 
@@ -269,49 +353,87 @@ public class AlarmReceiver extends BroadcastReceiver {
     }
 
     // -------------------------------------------------------------------------
-    // Botão Feito: cancela notificação e envia broadcast para o app JS
+    // Botão Feito: enfileira a conclusão e avisa o JS, se estiver rodando
     // -------------------------------------------------------------------------
     private void handleComplete(Context context, Intent intent) {
         try {
-            String habitId   = intent.getStringExtra("habitId");
-            String habitName = intent.getStringExtra("habitName");
-            int    notifId   = intent.getIntExtra("notifId", 0);
+            String habitId = intent.getStringExtra("habitId");
+            int    notifId = intent.getIntExtra("notifId", 0);
 
-            // Cancelar notificação atual
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(notifId);
 
-            // Enviar broadcast local para o app JS processar a conclusão
-            Intent completeEvent = new Intent(HABIT_COMPLETE_LOCAL_ACTION);
-            completeEvent.putExtra("habitId", habitId);
-            completeEvent.putExtra("habitName", habitName);
-            LocalBroadcastManager.getInstance(context).sendBroadcast(completeEvent);
+            if (habitId == null) return;
 
-            Log.d(TAG, "Broadcast HABIT_COMPLETE enviado para: " + habitId);
+            // Com o app fechado não há React Native para gravar no banco: a
+            // conclusão fica na fila, com o horário do toque, e o JS a envia
+            // ao abrir. Com o app aberto, o broadcast faz o JS esvaziar a
+            // fila na hora (o ExactAlarmModule o repassa como evento JS).
+            PendingCompletionStorage.add(context, habitId, System.currentTimeMillis());
+            LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(PENDING_COMPLETIONS_CHANGED));
+
+            Log.d(TAG, "Conclusao enfileirada para: " + habitId);
         } catch (Exception e) {
             Log.e(TAG, "Erro no complete: " + e.getMessage(), e);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Garantir que o canal de notificação existe
+    // Canais de notificação — um por som
     // -------------------------------------------------------------------------
-    private void ensureChannel(Context context) {
+
+    /**
+     * No Android 8+ o som pertence ao canal, não à notificação (e um canal
+     * não pode mudar de som depois de criado), então cada som tem o seu.
+     * O JS cria os mesmos canais (services/notifications.ts) para o preview;
+     * quem criar primeiro vale. Devolve o id do canal a usar.
+     */
+    static String ensureChannel(Context context, String sound) {
+        String key = sound != null ? sound : "default";
+        String channelId;
+        String channelName;
+        String rawName = null;
+        boolean silent = false;
+
+        switch (key) {
+            case "water":   channelId = "habits-water";  channelName = "Lembretes (Gota d'água)"; rawName = "water_drop"; break;
+            case "bell":    channelId = "habits-bell";   channelName = "Lembretes (Sino)";        rawName = "bell";       break;
+            case "chime":   channelId = "habits-chime";  channelName = "Lembretes (Carrilhão)";   rawName = "chime";      break;
+            case "silence": channelId = "habits-silent"; channelName = "Lembretes (Silencioso)";  silent = true;          break;
+            default:        channelId = "habits";        channelName = "Lembretes de Habitos";                            break;
+        }
+
+        int rawId = rawName != null
+            ? context.getResources().getIdentifier(rawName, "raw", context.getPackageName())
+            : 0;
+        if (rawName != null && rawId == 0) {
+            // Arquivo de som ausente na build: cai no canal padrão.
+            Log.w(TAG, "Som nao encontrado em res/raw: " + rawName);
+            return ensureChannel(context, "default");
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm == null) return;
-            if (nm.getNotificationChannel(CHANNEL_ID) != null) return;
+            if (nm == null || nm.getNotificationChannel(channelId) != null) return channelId;
 
             NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
+                channelId, channelName, NotificationManager.IMPORTANCE_HIGH
             );
             channel.setDescription("Lembretes para seus habitos diarios");
             channel.enableVibration(true);
             channel.enableLights(true);
+            if (silent) {
+                channel.setSound(null, null);
+            } else if (rawId != 0) {
+                AudioAttributes attrs = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+                channel.setSound(Uri.parse("android.resource://" + context.getPackageName() + "/raw/" + rawName), attrs);
+            }
             nm.createNotificationChannel(channel);
-            Log.d(TAG, "Canal criado: " + CHANNEL_ID);
+            Log.d(TAG, "Canal criado: " + channelId);
         }
+        return channelId;
     }
 }
