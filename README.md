@@ -47,6 +47,10 @@ assets/images/          # Ícones, splash, favicon
 
 ⚠️ **Evite espaços no caminho da pasta do projeto** (ex: `C:\...\My Habits Tracker`). Isso já causou falhas de resolução de dependências no Gradle/autolinking do React Native (`No matching variant... No variants exist`). Use algo como `my-habits-tracker`, sem espaço.
 
+⚠️ **No Windows, o caminho também precisa ser curto** — no máximo ~17 caracteres, como `C:\dev\habits`. A compilação C++ do React Native (New Architecture) gera arquivos cujo caminho relativo embute o caminho completo do projeto, e o `ninja` do Android SDK falha acima de 260 caracteres (`Filename longer than 260 characters`). Mapear a pasta com `subst` não resolve: o autolinking do Expo não encontra o `package.json` quando o projeto fica na raiz de um drive, e mapeando a pasta pai o caminho ainda passa do limite. Builds no EAS (Linux) não têm essa limitação.
+
+Se a build local falhar com `OutOfMemoryError: Metaspace`, aumente a memória do Gradle em `android/gradle.properties` (ex.: `org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m`). Esse arquivo é regenerado pelo `expo prebuild --clean`, então o ajuste precisa ser refeito a cada prebuild.
+
 ## Configuração do ambiente
 
 1. Instale as dependências:
