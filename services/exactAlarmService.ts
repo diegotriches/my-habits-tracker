@@ -36,7 +36,9 @@ class ExactAlarmService {
 
     for (const dayOfWeek of daysOfWeek) {
       const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes);
-      const alarmId = `${habitId}_${dayOfWeek}`;
+      // O reminderId entra no id para que vários lembretes do mesmo hábito
+      // não compartilhem o mesmo PendingIntent (um sobrescreveria o outro).
+      const alarmId = `${reminderId}_${dayOfWeek}`;
 
       await this.scheduleExactAlarm(alarmId, nextOccurrence.getTime(), {
         habitId,
@@ -97,12 +99,33 @@ class ExactAlarmService {
   }
 
   /**
-   * Cancela todos os alarmes de um hábito
+   * Cancela todos os alarmes de um hábito (de qualquer lembrete, snooze
+   * pendente e ids legados `${habitId}_${dia}`).
    */
-  async cancelHabitAlarms(habitId: string, daysOfWeek: number[]): Promise<void> {
-    console.log('Cancelando alarmes do hábito:', habitId);
-    for (const dayOfWeek of daysOfWeek) {
-      await this.cancelAlarm(`${habitId}_${dayOfWeek}`);
+  async cancelHabitAlarms(habitId: string): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    if (!ExactAlarmModule) return;
+
+    try {
+      const count: number = await ExactAlarmModule.cancelAlarmsForHabit(habitId);
+      console.log(`Alarmes do hábito cancelados (${count}):`, habitId);
+    } catch (error) {
+      console.error('Erro ao cancelar alarmes do hábito:', error);
+    }
+  }
+
+  /**
+   * Cancela todos os alarmes persistidos.
+   */
+  async cancelAllAlarms(): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    if (!ExactAlarmModule) return;
+
+    try {
+      const count: number = await ExactAlarmModule.cancelAllAlarms();
+      console.log(`Todos os alarmes cancelados (${count})`);
+    } catch (error) {
+      console.error('Erro ao cancelar todos os alarmes:', error);
     }
   }
 

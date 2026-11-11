@@ -21,6 +21,12 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.HashSet;
+import java.util.Set;
+
 public class ExactAlarmModule extends ReactContextBaseJavaModule {
     private static final String TAG = "ExactAlarmModule";
     private static final String HABIT_COMPLETE_ACTION = "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL";
@@ -144,34 +150,85 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void cancelAlarm(String alarmId, Promise promise) {
         try {
-            AlarmManager alarmManager = (AlarmManager) reactContext.getSystemService(Context.ALARM_SERVICE);
-            if (alarmManager == null) {
-                promise.reject("ALARM_MANAGER_NULL", "AlarmManager não disponível");
-                return;
-            }
-
-            Intent intent = new Intent(reactContext, AlarmReceiver.class);
-            intent.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
-
-            int requestCode = alarmId.hashCode();
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                reactContext, requestCode, intent,
-                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
-            );
-
-            if (pendingIntent != null) {
-                alarmManager.cancel(pendingIntent);
-                pendingIntent.cancel();
-            }
-
-            AlarmStorage.remove(reactContext, alarmId);
-
-            Log.d(TAG, "Alarme cancelado: " + alarmId);
+            cancelAlarmById(reactContext, alarmId);
             promise.resolve(true);
         } catch (Exception e) {
             Log.e(TAG, "Erro ao cancelar alarme: " + e.getMessage(), e);
             promise.reject("CANCEL_ERROR", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Cancela todos os alarmes de um hábito: os persistidos no AlarmStorage
+     * (qualquer lembrete), o snooze pendente e os ids legados
+     * `${habitId}_${dia}` usados antes de o id incluir o reminderId.
+     */
+    @ReactMethod
+    public void cancelAlarmsForHabit(String habitId, Promise promise) {
+        try {
+            Set<String> ids = new HashSet<>();
+            JSONArray alarms = AlarmStorage.getAll(reactContext);
+            for (int i = 0; i < alarms.length(); i++) {
+                JSONObject obj = alarms.getJSONObject(i);
+                if (habitId.equals(obj.optString("habitId", null))) {
+                    ids.add(obj.optString("alarmId"));
+                }
+            }
+            ids.add(habitId + "_snooze");
+            for (int day = 0; day < 7; day++) {
+                ids.add(habitId + "_" + day);
+            }
+
+            for (String id : ids) {
+                cancelAlarmById(reactContext, id);
+            }
+
+            promise.resolve(ids.size());
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao cancelar alarmes do habito: " + e.getMessage(), e);
+            promise.reject("CANCEL_ERROR", e.getMessage(), e);
+        }
+    }
+
+    /** Cancela todos os alarmes persistidos no AlarmStorage. */
+    @ReactMethod
+    public void cancelAllAlarms(Promise promise) {
+        try {
+            JSONArray alarms = AlarmStorage.getAll(reactContext);
+            for (int i = 0; i < alarms.length(); i++) {
+                cancelAlarmById(reactContext, alarms.getJSONObject(i).optString("alarmId"));
+            }
+            promise.resolve(alarms.length());
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao cancelar todos os alarmes: " + e.getMessage(), e);
+            promise.reject("CANCEL_ERROR", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Cancela o PendingIntent do alarme (mesma action + requestCode usados
+     * no agendamento) e remove o registro do AlarmStorage.
+     */
+    static void cancelAlarmById(Context context, String alarmId) {
+        if (alarmId == null || alarmId.isEmpty()) return;
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+        Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction("com.dtriches.myhabitstracker.EXACT_ALARM");
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            context, alarmId.hashCode(), intent,
+            PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        if (pendingIntent != null) {
+            if (alarmManager != null) alarmManager.cancel(pendingIntent);
+            pendingIntent.cancel();
+        }
+
+        AlarmStorage.remove(context, alarmId);
+        Log.d(TAG, "Alarme cancelado: " + alarmId);
     }
 
     @ReactMethod

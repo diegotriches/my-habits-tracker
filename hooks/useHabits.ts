@@ -2,9 +2,33 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
-import { Habit, HabitInsert } from '@/types/database';
+import { Database, Habit, HabitInsert } from '@/types/database';
+import { notificationService } from '@/services/notificationService';
+import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 
 const habitsTable = () => supabase.from('habits') as any;
+
+type ReminderUpdate = Database['public']['Tables']['reminders']['Update'];
+
+async function cleanupHabitNotifications(habitId: string): Promise<void> {
+  try {
+    await notificationService.cancelHabitNotifications(habitId);
+    await progressNotificationScheduler.disableProgressNotifications(habitId);
+
+    const update: ReminderUpdate = { is_active: false, notification_ids: [] };
+    // `as never`: o tipo Database atual faz o supabase-js inferir `never`
+    // no update; o payload já está tipado acima.
+    const { error } = await supabase
+      .from('reminders')
+      .update(update as never)
+      .eq('habit_id', habitId);
+
+    if (error) throw error;
+  } catch (err) {
+    // Não bloqueia a exclusão: os alarmes já foram cancelados no aparelho.
+    console.error('Erro ao limpar lembretes do hábito excluído:', err);
+  }
+}
 
 export const useHabits = () => {
   const { user } = useAuth();
@@ -175,6 +199,11 @@ export const useHabits = () => {
       if (deleteError) {
         return { error: deleteError.message };
       }
+
+      // O hábito é só desativado (soft delete), então nada no banco
+      // remove os lembretes: cancela alarmes/notificações e desativa os
+      // registros para que não voltem a ser agendados.
+      await cleanupHabitNotifications(habitId);
 
       setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
 
