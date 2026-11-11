@@ -8,9 +8,12 @@ const { ExactAlarmModule } = NativeModules;
  * As notificações são disparadas diretamente pelo AlarmReceiver.java
  * via NotificationCompat — sem dependência de Notifee.
  *
- * O botão "Feito" na notificação envia um broadcast local
- * "com.dtriches.myhabitstracker.HABIT_COMPLETE" que este service
- * escuta e repassa para o JS via DeviceEventEmitter.
+ * O botão "Feito" na notificação faz o AlarmReceiver enviar, via
+ * LocalBroadcastManager, o broadcast
+ * "com.dtriches.myhabitstracker.HABIT_COMPLETE_LOCAL". O ExactAlarmModule
+ * (Java) recebe esse broadcast e o repassa ao JS como o evento
+ * "HabitCompleteFromNotification" do DeviceEventEmitter, que este service
+ * escuta em onHabitComplete().
  */
 class ExactAlarmService {
 
@@ -135,8 +138,9 @@ class ExactAlarmService {
 
   /**
    * Registra listener para o evento de conclusão vindo do botão nativo
-   * O AlarmReceiver envia broadcast "HABIT_COMPLETE" quando o usuário
-   * toca em "Feito" na notificação.
+   * Quando o usuário toca em "Feito" na notificação, o AlarmReceiver envia o
+   * broadcast local "HABIT_COMPLETE_LOCAL", que o ExactAlarmModule repassa
+   * como o evento JS "HabitCompleteFromNotification".
    */
   onHabitComplete(callback: (habitId: string, habitName: string) => void): () => void {
     const subscription = DeviceEventEmitter.addListener(

@@ -135,7 +135,6 @@ Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilh
 - Prompt de desativação de otimização de bateria (ver acima)
 - Migration SQL no Supabase para remover tabelas de gamificação (removida do produto)
 - Remover arquivos obsoletos relacionados à gamificação
-- Confirmar se `checkExpiredStreaks` ainda é necessário após a remoção da gamificação
 - Testar upload de avatar e edição de perfil de ponta a ponta
 
 ## Contribuindo
