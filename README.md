@@ -121,10 +121,13 @@ Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendári
 
 ### Sistema de notificações
 
-`expo-notifications` cuida só de permissões e do canal Android. O agendamento em si usa um módulo nativo Java (`ExactAlarmModule` + `AlarmReceiver`) sobre `AlarmManager`, porque o agendamento via JS puro não sobrevivia de forma confiável em background. Dois pontos importantes:
+`expo-notifications` cuida só de permissões e do canal Android. O agendamento em si usa um módulo nativo Java (`ExactAlarmModule` + `AlarmReceiver`) sobre `AlarmManager`, porque o agendamento via JS puro não sobrevivia de forma confiável em background. Pontos importantes:
 
 - **`AlarmStorage.java`** persiste os dados de cada alarme em `SharedPreferences`
 - **`BootReceiver.java`** escuta `BOOT_COMPLETED` e `MY_PACKAGE_REPLACED` e reagenda tudo — sem isso, o `AlarmManager` perde todos os alarmes pendentes num reboot ou atualização do app, e a corrente de lembretes semanais morre para sempre
+- **Ids dos alarmes**: `${reminderId}_${diaDaSemana}`, salvos em `reminders.notification_ids` — um por lembrete, para que vários lembretes do mesmo hábito não se sobrescrevam
+- **Cancelamento**: sempre via `notificationService` (`cancelNotifications`, `cancelHabitNotifications`, `cancelAllNotifications`). O `expo-notifications` não enxerga os alarmes nativos; esses métodos cancelam os dois. Excluir um hábito cancela os alarmes e desativa seus lembretes
+- **Adiar (snooze)**: alarme único de 10 min (`${habitId}_snooze`), que não é reagendado nem sobrevive a reboot
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
 

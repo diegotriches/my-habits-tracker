@@ -28,6 +28,9 @@ public class AlarmReceiver extends BroadcastReceiver {
     public static final String ACTION_SNOOZE = "com.dtriches.myhabitstracker.ACTION_SNOOZE";
     public static final String ACTION_COMPLETE = "com.dtriches.myhabitstracker.ACTION_COMPLETE";
 
+    private static final String EXTRA_IS_SNOOZE = "isSnooze";
+    private static final String SNOOZE_SUFFIX = "_snooze";
+
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d(TAG, "Alarme disparado!");
@@ -66,9 +69,20 @@ public class AlarmReceiver extends BroadcastReceiver {
 
             Log.d(TAG, "Dados: alarmId=" + alarmId + " habitId=" + habitId + " habitName=" + habitName);
 
+            // Snooze é one-shot: não pode entrar na corrente semanal. O
+            // sufixo "_snooze" cobre alarmes de snooze antigos, que eram
+            // reagendados toda semana e persistidos no AlarmStorage.
+            boolean isSnooze = intent.getBooleanExtra(EXTRA_IS_SNOOZE, false)
+                || (alarmId != null && alarmId.endsWith(SNOOZE_SUFFIX));
+
             ensureChannel(context);
             showNotification(context, alarmId, habitId, habitName, reminderId, dayOfWeek, time);
-            rescheduleNextWeek(context, intent, alarmId, habitId, habitName, reminderId, dayOfWeek, time);
+
+            if (isSnooze) {
+                if (alarmId != null) AlarmStorage.remove(context, alarmId);
+            } else {
+                rescheduleNextWeek(context, intent, alarmId, habitId, habitName, reminderId, dayOfWeek, time);
+            }
 
         } catch (Exception e) {
             Log.e(TAG, "Erro ao processar alarme: " + e.getMessage(), e);
@@ -218,7 +232,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
             // Agendar nova notificação em 10 minutos
             long snoozeTime = System.currentTimeMillis() + (10L * 60 * 1000);
-            String snoozeAlarmId = habitId + "_snooze";
+            String snoozeAlarmId = habitId + SNOOZE_SUFFIX;
 
             AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             if (alarmManager == null) return;
@@ -229,6 +243,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             snoozeAlarm.putExtra("habitId", habitId);
             snoozeAlarm.putExtra("habitName", habitName);
             snoozeAlarm.putExtra("timestamp", snoozeTime);
+            snoozeAlarm.putExtra(EXTRA_IS_SNOOZE, true);
 
             PendingIntent pending = PendingIntent.getBroadcast(
                 context, snoozeAlarmId.hashCode(), snoozeAlarm,
@@ -241,7 +256,8 @@ public class AlarmReceiver extends BroadcastReceiver {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, snoozeTime, pending);
             }
 
-            // Snooze é efêmero (10 min) — não persiste no storage de boot.
+            // Snooze é efêmero (10 min) — não persiste no storage de boot e,
+            // ao disparar, não é reagendado (ver EXTRA_IS_SNOOZE em onReceive).
             // Se o celular reiniciar exatamente nesses 10 min, o pior caso é
             // perder esse lembrete pontual; a corrente semanal principal
             // permanece intacta pois seu registro no storage não é tocado aqui.

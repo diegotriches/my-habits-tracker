@@ -7,7 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { supabase } from '@/services/supabase';
-import { FrequencyGoalPeriod } from '@/types/database';
+import { FrequencyGoalPeriod, Reminder } from '@/types/database';
+import { getScheduledWeekDays } from '@/utils/habitHelpers';
 import { HABIT_COLORS } from '@/constants/GameConfig';
 import { MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
@@ -341,16 +342,30 @@ export function useCreateHabitForm() {
     }
 
     if (reminders.length > 0) {
+      const daysOfWeek = getScheduledWeekDays(habit);
       for (const reminder of reminders) {
         const timeString = formatTime(reminder.time);
         try {
+          // Grava primeiro para agendar com o id real do lembrete — ele
+          // compõe o id do alarme nativo e precisa ser único por lembrete.
+          const { data: created, error: insertError } = await remindersTable()
+            .insert({
+              habit_id: habit.id, time: timeString, days_of_week: daysOfWeek,
+              is_active: true,
+            })
+            .select('id')
+            .single();
+          if (insertError) throw insertError;
+
+          const reminderId = (created as Pick<Reminder, 'id'>).id;
           const notificationIds = await notificationService.scheduleWeeklyReminder(
-            habit.id, habit.name, timeString, [0, 1, 2, 3, 4, 5, 6], reminder.id
+            habit.id, habit.name, timeString, daysOfWeek, reminderId
           );
-          await remindersTable().insert({
-            habit_id: habit.id, time: timeString, days_of_week: [0, 1, 2, 3, 4, 5, 6],
-            is_active: true, notification_ids: notificationIds,
-          });
+          if (notificationIds.length > 0) {
+            await remindersTable()
+              .update({ notification_ids: notificationIds })
+              .eq('id', reminderId);
+          }
         } catch (e) { console.error('Erro ao criar lembrete:', e); }
       }
     }

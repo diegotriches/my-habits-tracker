@@ -61,6 +61,13 @@ public class BootReceiver extends BroadcastReceiver {
                     continue;
                 }
 
+                // Snoozes antigos eram persistidos por engano como alarmes
+                // semanais. Snooze não sobrevive a reboot: descarta.
+                if (alarmId.endsWith("_snooze")) {
+                    AlarmStorage.remove(context, alarmId);
+                    continue;
+                }
+
                 // Se o dispositivo ficou desligado por mais de uma semana,
                 // o horario salvo pode estar no passado. Empurra para a
                 // proxima ocorrencia do mesmo dia/horario em vez de disparar

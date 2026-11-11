@@ -18,6 +18,19 @@ export function shouldHabitAppearOnDate(habit: Habit, date: Date = new Date()): 
 }
 
 /**
+ * Dias da semana (0=Domingo) em que o hábito é feito — usado para
+ * agendar lembretes só nos dias programados.
+ */
+export function getScheduledWeekDays(
+  habit: Pick<Habit, 'frequency_type' | 'frequency_days'>
+): number[] {
+  if (habit.frequency_type === 'weekly' && habit.frequency_days && habit.frequency_days.length > 0) {
+    return [...habit.frequency_days].sort((a, b) => a - b);
+  }
+  return [0, 1, 2, 3, 4, 5, 6];
+}
+
+/**
  * Retorna o dia da semana atual (0-6, onde 0=Domingo)
  */
 export function getCurrentDayOfWeek(): number {

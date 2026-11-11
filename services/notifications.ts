@@ -152,7 +152,16 @@ class NotificationService {
   // Cancelamento
   // ---------------------------------------------------------------------------
 
+  /**
+   * Cancela um lembrete pelo id salvo em `reminders.notification_ids`.
+   * No Android esses ids são de alarmes nativos (AlarmManager), não do
+   * expo-notifications, então o alarme também é cancelado. Cancelar um id
+   * inexistente em qualquer um dos dois é inofensivo.
+   */
   async cancelNotification(notificationId: string): Promise<void> {
+    if (Platform.OS === 'android') {
+      await exactAlarmService.cancelAlarm(notificationId);
+    }
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch (error) {
@@ -165,6 +174,7 @@ class NotificationService {
   }
 
   async cancelHabitNotifications(habitId: string): Promise<void> {
+    await exactAlarmService.cancelHabitAlarms(habitId);
     try {
       const scheduled = await Notifications.getAllScheduledNotificationsAsync();
       const toCancel = scheduled.filter((n) => n.content.data?.habitId === habitId);
@@ -177,6 +187,7 @@ class NotificationService {
   }
 
   async cancelAllNotifications(): Promise<void> {
+    await exactAlarmService.cancelAllAlarms();
     await Notifications.cancelAllScheduledNotificationsAsync();
   }
 
