@@ -134,6 +134,10 @@ export function useHabitCalendarActions({
     const finalValue = mode === 'add' ? pendingProgressCurrentValue + value : value;
     const hadExisting = pendingProgressCurrentValue > 0;
     const optimisticId = makeOptimisticId(habit.id, date);
+    // Guarda a completion atual para restaurar se a requisição falhar.
+    const existingCompletion = hadExisting
+      ? completions.find(c => new Date(c.completed_at).toDateString() === date.toDateString())
+      : undefined;
 
     setShowProgressModal(false);
     setPendingProgressDate(null);
@@ -156,7 +160,14 @@ export function useHabitCalendarActions({
       // Se já havia uma completion nesse dia, apaga antes de recriar
       // (mesma lógica do fluxo original).
       if (hadExisting) {
-        await retroactiveCompletionService.uncompleteRetroactively(habit, date, userId);
+        const removed = await retroactiveCompletionService.uncompleteRetroactively(habit, date, userId);
+        if (!removed.success) {
+          // O valor antigo continua no banco: desfaz a troca na UI.
+          removeCompletionById(optimisticId);
+          if (existingCompletion) addOptimisticCompletion(existingCompletion);
+          onSuccessMessage(removed.message);
+          return;
+        }
       }
 
       const result = await retroactiveCompletionService.completeRetroactively(habit, date, userId, finalValue);
@@ -165,11 +176,13 @@ export function useHabitCalendarActions({
         await retroactiveCompletionService.recalculateStreak(habit.id);
         await refetchStreak();
       } else {
+        // Se o valor antigo já foi apagado, não há o que restaurar: o
+        // dia fica vazio, que é o estado real do banco.
         removeCompletionById(optimisticId);
         onSuccessMessage(result.message);
       }
     })();
-  }, [habit, userId, pendingProgressDate, pendingProgressCurrentValue, addOptimisticCompletion, removeCompletionById, removeCompletionForDate, refetchStreak, onSuccessMessage]);
+  }, [habit, userId, completions, pendingProgressDate, pendingProgressCurrentValue, addOptimisticCompletion, removeCompletionById, removeCompletionForDate, refetchStreak, onSuccessMessage]);
 
   const cancelProgress = useCallback(() => {
     setShowProgressModal(false);

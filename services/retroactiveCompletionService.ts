@@ -35,15 +35,20 @@ export const retroactiveCompletionService = {
     achievedValue?: number
   ): Promise<RetroactiveResult> {
     try {
-      const { data: existing } = await supabase
+      // limit(1) em vez de maybeSingle(): com duplicatas no mesmo dia o
+      // maybeSingle() devolve erro, que era ignorado, e uma nova
+      // duplicata acabava inserida.
+      const { data: existing, error: fetchError } = await supabase
         .from('completions')
-        .select('*')
+        .select('id')
         .eq('habit_id', habit.id)
         .gte('completed_at', startOfDay(date).toISOString())
         .lte('completed_at', endOfDay(date).toISOString())
-        .maybeSingle();
+        .limit(1);
 
-      if (existing) {
+      if (fetchError) throw fetchError;
+
+      if (existing && existing.length > 0) {
         return {
           success: false,
           message: 'Este dia já foi completado',
@@ -85,26 +90,20 @@ export const retroactiveCompletionService = {
     userId: string
   ): Promise<RetroactiveResult> {
     try {
-      const { data: completion } = await supabase
-        .from('completions')
-        .select('*')
-        .eq('habit_id', habit.id)
-        .gte('completed_at', startOfDay(date).toISOString())
-        .lte('completed_at', endOfDay(date).toISOString())
-        .maybeSingle();
-
-      if (!completion) {
-        return {
-          success: false,
-          message: 'Este dia não estava completado',
-          action: 'uncompleted',
-        };
-      }
-
-      await supabase
+      // Apaga todas as completions do dia (cobre duplicatas) numa única
+      // requisição. O erro precisa ser verificado: antes ele era
+      // ignorado, a UI otimista mostrava o dia desmarcado e o banco
+      // continuava com a completion, sem nunca reverter.
+      // Se não havia nada para apagar, o estado final (dia desmarcado) já
+      // é o desejado, então também conta como sucesso.
+      const { error: deleteError } = await supabase
         .from('completions')
         .delete()
-        .eq('id', (completion as any).id);
+        .eq('habit_id', habit.id)
+        .gte('completed_at', startOfDay(date).toISOString())
+        .lte('completed_at', endOfDay(date).toISOString());
+
+      if (deleteError) throw deleteError;
 
       return {
         success: true,

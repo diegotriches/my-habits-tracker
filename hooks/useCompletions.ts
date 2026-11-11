@@ -3,13 +3,21 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { Completion, CompletionInsert, Habit, Streak } from '@/types/database';
 import { useAuth } from './useAuth';
-import { startOfDay, endOfDay } from 'date-fns';
+import { useCurrentDay } from './useCurrentDay';
+import { startOfDay, endOfDay, format } from 'date-fns';
+
+// Compara com o dia local no momento da chamada (e não com o dia da última
+// busca), para que completions de ontem ainda na lista nunca contem como
+// "hoje" — mesmo no intervalo entre a meia-noite e o refetch.
+const isFromToday = (c: Completion): boolean =>
+  format(new Date(c.completed_at), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
 export const useCompletions = () => {
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const today = useCurrentDay();
 
   const fetchTodayCompletions = async () => {
     if (!user?.id) return;
@@ -41,7 +49,7 @@ export const useCompletions = () => {
   };
 
   const isCompletedToday = (habitId: string): boolean => {
-    return completions.some(c => c.habit_id === habitId);
+    return completions.some(c => c.habit_id === habitId && isFromToday(c));
   };
 
   const calculateProgressPercentage = (currentValue: number, targetValue: number | null): number => {
@@ -238,7 +246,7 @@ export const useCompletions = () => {
   };
 
   const getCompletion = (habitId: string): Completion | undefined => {
-    return completions.find(c => c.habit_id === habitId);
+    return completions.find(c => c.habit_id === habitId && isFromToday(c));
   };
 
   const getProgressStatus = (habit: Habit): {
@@ -263,11 +271,12 @@ export const useCompletions = () => {
     };
   };
 
+  // Rebusca também na virada do dia: a lista é só das completions de hoje.
   useEffect(() => {
     if (user) {
       fetchTodayCompletions();
     }
-  }, [user]);
+  }, [user, today]);
 
   return {
     completions,
