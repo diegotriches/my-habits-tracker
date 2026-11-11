@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Habit, Completion } from '@/types/database';
 import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
+import type { OptimisticOp, SettleOptimistic } from './useWeeklyCompletions';
 
 function formatProgressMessage(
   isUpdate: boolean,
@@ -37,11 +38,12 @@ interface UseHabitCompletionActionsParams {
   celebrate: () => void;
   refetchCompletions: () => Promise<void>;
   refetchWeeklyCompletions: (weekStart: Date) => Promise<void>;
-  // Mutação otimista local (de useWeeklyCompletions), para refletir
-  // marcações/desmarcações retroativas na UI sem esperar a rede.
+  // Mutação otimista (de useWeeklyCompletions): applyOptimistic reflete a
+  // marcação/desmarcação na UI na hora e a protege de refetches enquanto a
+  // requisição não termina; as outras duas revertem a UI em caso de falha.
+  applyOptimistic: (op: OptimisticOp) => SettleOptimistic;
   addOptimisticCompletion: (completion: Completion) => void;
   removeCompletionById: (id: string) => void;
-  removeCompletionForDate: (habitId: string, date: Date) => void;
 }
 
 export function useHabitCompletionActions({
@@ -58,9 +60,9 @@ export function useHabitCompletionActions({
   celebrate,
   refetchCompletions,
   refetchWeeklyCompletions,
+  applyOptimistic,
   addOptimisticCompletion,
   removeCompletionById,
-  removeCompletionForDate,
 }: UseHabitCompletionActionsParams) {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -100,13 +102,16 @@ export function useHabitCompletionActions({
 
       // Feedback imediato: marca o dia como feito na UI antes de
       // esperar a resposta do servidor.
-      addOptimisticCompletion({
-        id: optimisticId,
-        habit_id: habit.id,
-        completed_at: date.toISOString(),
-        value_achieved: value,
-        was_synced: false,
-        created_at: new Date().toISOString(),
+      const settle = applyOptimistic({
+        kind: 'add',
+        completion: {
+          id: optimisticId,
+          habit_id: habit.id,
+          completed_at: date.toISOString(),
+          value_achieved: value,
+          was_synced: false,
+          created_at: new Date().toISOString(),
+        },
       });
       setPendingRetroDate(null);
       setShowProgressModal(false);
@@ -116,6 +121,7 @@ export function useHabitCompletionActions({
       // seguir marcando o próximo dia imediatamente.
       (async () => {
         const result = await retroactiveCompletionService.completeRetroactively(habit, date, userId, value);
+        settle(result.success);
         if (result.success) {
           await retroactiveCompletionService.recalculateStreak(habit.id);
           await fetchStreaks([habit.id]);
@@ -147,7 +153,7 @@ export function useHabitCompletionActions({
 
     setShowProgressModal(false);
     setSelectedHabit(null);
-  }, [selectedHabit, userId, pendingRetroDate, addOptimisticCompletion, removeCompletionById, fetchStreaks, showResultMessage, getStreak, completeHabit, updateStreakWithFrequency, celebrate, refetchWeeklyCompletions, selectedWeekStart]);
+  }, [selectedHabit, userId, pendingRetroDate, applyOptimistic, removeCompletionById, fetchStreaks, showResultMessage, getStreak, completeHabit, updateStreakWithFrequency, celebrate, refetchWeeklyCompletions, selectedWeekStart]);
 
   const cancelProgress = useCallback(() => {
     setShowProgressModal(false);
@@ -162,19 +168,23 @@ export function useHabitCompletionActions({
     const optimisticId = makeOptimisticId(habit.id, date);
 
     // Feedback imediato: preenche o dia no card na hora.
-    addOptimisticCompletion({
-      id: optimisticId,
-      habit_id: habit.id,
-      completed_at: date.toISOString(),
-      value_achieved: null,
-      was_synced: false,
-      created_at: new Date().toISOString(),
+    const settle = applyOptimistic({
+      kind: 'add',
+      completion: {
+        id: optimisticId,
+        habit_id: habit.id,
+        completed_at: date.toISOString(),
+        value_achieved: null,
+        was_synced: false,
+        created_at: new Date().toISOString(),
+      },
     });
 
     // Requisição em segundo plano — permite tocar no próximo dia
     // imediatamente, sem esperar esta terminar.
     (async () => {
       const result = await retroactiveCompletionService.completeRetroactively(habit, date, userId);
+      settle(result.success);
       if (result.success) {
         await retroactiveCompletionService.recalculateStreak(habit.id);
         await fetchStreaks([habit.id]);
@@ -184,7 +194,7 @@ export function useHabitCompletionActions({
         showResultMessage(result.message);
       }
     })();
-  }, [userId, addOptimisticCompletion, removeCompletionById, fetchStreaks, showResultMessage]);
+  }, [userId, applyOptimistic, removeCompletionById, fetchStreaks, showResultMessage]);
 
   const handleComplete = useCallback(async (habitId: string, achievedValue?: number, mode?: 'add' | 'replace') => {
     const habit = habits.find(h => h.id === habitId);
@@ -287,13 +297,14 @@ export function useHabitCompletionActions({
       );
 
       // Feedback imediato: some com a marcação do dia na hora.
-      removeCompletionForDate(habit.id, date);
+      const settle = applyOptimistic({ kind: 'remove', habitId: habit.id, date });
       setPendingRetroDate(null);
       setShowUncompleteConfirm(false);
       setSelectedHabitId('');
 
       (async () => {
         const result = await retroactiveCompletionService.uncompleteRetroactively(habit, date, userId);
+        settle(result.success);
         if (result.success) {
           await retroactiveCompletionService.recalculateStreak(habit.id);
           await fetchStreaks([habit.id]);
@@ -317,7 +328,7 @@ export function useHabitCompletionActions({
 
     setShowUncompleteConfirm(false);
     setSelectedHabitId('');
-  }, [habits, selectedHabitId, userId, pendingRetroDate, weeklyCompletions, removeCompletionForDate, addOptimisticCompletion, fetchStreaks, showResultMessage, uncompleteHabit, updateStreakWithFrequency, refetchWeeklyCompletions, selectedWeekStart]);
+  }, [habits, selectedHabitId, userId, pendingRetroDate, weeklyCompletions, applyOptimistic, addOptimisticCompletion, fetchStreaks, showResultMessage, uncompleteHabit, updateStreakWithFrequency, refetchWeeklyCompletions, selectedWeekStart]);
 
   const cancelUncomplete = useCallback(() => {
     setShowUncompleteConfirm(false);

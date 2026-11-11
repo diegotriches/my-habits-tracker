@@ -17,10 +17,11 @@ import { useHabitOrder } from '@/hooks/useHabitOrder';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
+import { useCurrentDay } from '@/hooks/useCurrentDay';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   RefreshControl,
@@ -29,7 +30,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { startOfWeek, format } from 'date-fns';
+import { startOfWeek, format, parseISO, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -55,11 +56,25 @@ export default function HomeScreen() {
 
   const {
     completions: weeklyCompletions,
+    applyOptimistic,
     addOptimisticCompletion,
     removeCompletionById,
-    removeCompletionForDate,
     refetch: refetchWeeklyCompletions,
   } = useWeeklyCompletions();
+
+  // Se o app fica aberto na virada do dia e o usuário estava vendo a semana
+  // corrente, a home acompanha a semana nova (sábado → domingo).
+  const today = useCurrentDay();
+  const previousDayRef = useRef(today);
+  useEffect(() => {
+    const previousDay = previousDayRef.current;
+    if (previousDay === today) return;
+    previousDayRef.current = today;
+    const previousWeekStart = startOfWeek(parseISO(previousDay), { weekStartsOn: 0 });
+    setSelectedWeekStart(current =>
+      isSameDay(current, previousWeekStart) ? startOfWeek(new Date(), { weekStartsOn: 0 }) : current
+    );
+  }, [today]);
 
   const { fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
@@ -94,9 +109,9 @@ export default function HomeScreen() {
     celebrate,
     refetchCompletions,
     refetchWeeklyCompletions,
+    applyOptimistic,
     addOptimisticCompletion,
     removeCompletionById,
-    removeCompletionForDate,
   });
 
   const loading = habitsLoading || completionsLoading;
@@ -119,10 +134,10 @@ export default function HomeScreen() {
     }
   }, [habits]);
 
+  // A busca da semana nova fica a cargo do efeito abaixo (antes eram duas).
   const handleWeekChange = useCallback((newWeekStart: Date) => {
     setSelectedWeekStart(newWeekStart);
-    refetchWeeklyCompletions(newWeekStart);
-  }, [refetchWeeklyCompletions]);
+  }, []);
 
   useEffect(() => {
     refetchWeeklyCompletions(selectedWeekStart);
@@ -154,7 +169,8 @@ export default function HomeScreen() {
         onWeekChange={handleWeekChange}
       />
     );
-  }, [getStreak, weeklyCompletions, handleDayPress, handleHabitPress, selectedWeekStart, handleWeekChange]);
+    // `today` recalcula isDueToday e o destaque do dia na virada do dia.
+  }, [getStreak, weeklyCompletions, handleDayPress, handleHabitPress, selectedWeekStart, handleWeekChange, today]);
 
   if (habitsLoading && habits.length === 0) {
     return (
