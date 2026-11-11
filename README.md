@@ -117,7 +117,9 @@ Componentes extraídos de UI repetida ou pesada usam `React.memo`. Evite definir
 
 ### UI otimista
 
-Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendário de detalhes) **não espera a rede**: o estado local é atualizado na hora (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`, expostos por `useWeeklyCompletions` e `useHabitDetails`), a requisição roda em segundo plano, e só reverte visualmente se der erro. Isso evita travar a UI ao marcar vários dias em sequência. Como consequência, **não há refetch completo após cada sucesso individual** — o estado local se autocorrige na próxima atualização natural (pull-to-refresh, reabrir a tela).
+Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendário de detalhes) **não espera a rede**: o estado local é atualizado na hora, a requisição roda em segundo plano, e só reverte visualmente se der erro. Isso evita travar a UI ao marcar vários dias em sequência. Como consequência, **não há refetch completo após cada sucesso individual** — o estado local se autocorrige na próxima atualização natural (pull-to-refresh, reabrir a tela).
+
+Na home, as mutações passam por `applyOptimistic(op)` do `useWeeklyCompletions`, que devolve um `settle(ok)` a ser chamado quando a requisição termina. Enquanto um refetch puder ter lido o banco antes da gravação, a mutação é reaplicada sobre a resposta — assim, marcar dias e logo em seguida trocar de semana ou puxar para atualizar não "desmarca" nada na tela. Respostas de buscas antigas (fora de ordem) são descartadas. Na tela de detalhes, que só busca ao abrir, o `useHabitDetails` expõe setters simples (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`).
 
 ### Sistema de notificações
 
@@ -128,6 +130,7 @@ Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendári
 - **Ids dos alarmes**: `${reminderId}_${diaDaSemana}`, salvos em `reminders.notification_ids` — um por lembrete, para que vários lembretes do mesmo hábito não se sobrescrevam
 - **Cancelamento**: sempre via `notificationService` (`cancelNotifications`, `cancelHabitNotifications`, `cancelAllNotifications`). O `expo-notifications` não enxerga os alarmes nativos; esses métodos cancelam os dois. Excluir um hábito cancela os alarmes e desativa seus lembretes
 - **Adiar (snooze)**: alarme único de 10 min (`${habitId}_snooze`), que não é reagendado nem sobrevive a reboot
+- **Ressincronização ao abrir o app** (`services/reminderSyncService.ts`, chamado pelo `NotificationHandler` após a permissão): os alarmes vivem só no aparelho e se perdem ao reinstalar o app, limpar os dados ou trocar de celular, enquanto os lembretes continuam ativos no banco. A cada login/abertura, o app cancela os alarmes persistidos e reagenda os lembretes ativos dos hábitos ativos — o que também limpa órfãos (lembretes excluídos em outro aparelho, ids legados). Se a busca no banco falhar (ex.: offline), nada é alterado. Só Android
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
 

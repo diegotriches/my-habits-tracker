@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import { exactAlarmService } from '@/services/exactAlarmService';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 /**
  * Handler global de notificações usando expo-notifications.
@@ -16,6 +17,7 @@ import { exactAlarmService } from '@/services/exactAlarmService';
  * - Escutar respostas a notificações (botões Adiar/Feito, toque no corpo)
  * - Escutar evento nativo HabitCompleteFromNotification (botão "Feito" do AlarmReceiver)
  * - Navegar para o hábito ao tocar na notificação
+ * - Ressincronizar os alarmes nativos com os lembretes do banco (Android)
  */
 export function NotificationHandler() {
   const { user } = useAuth();
@@ -72,9 +74,11 @@ export function NotificationHandler() {
       }
     );
 
-    // Solicitar permissões
+    // Solicitar permissões e, com elas, reagendar os lembretes ativos — os
+    // alarmes nativos se perdem ao reinstalar o app ou trocar de celular.
     notificationService.requestPermissions().then((granted) => {
       console.log('Permissao de notificacao:', granted ? 'concedida' : 'negada');
+      if (granted) reminderSyncService.syncReminders(user.id);
     });
 
     console.log('Handlers de notificacao registrados');

@@ -18,14 +18,20 @@ const { ExactAlarmModule } = NativeModules;
 class ExactAlarmService {
 
   /**
-   * Agenda lembretes semanais usando AlarmManager
+   * Agenda lembretes semanais usando AlarmManager.
+   *
+   * `minLeadMs`: antecedência mínima para agendar ainda hoje; abaixo dela a
+   * ocorrência vai para a semana seguinte. O padrão (2 min) é para quando o
+   * usuário cria/edita o lembrete; a ressincronização usa 0 para não pular
+   * um lembrete de hoje que está prestes a disparar.
    */
   async scheduleWeeklyReminders(
     habitId: string,
     habitName: string,
     time: string,
     daysOfWeek: number[],
-    reminderId: string
+    reminderId: string,
+    minLeadMs: number = 2 * 60 * 1000
   ): Promise<string[]> {
     if (Platform.OS !== 'android') return [];
 
@@ -35,7 +41,7 @@ class ExactAlarmService {
     console.log('Agendando lembretes semanais:', { habitName, time, daysOfWeek });
 
     for (const dayOfWeek of daysOfWeek) {
-      const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes);
+      const nextOccurrence = this.getNextOccurrence(dayOfWeek, hours, minutes, minLeadMs);
       // O reminderId entra no id para que vários lembretes do mesmo hábito
       // não compartilhem o mesmo PendingIntent (um sobrescreveria o outro).
       const alarmId = `${reminderId}_${dayOfWeek}`;
@@ -179,7 +185,7 @@ class ExactAlarmService {
   /**
    * Calcula próxima ocorrência de um dia/horário
    */
-  private getNextOccurrence(dayOfWeek: number, hours: number, minutes: number): Date {
+  private getNextOccurrence(dayOfWeek: number, hours: number, minutes: number, minLeadMs: number): Date {
     const now = new Date();
     const result = new Date();
 
@@ -187,12 +193,13 @@ class ExactAlarmService {
 
     const currentDay = result.getDay();
     let daysUntil = dayOfWeek - currentDay;
-    const minBuffer = 2 * 60 * 1000;
     const diffMs = result.getTime() - now.getTime();
 
+    // `<=` garante que um horário que já passou (ou é exatamente agora) nunca
+    // seja agendado no passado, mesmo com minLeadMs = 0.
     if (daysUntil < 0) {
       daysUntil += 7;
-    } else if (daysUntil === 0 && diffMs < minBuffer) {
+    } else if (daysUntil === 0 && diffMs <= minLeadMs) {
       daysUntil += 7;
       console.log('Horario muito proximo, pulando para proxima semana');
     }

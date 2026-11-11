@@ -2,13 +2,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
-import { Database, Habit, HabitInsert } from '@/types/database';
+import { Habit, HabitInsert, ReminderUpdate } from '@/types/database';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 
 const habitsTable = () => supabase.from('habits') as any;
-
-type ReminderUpdate = Database['public']['Tables']['reminders']['Update'];
 
 async function cleanupHabitNotifications(habitId: string): Promise<void> {
   try {

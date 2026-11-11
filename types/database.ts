@@ -348,6 +348,7 @@ export type NotificationSettingsInsert = Database['public']['Tables']['notificat
 // Tipos para update
 export type HabitUpdate = Database['public']['Tables']['habits']['Update']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+export type ReminderUpdate = Database['public']['Tables']['reminders']['Update']
 export type NotificationSettingsUpdate = Database['public']['Tables']['notification_settings']['Update']
 
 // Tipos para meta de frequência
