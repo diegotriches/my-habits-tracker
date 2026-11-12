@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ensureOnline } from '@/services/network';
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
@@ -57,6 +58,7 @@ export default function EditProfileScreen() {
 
   const handleSaveName = async () => {
     if (!user || !nameChanged) return;
+    if (!(await ensureOnline())) return;
 
     const trimmed = displayName.trim();
     if (trimmed.length < 2) {

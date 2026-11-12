@@ -8,6 +8,8 @@ import { notificationService } from '@/services/notificationService';
 import { exactAlarmService } from '@/services/exactAlarmService';
 import { reminderSyncService } from '@/services/reminderSyncService';
 import { pendingCompletionService } from '@/services/pendingCompletionService';
+import { isOfflineState } from '@/services/network';
+import NetInfo from '@react-native-community/netinfo';
 
 /**
  * Handler global de notificações usando expo-notifications.
@@ -21,6 +23,7 @@ import { pendingCompletionService } from '@/services/pendingCompletionService';
  *   PendingCompletionsChanged
  * - Navegar para o hábito ao tocar na notificação
  * - Ressincronizar os alarmes nativos com os lembretes do banco (Android)
+ * - Ao reconectar: enviar pendências e refazer a ressincronização que falhou
  */
 export function NotificationHandler() {
   const { user } = useAuth();
@@ -80,9 +83,27 @@ export function NotificationHandler() {
 
     // Solicitar permissões e, com elas, reagendar os lembretes ativos — os
     // alarmes nativos se perdem ao reinstalar o app ou trocar de celular.
+    let remindersSynced = false;
+    const syncReminders = () => {
+      reminderSyncService.syncReminders(user.id).then((ok) => { remindersSynced = ok; });
+    };
     notificationService.requestPermissions().then((granted) => {
       console.log('Permissao de notificacao:', granted ? 'concedida' : 'negada');
-      if (granted) reminderSyncService.syncReminders(user.id);
+      if (granted) syncReminders();
+    });
+
+    // Quando a conexão volta: envia as marcações pendentes na hora (sem
+    // esperar o usuário sair e voltar ao app) e refaz a ressincronização dos
+    // lembretes se ela falhou — ex.: o app foi aberto offline.
+    let wasOffline = false;
+    const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
+      const offline = isOfflineState(state);
+      if (wasOffline && !offline) {
+        console.log('Conexao restabelecida: enviando pendencias');
+        pendingCompletionService.drain();
+        if (!remindersSynced) syncReminders();
+      }
+      wasOffline = offline;
     });
 
     console.log('Handlers de notificacao registrados');
@@ -91,6 +112,7 @@ export function NotificationHandler() {
       responseListener.remove();
       unsubscribeComplete();
       appStateSubscription.remove();
+      unsubscribeNetInfo();
     };
   }, [user]);
 

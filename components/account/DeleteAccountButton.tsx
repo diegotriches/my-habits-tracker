@@ -17,6 +17,7 @@ import { deleteAccount } from '@/services/accountDeletionService';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ensureOnline } from '@/services/network';
 
 // ✅ Cores fixas para zona de perigo (não dependem do theme)
 const DANGER_COLOR = '#ef4444';
@@ -57,6 +58,7 @@ export function DeleteAccountButton() {
       return;
     }
 
+    if (!(await ensureOnline())) return;
     setLoading(true);
 
     try {

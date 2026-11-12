@@ -17,6 +17,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { useCurrentDay } from '@/hooks/useCurrentDay';
+import { useConnectivity } from '@/hooks/useConnectivity';
+import { OfflineStatusBanner } from '@/components/ui/OfflineStatusBanner';
 import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
 import { OUTBOX_SYNCED_EVENT } from '@/services/completionOutbox';
 import { Habit } from '@/types/database';
@@ -70,6 +72,7 @@ export default function HomeScreen() {
 
   const { fetchStreaks, getStreak, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
+  const connectivity = useConnectivity();
   const {
     isVisible: showConfetti,
     celebrate,
@@ -246,6 +249,8 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      <OfflineStatusBanner isOffline={connectivity.isOffline} pendingCount={connectivity.pendingCount} />
 
       {habits.length === 0 ? (
         <EmptyState

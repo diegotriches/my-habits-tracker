@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ensureOnline } from '@/services/network';
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -31,6 +32,8 @@ export default function ProfileHeader({ profile, onAvatarUpdated }: ProfileHeade
 
   const handleAvatarPress = async () => {
     hapticFeedback.light();
+    // Antes de abrir a galeria: o upload exige conexão.
+    if (!(await ensureOnline())) return;
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {

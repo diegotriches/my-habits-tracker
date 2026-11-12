@@ -46,6 +46,10 @@ export type OutboxResult = 'synced' | 'superseded' | 'dropped';
  *  anterior do app) foram gravadas — as telas devem buscar os dados de novo. */
 export const OUTBOX_SYNCED_EVENT = 'CompletionOutboxSynced';
 
+/** Emitido sempre que a fila muda (entrou ou saiu uma operação) — para o
+ *  indicador de pendências. */
+export const OUTBOX_CHANGED_EVENT = 'CompletionOutboxChanged';
+
 const STORAGE_KEY = 'completion_outbox_v1';
 
 // Promessas de quem enfileirou, por id da operação. Ficam só em memória: se o
@@ -68,6 +72,7 @@ async function readQueue(): Promise<CompletionOp[]> {
 
 async function writeQueue(queue: CompletionOp[]): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+  DeviceEventEmitter.emit(OUTBOX_CHANGED_EVENT);
 }
 
 function resolveWaiter(id: string, result: OutboxResult) {

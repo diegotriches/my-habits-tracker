@@ -13,6 +13,7 @@ import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH,
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
+import { ensureOnline } from '@/services/network';
 import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
 
 const remindersTable = () => supabase.from('reminders');
@@ -331,6 +332,12 @@ export function useCreateHabitForm() {
       color: selectedColor,
       icon: habitType === 'negative' ? 'xCircle' : 'star',
     };
+
+    // Criar hábito exige conexão (o modo offline só cobre marcações).
+    if (!(await ensureOnline())) {
+      setLoading(false);
+      return;
+    }
 
     const { data: habit, error } = await createHabit(habitData);
 

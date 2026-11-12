@@ -10,7 +10,7 @@ const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const sameIds = (a: string[] | null, b: string[]) =>
   !!a && a.length === b.length && a.every((id, i) => id === b[i]);
 
-let inFlight: Promise<void> | null = null;
+let inFlight: Promise<boolean> | null = null;
 let rerunRequested = false;
 
 /**
@@ -33,16 +33,19 @@ export const reminderSyncService = {
    * durante uma sincronização, roda mais uma vez depois dela, porque a atual
    * pode ter lido o banco antes da mudança.
    */
-  syncReminders(userId: string): Promise<void> {
+  /** Devolve se a última rodada conseguiu ler o banco (false: ex. offline). */
+  syncReminders(userId: string): Promise<boolean> {
     if (inFlight) {
       rerunRequested = true;
       return inFlight;
     }
     inFlight = (async () => {
+      let ok = false;
       do {
         rerunRequested = false;
-        await runSync(userId);
+        ok = await runSync(userId);
       } while (rerunRequested);
+      return ok;
     })().finally(() => {
       inFlight = null;
     });
@@ -50,11 +53,12 @@ export const reminderSyncService = {
   },
 };
 
-async function runSync(userId: string): Promise<void> {
-  if (Platform.OS !== 'android') return;
+async function runSync(userId: string): Promise<boolean> {
+  // Nada a sincronizar não é falha: não há o que tentar de novo.
+  if (Platform.OS !== 'android') return true;
 
   try {
-    if (!(await notificationService.hasPermission())) return;
+    if (!(await notificationService.hasPermission())) return true;
 
     const { data: habitsData, error: habitsError } = await supabase
       .from('habits')
@@ -116,7 +120,9 @@ async function runSync(userId: string): Promise<void> {
     }
 
     console.log(`Lembretes ressincronizados: ${reminders.length} lembretes, ${scheduled} alarmes`);
+    return true;
   } catch (error) {
     console.error('Erro ao ressincronizar lembretes:', error);
+    return false;
   }
 }

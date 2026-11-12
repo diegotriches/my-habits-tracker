@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Habit, FrequencyGoalPeriod } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
+import { ensureOnline } from '@/services/network';
 import { reminderSyncService } from '@/services/reminderSyncService';
 
 const TARGET_UNITS = {
@@ -232,6 +233,11 @@ export function useEditHabitForm(habitId: string) {
         frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom'
           ? frequencyGoalCustomDays : null,
       };
+
+      if (!(await ensureOnline())) {
+        setSaving(false);
+        return;
+      }
 
       const { error: habitError } = await updateHabit(habitId, updates);
 

@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useReminders } from '@/hooks/useReminders';
 import { NotificationSound } from '@/services/notifications';
 import { hapticFeedback } from '@/utils/haptics';
+import { ensureOnline } from '@/services/network';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState } from 'react';
 import {
@@ -31,6 +32,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   const [editingReminder, setEditingReminder] = useState<any>(null);
 
   const handleAddReminder = async () => {
+    if (!(await ensureOnline())) return;
     const hours = selectedTime.getHours();
     const minutes = selectedTime.getMinutes();
     const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -69,6 +71,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
           text: 'Deletar',
           style: 'destructive',
           onPress: async () => {
+            if (!(await ensureOnline())) return;
             const success = await deleteReminder(reminder.id);
             if (success) {
               // ✅ SEM MODAL de confirmação após deletar
@@ -86,6 +89,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   };
 
   const handleToggleReminder = async (reminder: any) => {
+    if (!(await ensureOnline())) return;
     hapticFeedback.light();
     const success = await toggleReminder(reminder.id, habitName);
     
@@ -111,6 +115,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
     time: string, 
     sound: NotificationSound
   ): Promise<boolean> => {
+    if (!(await ensureOnline())) return false;
     const success = await updateReminder(reminderId, habitName, { time, sound });
     
     if (success) {
@@ -149,6 +154,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
         
         // Android: Adiciona o lembrete com o horário correto
         setTimeout(async () => {
+          if (!(await ensureOnline())) return;
           const success = await createReminder(habitId, habitName, timeString);
           
           if (success) {

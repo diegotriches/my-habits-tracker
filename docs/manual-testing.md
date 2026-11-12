@@ -101,3 +101,11 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Religar a rede e voltar ao app: as marcações vão para o banco e a tela se atualiza
 - [ ] Offline, tentar criar, editar e excluir um hábito: aparece "Sem conexão. Esta ação precisa de internet..."
 - [ ] Sair da conta e entrar com outra: nada da conta anterior aparece
+
+## 12. Reconexão, indicador e ações que exigem internet (build nova: NetInfo é nativo)
+
+- [ ] Modo avião: a faixa "Sem conexão · suas marcações ficam salvas no aparelho" aparece na home; ao marcar, vira "Sem conexão · 1 alteração aguardando envio" (o número acompanha)
+- [ ] Desativar o modo avião **com o app aberto**: a faixa mostra "Enviando..." e some sozinha, sem sair do app; as marcações chegam ao banco
+- [ ] Abrir o app offline e depois reconectar: os lembretes são ressincronizados (log `Lembretes ressincronizados` após `Conexao restabelecida`)
+- [ ] Offline, tentar: criar/editar/excluir hábito, criar/editar/ativar/excluir lembrete, editar nome, trocar avatar, mudar notificações de progresso e excluir conta → em todos aparece "Sem conexão" antes de qualquer outra coisa, e nada muda
+- [ ] Wi-Fi conectado mas sem internet (ex.: roteador sem link): o app também se considera offline

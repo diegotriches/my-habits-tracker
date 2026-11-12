@@ -6,6 +6,7 @@ import { progressNotificationScheduler } from '@/services/progressNotificationSc
 import { hapticFeedback } from '@/utils/haptics';
 import { ProgressNotification } from '@/types/database';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
+import { ensureOnline } from '@/services/network';
 
 const DEFAULT_CONFIG: ProgressNotificationConfig = {
   enabled: false,
@@ -73,6 +74,8 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
   }, []);
 
   const handleChange = useCallback(async (newConfig: ProgressNotificationConfig) => {
+    // Sem conexão, mantém a configuração anterior em vez de mudar e falhar.
+    if (userId && habitId && !(await ensureOnline())) return;
     setConfig(newConfig);
     if (!userId || !habitId) return;
 

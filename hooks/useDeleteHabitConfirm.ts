@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
+import { ensureOnline } from '@/services/network';
 
 export function useDeleteHabitConfirm(
   habitId: string,
@@ -23,6 +24,7 @@ export function useDeleteHabitConfirm(
           style: 'destructive',
           onPress: async () => {
             hapticFeedback.heavy();
+            if (!(await ensureOnline())) return;
             setDeleting(true);
             const { error } = await deleteHabit(habitId);
             setDeleting(false);
