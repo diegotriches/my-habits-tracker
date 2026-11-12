@@ -159,7 +159,7 @@ npx supabase functions deploy delete-account --project-ref <ref> --use-api
 ## Pendências conhecidas
 
 - Prompt de desativação de otimização de bateria (ver acima)
-- Testar upload de avatar e edição de perfil de ponta a ponta
+- Validação manual das correções de 11–12/11/2026 no aparelho (inclui avatar e perfil): ver [docs/manual-testing.md](docs/manual-testing.md)
 
 ## Contribuindo
 
