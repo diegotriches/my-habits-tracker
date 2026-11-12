@@ -306,24 +306,37 @@ export default function HomeScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.avatarButton}
-          onPress={() => router.push('/(tabs)/profile' as any)}
-          activeOpacity={0.7}
-        >
-          {profile?.avatar_url ? (
-            <Image
-              source={{ uri: profile.avatar_url }}
-              style={[styles.avatar, { borderColor: colors.primary }]}
-            />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarInitial}>
-                {firstName ? firstName[0].toUpperCase() : '?'}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={[styles.statsButton, { backgroundColor: colors.surface }]}
+            onPress={() => router.push('/stats')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Estatísticas do ano"
+          >
+            <Icon name="stats" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.avatarButton}
+            onPress={() => router.push('/(tabs)/profile' as any)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Perfil e configurações"
+          >
+            {profile?.avatar_url ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={[styles.avatar, { borderColor: colors.primary }]}
+              />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarInitial}>
+                  {firstName ? firstName[0].toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <OfflineStatusBanner
@@ -394,6 +407,14 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 14, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: 'bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  statsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarButton: { padding: 2 },
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2 },
   avatarPlaceholder: {

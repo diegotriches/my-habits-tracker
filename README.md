@@ -17,9 +17,11 @@ App de rastreamento de hábitos para Android/iOS, construído com React Native (
 app/                  # Telas (Expo Router — cada arquivo é uma rota)
   (tabs)/              # Tabs principais (home, perfil)
   habits/               # Detalhes, edição e criação de hábito
-  settings/             # Configurações (notificações, privacidade)
+  settings/             # Configurações (notificações, privacidade, hábitos arquivados)
+  stats/                # Estatísticas do ano (mapa de calor)
 components/
   habits/               # Componentes específicos de hábitos
+  stats/                # Mapa de calor do ano
   ui/                    # Componentes genéricos reutilizáveis (BottomSheetModal, Icon, etc.)
   profile/, skeletons/
 hooks/                 # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
@@ -134,6 +136,7 @@ Cada tela grande segue o padrão: **hook(s) para lógica + componentes memoizado
 
 - `app/habits/[id].tsx` → `useHabitDetails`, `useHabitCalendarActions`, `useHabitProgressNotifications`, `useDeleteHabitConfirm`, `useArchiveHabitActions`, `useActionsMenu`
 - `app/settings/archived.tsx` → `useArchivedHabits`, `useArchiveHabitActions`
+- `app/stats/index.tsx` → `useYearStats` + `computeYearHeatmap` (`utils/yearHeatmap.ts`)
 - `app/habits/edit/[id].tsx` → `useEditHabitForm`
 - `app/habits/create.tsx` → `useCreateHabitForm`
 - `app/(tabs)/index.tsx` → `useHabitCompletionActions`
@@ -170,6 +173,13 @@ Limites conhecidos do modo offline: os detalhes de um hábito nunca aberto onlin
 - **Ressincronização ao abrir o app** (`services/reminderSyncService.ts`, chamado pelo `NotificationHandler` após a permissão): os alarmes vivem só no aparelho e se perdem ao reinstalar o app, limpar os dados ou trocar de celular, enquanto os lembretes continuam ativos no banco. A cada login/abertura, o app cancela os alarmes persistidos e reagenda os lembretes ativos dos hábitos ativos — o que também limpa órfãos (lembretes excluídos em outro aparelho, ids legados). Se a busca no banco falhar (ex.: offline), nada é alterado. Também roda depois de salvar a edição de um hábito, já que o nome e a meta numérica ("Feito" x "Registrar") vão gravados no alarme. Só Android
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
+
+### Estatísticas do ano
+
+O ícone de gráfico no cabeçalho da home abre `app/stats`: o ano em 12 mini-calendários (cabem na tela sem rolagem lateral), com a cor de cada dia indicando quanto dos hábitos programados foi feito, um filtro por hábito (inclusive arquivados), os totais do ano (conclusões, dias completos, aproveitamento) e o detalhe do dia tocado.
+
+- As regras ficam em `computeYearHeatmap` (`utils/yearHeatmap.ts`, com testes): o hábito conta a partir do dia em que foi criado e até a véspera do arquivamento, só nos dias da agenda; meta semanal ("3x por semana") conta só nos dias feitos, já que não tem dia fixo; meta numérica só conta como feita ao atingir o valor. Hábitos excluídos ficam de fora.
+- `useYearStats` busca o ano com `fetchAllRows`, guarda no cache offline (`year:<ano>`) e aplica por cima as marcações ainda na fila de saída.
 
 ### Arquivar hábitos
 

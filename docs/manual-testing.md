@@ -180,3 +180,16 @@ Pré-requisito: migration `20261112164950_habit_archiving.sql` aplicada.
 - [ ] Sem internet: arquivar e restaurar avisam que precisam de conexão
 - [ ] Exportar backup com um hábito arquivado e importar em outra conta: ele chega arquivado
 - [ ] Notificação de um hábito já na tela antes de arquivar: tocar em "Feito" não registra nada
+
+## 20. Estatísticas do ano
+
+- [ ] Home: o ícone de gráfico ao lado do avatar abre "Estatísticas"; voltar retorna à home
+- [ ] O ano atual aparece em 12 mini-calendários alinhados pelo dia da semana; hoje tem contorno; dias futuros ficam apagados; nada de rolagem lateral (testar também com fonte grande)
+- [ ] A cor dos dias acompanha o que foi feito (verde cheio = tudo feito); dias antes da criação do hábito ficam cinza
+- [ ] Tocar num dia mostra "quarta-feira, 11 de novembro: 2 de 3 hábitos"; tocar de novo desmarca
+- [ ] Filtro por hábito: o mapa e os totais passam a ser só daquele hábito ("dias feitos"); hábitos arquivados aparecem com "(arquivado)"
+- [ ] Hábito "3x por semana" não deixa os dias sem ele com cara de falha; hábito com meta numérica só pinta o dia ao atingir a meta
+- [ ] Setas do ano: não passa do ano atual nem de antes do primeiro hábito
+- [ ] Marcar algo offline e abrir as estatísticas: a marcação já aparece; abrir offline depois de ter aberto online mostra o último estado (sem erro)
+- [ ] Tema escuro: as cores do mapa continuam legíveis
+- [ ] Com o TalkBack: cada mês anuncia o aproveitamento e os dias completos ("novembro: 75% feito, 5 dias completos")
