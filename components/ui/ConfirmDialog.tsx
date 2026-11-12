@@ -60,7 +60,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       scaleAnim.setValue(0.8);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim, opacityAnim]);
 
   const handleConfirm = () => {
     // Haptic diferente baseado no tipo

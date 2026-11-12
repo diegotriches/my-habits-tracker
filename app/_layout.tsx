@@ -122,7 +122,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, loading, segments, isOAuthReloading, isProcessingOAuth]);
+  }, [isAuthenticated, loading, segments, isOAuthReloading, isProcessingOAuth, router]);
 
   if (loading || isOAuthReloading || isProcessingOAuth) {
     const loadingMessage = isProcessingOAuth

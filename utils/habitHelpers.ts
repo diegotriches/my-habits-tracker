@@ -73,14 +73,6 @@ export function formatSelectedDays(days: number[]): string {
 }
 
 /**
- * Verifica se hoje é um dia em que o hábito DEVERIA ser feito
- * (usado apenas para destacar visualmente)
- */
-export function isHabitDueToday(habit: Habit): boolean {
-  return shouldHabitAppearOnDate(habit, new Date());
-}
-
-/**
  * Quantas vezes por semana o hábito deve ser feito: a meta semanal
  * (ex.: 3x por semana), se houver; senão, os dias programados.
  */

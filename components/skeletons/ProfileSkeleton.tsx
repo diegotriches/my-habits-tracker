@@ -21,7 +21,7 @@ export const ProfileSkeleton: React.FC = () => {
         }),
       ])
     ).start();
-  }, []);
+  }, [animatedValue]);
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],

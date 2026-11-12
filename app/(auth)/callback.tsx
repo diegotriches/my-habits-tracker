@@ -16,8 +16,12 @@ export default function AuthCallbackScreen() {
   const [message, setMessage] = useState('Autenticando...');
   const [error, setError] = useState<string | null>(null);
 
+  // Só ao montar: o callback do OAuth deve ser processado uma única vez. O
+  // handleOAuthCallback é recriado a cada render, e incluí-lo nas dependências
+  // processaria o login de novo a cada render.
   useEffect(() => {
     handleOAuthCallback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOAuthCallback = async () => {

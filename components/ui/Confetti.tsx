@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -36,24 +36,26 @@ export function Confetti({ visible, onComplete, particleCount = 50 }: ConfettiPr
   const { colors } = useTheme();
   const opacity = useSharedValue(0);
 
-  // Cores do confetti baseadas no tema
-  const confettiColors = [
-    colors.primary,
-    colors.success,
-    colors.warning,
-    colors.streak,
-    colors.points,
-    colors.level,
-  ];
-
-  // Gerar peças de confetti aleatórias
-  const pieces: ConfettiPieceData[] = Array.from({ length: particleCount }, (_, i) => ({
-    id: i,
-    x: Math.random() * width,
-    color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
-    rotation: Math.random() * 360,
-    delay: Math.random() * 300,
-  }));
+  // Sorteadas uma vez (e de novo só se o tema ou a quantidade mudar). Antes eram sorteadas
+  // a cada render: se a tela renderizasse durante a animação (ex.: o toast
+  // aparecendo junto), os confetes pulavam de posição.
+  const pieces = useMemo<ConfettiPieceData[]>(() => {
+    const confettiColors = [
+      colors.primary,
+      colors.success,
+      colors.warning,
+      colors.streak,
+      colors.points,
+      colors.level,
+    ];
+    return Array.from({ length: particleCount }, (_, i) => ({
+      id: i,
+      x: Math.random() * width,
+      color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+      rotation: Math.random() * 360,
+      delay: Math.random() * 300,
+    }));
+  }, [particleCount, colors]);
 
   useEffect(() => {
     if (visible) {
@@ -71,7 +73,7 @@ export function Confetti({ visible, onComplete, particleCount = 50 }: ConfettiPr
     } else {
       opacity.value = 0;
     }
-  }, [visible]);
+  }, [visible, onComplete, opacity]);
 
   const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -127,7 +129,7 @@ function ConfettiPiece({ x, color, rotation, delay }: Omit<ConfettiPieceData, 'i
     };
 
     startAnimation();
-  }, []);
+  }, [delay, rotation, translateX, translateY, rotate, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

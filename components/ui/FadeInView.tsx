@@ -33,7 +33,7 @@ export const FadeInView: React.FC<FadeInViewProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [delay, duration, fadeAnim, translateY]);
 
   return (
     <Animated.View

@@ -133,3 +133,14 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Abrir um link inexistente (ex.: `adb shell am start -a android.intent.action.VIEW -d "habittracker://nao-existe"`): aparece "Página não encontrada" em português, no tema do app, e "Voltar para o início" leva à home
 - [ ] Arrastar hábitos para reordenar na home continua funcionando (houve limpeza no `DraggableHabitList`)
 - [ ] Confete ao concluir um hábito continua aparecendo (houve limpeza no `Confetti`)
+
+## 16. Revisão das dependências de efeitos (hooks)
+
+- [ ] A home, os detalhes, o perfil e as configurações de notificação carregam normalmente; puxar para atualizar funciona
+- [ ] Abrir o app offline e reconectar: a home se atualiza sozinha (a busca depende da renovação do token)
+- [ ] Os toasts ("Completado!", "Hábito desmarcado", erros) somem sozinhos depois de ~3 s, inclusive marcando outros dias enquanto um toast está na tela
+- [ ] Confete: as peças caem sem "pular" de posição, mesmo com o toast aparecendo junto
+- [ ] Modal de progresso (meta numérica): abre com o valor atual; enquanto digita, o valor não é apagado (ex.: com marcações offline sendo enviadas ao reconectar)
+- [ ] Tema "Automático": trocar o tema do sistema muda o app na hora
+- [ ] Reordenar hábitos, criar um hábito novo e reabrir o app: a ordem é mantida e o novo aparece no fim
+- [ ] Login com Google e logout/login com e-mail continuam funcionando (o redirecionamento do layout ganhou o `router` nas dependências)

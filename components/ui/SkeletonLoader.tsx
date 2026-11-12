@@ -26,7 +26,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ count = 3 }) => 
         }),
       ])
     ).start();
-  }, []);
+  }, [animatedValue]);
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],

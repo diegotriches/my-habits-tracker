@@ -1,6 +1,6 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 
 interface SuccessToastProps {
@@ -19,6 +19,29 @@ export const SuccessToast: React.FC<SuccessToastProps> = ({
   const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
+
+  // As telas passam `onHide` como função criada na hora; guardá-la num ref
+  // deixa o hideToast estável — senão, no array de dependências do efeito,
+  // o timer recomeçaria a cada render da tela e o toast poderia não sumir.
+  const onHideRef = useRef(onHide);
+  onHideRef.current = onHide;
+
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: -20,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onHideRef.current?.();
+    });
+  }, [opacity, translateY]);
 
   useEffect(() => {
     if (visible) {
@@ -44,24 +67,7 @@ export const SuccessToast: React.FC<SuccessToastProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
-
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: -20,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      if (onHide) onHide();
-    });
-  };
+  }, [visible, duration, hideToast, opacity, translateY]);
 
   if (!visible) return null;
 

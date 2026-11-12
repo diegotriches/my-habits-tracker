@@ -1,5 +1,5 @@
 // hooks/useHabits.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { FrequencyGoalPeriod, Habit, HabitInsert, ReminderUpdate } from '@/types/database';
@@ -34,19 +34,13 @@ export const useHabits = () => {
   // é a inicial (vazia) ou veio do próprio cache.
   const loadedFromServerRef = useRef(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchHabits();
-    }
-  }, [user]);
-
   // Cache offline: mantém a última lista conhecida, inclusive depois de
   // criar/editar/excluir (que só acontecem online).
   useEffect(() => {
     if (user?.id && loadedFromServerRef.current) void writeCache('habits', user.id, habits);
   }, [habits, user?.id]);
 
-  const fetchHabits = async () => {
+  const fetchHabits = useCallback(async () => {
     if (!user?.id) return;
     const userId = user.id;
 
@@ -76,7 +70,15 @@ export const useHabits = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Busca de novo quando o objeto `user` muda — inclusive na renovação do
+  // token, o que atualiza a tela ao reconectar depois de abrir offline.
+  useEffect(() => {
+    if (user) {
+      fetchHabits();
+    }
+  }, [user, fetchHabits]);
 
   const getHabit = async (habitId: string) => {
     try {

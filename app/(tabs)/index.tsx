@@ -24,7 +24,7 @@ import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
 import { OUTBOX_SYNCED_EVENT } from '@/services/completionOutbox';
 import { DATA_IMPORTED_EVENT } from '@/services/dataTransferService';
 import { Habit } from '@/types/database';
-import { isHabitDueToday } from '@/utils/habitHelpers';
+import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -123,7 +123,7 @@ export default function HomeScreen() {
       fetchStreaks(ids);
       checkExpiredStreaks(habits);
     }
-  }, [habits]);
+  }, [habits, fetchStreaks, checkExpiredStreaks]);
 
   // A busca da semana nova fica a cargo do efeito abaixo (antes eram duas).
   const handleWeekChange = useCallback((newWeekStart: Date) => {
@@ -132,7 +132,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     refetchWeeklyCompletions(selectedWeekStart);
-  }, [selectedWeekStart]);
+  }, [selectedWeekStart, refetchWeeklyCompletions]);
 
   const handleCreateHabit = useCallback(() => router.push('/habits/create' as any), []);
   const handleHabitPress = useCallback(
@@ -173,7 +173,9 @@ export default function HomeScreen() {
 
   const renderHabit = useCallback(
     (item: Habit) => {
-      const isDueToday = isHabitDueToday(item);
+      // `today` (useCurrentDay) entra no cálculo: na virada do dia, o
+      // renderHabit muda e os cards recalculam o "hoje" e o destaque do dia.
+      const isDueToday = shouldHabitAppearOnDate(item, parseISO(today));
       return (
         <HabitWeeklyRow
           habit={item}
@@ -186,7 +188,6 @@ export default function HomeScreen() {
           onWeekChange={handleWeekChange}
         />
       );
-      // `today` recalcula isDueToday e o destaque do dia na virada do dia.
     },
     [
       getStreak,

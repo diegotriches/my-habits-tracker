@@ -209,12 +209,13 @@ export const useWeeklyCompletions = () => {
     setCompletions((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
-  // Fetch da semana atual no mount
+  // Busca a semana atual ao entrar (e ao trocar de conta).
+  const userId = user?.id;
   useEffect(() => {
-    if (user) {
+    if (userId) {
       fetchWeeklyCompletions();
     }
-  }, [user?.id]);
+  }, [userId, fetchWeeklyCompletions]);
 
   return {
     completions,

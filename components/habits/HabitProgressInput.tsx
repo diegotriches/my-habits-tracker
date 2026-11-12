@@ -1,7 +1,7 @@
 // components/habits/HabitProgressInput.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Animated,
   Modal,
@@ -36,10 +36,17 @@ export function HabitProgressInput({
   const [inputValue, setInputValue] = useState('');
   const [scaleAnim] = useState(new Animated.Value(0));
 
+  // O valor atual é lido só ao abrir o modal: se entrasse nas dependências,
+  // uma atualização da tela com o modal aberto (ex.: a fila offline sendo
+  // enviada) apagaria o que o usuário está digitando.
+  const currentValueRef = useRef(currentValue);
+  currentValueRef.current = currentValue;
+
   useEffect(() => {
     if (visible) {
       // Pré-preencher com o valor atual (0 se não tiver nada)
-      setInputValue(currentValue > 0 ? String(currentValue) : '');
+      const value = currentValueRef.current;
+      setInputValue(value > 0 ? String(value) : '');
       Animated.spring(scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
@@ -48,7 +55,7 @@ export function HabitProgressInput({
     } else {
       scaleAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim]);
 
   const handleValueChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.]/g, '');

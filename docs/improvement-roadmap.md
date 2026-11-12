@@ -17,7 +17,7 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 - [x] **ESLint + Prettier** (script `lint`) e **CI** no GitHub Actions rodando `tsc`, lint e testes a cada push. Branch `chore/lint-and-ci`: regras do Expo + `eslint-config-prettier`; 4 erros e 32 avisos corrigidos; o código todo formatado num commit só de formatação.
 - [x] **Restos do template do Expo** (removidos na `chore/lint-and-ci`; a tela 404 foi reescrita em português com o tema do app): `components/__tests__/StyledText-test.js`, `app/modal.tsx`, `app/+html.tsx`, `utils/supabaseHelpers.ts` (sem uso) e o que mais aparecer.
 - [x] **Renomear `retroactiveCompletionService` → `streakService`** (hoje só calcula streaks). Branch `refactor/streak-service-and-hook-deps`.
-- [ ] **Revisar os 24 avisos de `react-hooks/exhaustive-deps`** do lint, um a um (corrigir no automático muda o comportamento dos efeitos e pode criar loops). Os 4 `require()` do `app/_layout.tsx` são do fluxo do OAuth e ficam como estão.
+- [x] **Revisar os 24 avisos de `react-hooks/exhaustive-deps`** do lint, um a um (corrigir no automático muda o comportamento dos efeitos e pode criar loops). Os 4 `require()` do `app/_layout.tsx` são do fluxo do OAuth e ficam como estão. Feito na `refactor/streak-service-and-hook-deps`: buscas de dados em `useCallback` (dependendo de `user`), callbacks de props em ref (`SuccessToast`), valor lido só ao abrir em ref (`HabitProgressInput`), efeito morto removido (`ThemeContext`), ordem dos hábitos protegida contra resposta atrasada, confetes sorteados uma vez (pulavam de posição a cada render). O callback do OAuth e a tela de debug ficaram com `eslint-disable` comentado.
 
 ## C. Visual e experiência
 

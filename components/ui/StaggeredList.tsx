@@ -52,7 +52,7 @@ const StaggeredItem: React.FC<StaggeredItemProps> = ({ children, delay }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [delay, fadeAnim, translateY]);
 
   return (
     <Animated.View

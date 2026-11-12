@@ -1,5 +1,5 @@
 // hooks/useProfile.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { Profile } from '@/types/database';
 import { useAuth } from './useAuth';
@@ -11,7 +11,7 @@ export const useProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -41,13 +41,15 @@ export const useProfile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
+  // Busca de novo quando o objeto `user` muda — inclusive na renovação do
+  // token, o que atualiza a tela ao reconectar depois de abrir offline.
   useEffect(() => {
     if (user) {
       fetchProfile();
     }
-  }, [user]);
+  }, [user, fetchProfile]);
 
   return {
     profile,

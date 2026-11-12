@@ -40,12 +40,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     loadThemePreference();
   }, []);
 
-  // Atualiza quando o sistema muda (se estiver em modo system)
-  useEffect(() => {
-    if (themeMode === 'system') {
-      // Força re-render quando sistema muda
-    }
-  }, [systemColorScheme]);
+  // (Não é preciso efeito para acompanhar o sistema: `theme` é recalculado a
+  // cada render a partir do useColorScheme, que já re-renderiza ao mudar.)
 
   const loadThemePreference = async () => {
     try {

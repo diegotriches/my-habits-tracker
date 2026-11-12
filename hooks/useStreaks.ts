@@ -1,5 +1,5 @@
 // hooks/useStreaks.ts
-import { useState, useRef } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';
@@ -15,35 +15,43 @@ export const useStreaks = () => {
   const [error, setError] = useState<string | null>(null);
   const hasRecalculated = useRef(false);
 
-  const fetchStreaks = async (habitIds: string[]) => {
-    if (!user || habitIds.length === 0) return;
+  const fetchStreaks = useCallback(
+    async (habitIds: string[]) => {
+      if (!user || habitIds.length === 0) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Cache offline: mostra os últimos streaks conhecidos na hora.
-      const cached = await readCache<Streak[]>('streaks', user.id);
-      if (cached) setStreaks((prev) => (prev.length > 0 ? prev : cached));
+        // Cache offline: mostra os últimos streaks conhecidos na hora.
+        const cached = await readCache<Streak[]>('streaks', user.id);
+        if (cached) setStreaks((prev) => (prev.length > 0 ? prev : cached));
 
-      const { data, error: fetchError } = await streaksTable().select('*').in('habit_id', habitIds);
+        const { data, error: fetchError } = await streaksTable()
+          .select('*')
+          .in('habit_id', habitIds);
 
-      if (fetchError) throw fetchError;
+        if (fetchError) throw fetchError;
 
-      setStreaks((data as Streak[]) || []);
-      void writeCache('streaks', user.id, data ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao buscar streaks');
-    } finally {
-      setLoading(false);
-    }
-  };
+        setStreaks((data as Streak[]) || []);
+        void writeCache('streaks', user.id, data ?? []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao buscar streaks');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user]
+  );
 
-  const getStreak = (habitId: string): Streak | undefined => {
-    return streaks.find((s) => s.habit_id === habitId);
-  };
+  const getStreak = useCallback(
+    (habitId: string): Streak | undefined => {
+      return streaks.find((s) => s.habit_id === habitId);
+    },
+    [streaks]
+  );
 
-  const checkExpiredStreaks = async (habits: Habit[]) => {
+  const checkExpiredStreaks = useCallback(async (habits: Habit[]) => {
     if (hasRecalculated.current || habits.length === 0) return;
     hasRecalculated.current = true;
 
@@ -62,7 +70,7 @@ export const useStreaks = () => {
     } catch (err) {
       console.error('Erro ao verificar streaks expirados:', err);
     }
-  };
+  }, []);
 
   return {
     streaks,

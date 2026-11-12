@@ -25,7 +25,7 @@ export const HabitListSkeleton: React.FC<HabitListSkeletonProps> = ({ count = 5 
         }),
       ])
     ).start();
-  }, []);
+  }, [animatedValue]);
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],

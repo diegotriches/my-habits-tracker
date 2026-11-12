@@ -1,5 +1,5 @@
 // hooks/useNotificationSettings.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { NotificationSettings, NotificationSettingsUpdate } from '@/types/database';
@@ -24,9 +24,34 @@ export function useNotificationSettings() {
   const [error, setError] = useState<string | null>(null);
 
   /**
+   * Criar configurações padrão para o usuário
+   */
+  const createSettings = useCallback(async (): Promise<NotificationSettings | null> => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('notification_settings')
+        .insert({
+          user_id: user.id,
+          ...DEFAULT_SETTINGS,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data as NotificationSettings;
+    } catch (err) {
+      console.error('Erro ao criar configurações:', err);
+      return null;
+    }
+  }, [user]);
+
+  /**
    * Buscar configurações do usuário
    */
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
@@ -56,32 +81,15 @@ export function useNotificationSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, createSettings]);
 
-  /**
-   * Criar configurações padrão para o usuário
-   */
-  const createSettings = async (): Promise<NotificationSettings | null> => {
-    if (!user) return null;
-
-    try {
-      const { data, error } = await supabase
-        .from('notification_settings')
-        .insert({
-          user_id: user.id,
-          ...DEFAULT_SETTINGS,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return data as NotificationSettings;
-    } catch (err) {
-      console.error('Erro ao criar configurações:', err);
-      return null;
+  // Busca de novo quando o objeto `user` muda — inclusive na renovação do
+  // token, o que atualiza a tela ao reconectar depois de abrir offline.
+  useEffect(() => {
+    if (user) {
+      fetchSettings();
     }
-  };
+  }, [user, fetchSettings]);
 
   /**
    * Atualizar configurações
@@ -201,12 +209,6 @@ export function useNotificationSettings() {
   const resetToDefault = async (): Promise<boolean> => {
     return await updateSettings(DEFAULT_SETTINGS);
   };
-
-  useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
 
   return {
     settings,

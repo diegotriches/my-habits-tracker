@@ -7,32 +7,20 @@ const STORAGE_KEY = 'habit_order';
 export function useHabitOrder(habitIds: string[]) {
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
 
-  // Carregar ordem salva
+  // Carregar ordem salva. A chave em texto evita recarregar quando o array
+  // muda de identidade com os mesmos ids; o `cancelled` descarta uma leitura
+  // antiga que chegue depois de uma mais nova (lista mudando rápido).
+  const idsKey = habitIds.join(',');
   useEffect(() => {
-    if (habitIds.length === 0) return;
-    loadOrder(habitIds);
-  }, [habitIds.join(',')]);
-
-  const loadOrder = async (ids: string[]) => {
-    try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!saved) {
-        setOrderedIds(ids);
-        return;
-      }
-
-      const savedOrder: string[] = JSON.parse(saved);
-
-      // Mesclar: manter ordem salva para os que existem, adicionar novos no final
-      const existing = savedOrder.filter((id) => ids.includes(id));
-      const newIds = ids.filter((id) => !savedOrder.includes(id));
-      const merged = [...existing, ...newIds];
-
-      setOrderedIds(merged);
-    } catch {
-      setOrderedIds(ids);
-    }
-  };
+    if (!idsKey) return;
+    let cancelled = false;
+    loadSavedOrder(idsKey.split(',')).then((order) => {
+      if (!cancelled) setOrderedIds(order);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [idsKey]);
 
   const saveOrder = useCallback(async (newOrder: string[]) => {
     try {
@@ -51,4 +39,18 @@ export function useHabitOrder(habitIds: string[]) {
   );
 
   return { orderedIds, updateOrder };
+}
+
+/** Ordem salva, mantendo a dos ids que ainda existem e pondo os novos no fim. */
+async function loadSavedOrder(ids: string[]): Promise<string[]> {
+  try {
+    const saved = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!saved) return ids;
+    const savedOrder: string[] = JSON.parse(saved);
+    const existing = savedOrder.filter((id) => ids.includes(id));
+    const newIds = ids.filter((id) => !savedOrder.includes(id));
+    return [...existing, ...newIds];
+  } catch {
+    return ids;
+  }
 }

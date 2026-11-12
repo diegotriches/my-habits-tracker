@@ -24,9 +24,11 @@ export default function NotificationTestScreen() {
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [isExpoGo, setIsExpoGo] = useState(false);
 
+  // Só ao montar (tela de diagnóstico): leitura única do ambiente.
   useEffect(() => {
     loadDeviceInfo();
     checkEnvironment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkEnvironment = () => {

@@ -115,13 +115,7 @@ export function useHabitDetails(habitId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user && habitId) {
-      fetchAllData();
-    }
-  }, [user, habitId]);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     const userId = user?.id;
     let showedCache = false;
 
@@ -206,7 +200,14 @@ export function useHabitDetails(habitId: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, habitId]);
+
+  // Também roda quando o objeto `user` muda (ex.: renovação do token).
+  useEffect(() => {
+    if (user && habitId) {
+      fetchAllData();
+    }
+  }, [user, habitId, fetchAllData]);
 
   // ===== MUTAÇÃO OTIMISTA (local, sem rede) =====
   // Atualiza `completions` e recalcula todos os stats/gráficos
