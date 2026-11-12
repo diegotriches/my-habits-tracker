@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { isFuture, isSameDay } from 'date-fns';
-import { Habit, Completion } from '@/types/database';
+import { Habit, Completion, Streak } from '@/types/database';
+import { predictStreakAfterMarkingToday } from '@/utils/streak';
 import { completionDayFields, completionOutbox } from '@/services/completionOutbox';
 import type { OptimisticOp, SettleOptimistic } from './useWeeklyCompletions';
 
@@ -27,12 +28,23 @@ function makeOptimisticId(habitId: string, date: Date): string {
 
 const SAVE_FAILED_MESSAGE = 'Não foi possível salvar a marcação';
 
+/** " · N dias seguidos" a partir do segundo dia; vazio quando não há o que dizer. */
+function streakSuffix(streak: number | null): string {
+  return streak && streak >= 2 ? ` · ${streak} dias seguidos` : '';
+}
+
 interface UseHabitCompletionActionsParams {
   userId: string | undefined;
   weeklyCompletions: Completion[];
   fetchStreaks: (habitIds: string[]) => Promise<void>;
-  /** Hoje foi marcado — a tela decide se celebra (ex.: se o dia ficou completo). */
-  onTodayMarked: () => void;
+  /** Streak salvo do hábito, base da previsão local do "N dias seguidos". */
+  getStreak: (habitId: string) => Streak | undefined;
+  /**
+   * Hoje foi marcado — a tela decide se celebra (dia completo ou marco de
+   * streak). `streak` é a previsão local depois da marcação (null quando não
+   * dá para prever ou quando a marcação não conta para o streak).
+   */
+  onTodayMarked: (streak: number | null) => void;
   // Mutação otimista (de useWeeklyCompletions): applyOptimistic reflete a
   // marcação/desmarcação na UI na hora e a protege de refetches até a fila
   // enviá-la; as outras duas revertem a UI em caso de erro definitivo.
@@ -51,6 +63,7 @@ export function useHabitCompletionActions({
   userId,
   weeklyCompletions,
   fetchStreaks,
+  getStreak,
   onTodayMarked,
   applyOptimistic,
   addOptimisticCompletion,
@@ -191,12 +204,16 @@ export function useHabitCompletionActions({
 
       markDay(habit, date, null);
       if (isToday) {
+        // O streak oficial só é recalculado depois do envio (offline, nem
+        // isso) — então o "N dias seguidos" é previsto localmente.
+        const streak = predictStreakAfterMarkingToday(habit, getStreak(habit.id), date);
         // Hábito negativo: marcar significa que conseguiu evitar.
-        showResultMessage(habit.type === 'negative' ? 'Evitado hoje!' : 'Completado!');
-        onTodayMarked();
+        const base = habit.type === 'negative' ? 'Evitado hoje!' : 'Completado!';
+        showResultMessage(base + streakSuffix(streak));
+        onTodayMarked(streak);
       }
     },
-    [userId, findCompletion, markDay, showResultMessage, onTodayMarked]
+    [userId, findCompletion, markDay, showResultMessage, getStreak, onTodayMarked]
   );
 
   const handleConfirmProgress = useCallback(
@@ -213,6 +230,11 @@ export function useHabitCompletionActions({
 
       if (isSameDay(date, new Date())) {
         const percentage = habit.target_value ? (finalValue / habit.target_value) * 100 : 0;
+        // Meta numérica só conta para o streak ao atingir a meta.
+        const streak =
+          percentage >= 100
+            ? predictStreakAfterMarkingToday(habit, getStreak(habit.id), date)
+            : null;
         showResultMessage(
           formatProgressMessage(
             current > 0,
@@ -221,9 +243,9 @@ export function useHabitCompletionActions({
             finalValue,
             habit.target_unit || '',
             percentage
-          )
+          ) + streakSuffix(streak)
         );
-        onTodayMarked();
+        onTodayMarked(streak);
       }
     },
     [
@@ -233,6 +255,7 @@ export function useHabitCompletionActions({
       findCompletion,
       markDay,
       showResultMessage,
+      getStreak,
       onTodayMarked,
     ]
   );

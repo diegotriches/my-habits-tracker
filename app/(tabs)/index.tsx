@@ -26,6 +26,7 @@ import { DATA_IMPORTED_EVENT } from '@/services/dataTransferService';
 import { Habit } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { computeTodaySummary } from '@/utils/todaySummary';
+import { STREAK_MILESTONES } from '@/utils/streak';
 import { TodaySummaryCard } from '@/components/habits/TodaySummaryCard';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -95,17 +96,22 @@ export default function HomeScreen() {
   );
 
   // Celebração com propósito: o confete aparece ao concluir o último hábito do
-  // dia, e não a cada marcação. A marcação de hoje arma a verificação, feita no
-  // render seguinte, já com o resumo atualizado — assim, carregar os dados com
-  // o dia já completo (ao abrir o app) não dispara confete.
+  // dia ou ao alcançar um marco de streak (7, 30, 100, 365 dias), e não a cada
+  // marcação. A marcação de hoje arma a verificação, feita no render seguinte,
+  // já com o resumo atualizado — assim, carregar os dados com o dia já
+  // completo (ao abrir o app) não dispara confete.
   const checkDayDoneRef = useRef(false);
-  const handleTodayMarked = useCallback(() => {
+  const milestoneRef = useRef(false);
+  const handleTodayMarked = useCallback((streak: number | null) => {
     checkDayDoneRef.current = true;
+    milestoneRef.current = streak !== null && STREAK_MILESTONES.includes(streak);
   }, []);
   useEffect(() => {
     if (!checkDayDoneRef.current) return;
     checkDayDoneRef.current = false;
-    if (todaySummary.allDone) setTimeout(celebrate, 600);
+    const milestone = milestoneRef.current;
+    milestoneRef.current = false;
+    if (todaySummary.allDone || milestone) setTimeout(celebrate, 600);
   }, [todaySummary, celebrate]);
 
   const {
@@ -125,6 +131,7 @@ export default function HomeScreen() {
     userId: user?.id,
     weeklyCompletions,
     fetchStreaks,
+    getStreak,
     onTodayMarked: handleTodayMarked,
     applyOptimistic,
     addOptimisticCompletion,

@@ -251,3 +251,42 @@ export function calculateWeeklyGoalStreak(
     bestStreak: Math.max(currentStreakDays, bestStreakDays),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Previsão local (para o toast e os marcos, sem esperar o servidor)
+// ---------------------------------------------------------------------------
+
+/** Streaks que merecem celebração ao serem alcançados. */
+export const STREAK_MILESTONES = [7, 30, 100, 365];
+
+/**
+ * Prevê o streak depois de marcar hoje, a partir do streak salvo — o oficial
+ * só é recalculado depois do envio (e, offline, nem isso). Devolve null
+ * quando não dá para prever com segurança: hábitos com meta semanal, cujo
+ * streak é contado por semanas.
+ */
+export function predictStreakAfterMarkingToday(
+  habit: Habit,
+  saved: { current_streak: number; last_completion_date: string | null } | undefined,
+  now: Date = new Date()
+): number | null {
+  if (habit.frequency_goal_period === 'week' && (habit.frequency_goal_value ?? 0) > 0) return null;
+
+  const today = format(now, 'yyyy-MM-dd');
+  const last = saved?.last_completion_date ?? null;
+  const current = saved?.current_streak ?? 0;
+  if (last === today) return Math.max(current, 1);
+
+  // Dia programado anterior: ontem, para diários; para dias fixos, o último
+  // dia da agenda antes de hoje (procura até uma semana para trás).
+  let previous: string | null = null;
+  for (let back = 1; back <= 7; back++) {
+    const day = subDays(startOfDay(now), back);
+    if (shouldHabitAppearOnDate(habit, day)) {
+      previous = format(day, 'yyyy-MM-dd');
+      break;
+    }
+  }
+
+  return last !== null && last === previous ? current + 1 : 1;
+}

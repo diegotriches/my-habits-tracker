@@ -3,6 +3,7 @@ import {
   calculateDailyStreak,
   calculateScheduledDaysStreak,
   calculateWeeklyGoalStreak,
+  predictStreakAfterMarkingToday,
 } from '../streak';
 import { NOW, doneAt, makeHabit } from './testHelpers';
 
@@ -144,5 +145,41 @@ describe('calculateWeeklyGoalStreak (meta de 3x por semana, semana de domingo a 
       '2025-03-18',
     ].map((d) => doneAt(d));
     expect(calculateWeeklyGoalStreak(old, 3, NOW).bestStreak).toBe(9);
+  });
+});
+
+describe('predictStreakAfterMarkingToday', () => {
+  const daily = makeHabit();
+  const saved = (current_streak: number, last_completion_date: string | null) => ({
+    current_streak,
+    last_completion_date,
+  });
+
+  it('diário: continuar de ontem soma 1', () => {
+    expect(predictStreakAfterMarkingToday(daily, saved(4, '2026-11-10'), NOW)).toBe(5);
+  });
+
+  it('diário: com um dia perdido, recomeça em 1', () => {
+    expect(predictStreakAfterMarkingToday(daily, saved(4, '2026-11-09'), NOW)).toBe(1);
+  });
+
+  it('sem streak salvo, é o primeiro dia', () => {
+    expect(predictStreakAfterMarkingToday(daily, undefined, NOW)).toBe(1);
+  });
+
+  it('hoje já contado não soma de novo', () => {
+    expect(predictStreakAfterMarkingToday(daily, saved(5, '2026-11-11'), NOW)).toBe(5);
+  });
+
+  it('dias fixos: continua a partir do dia programado anterior, não de ontem', () => {
+    // seg, qua, sex — hoje é quarta; o anterior é segunda (9/11)
+    const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] });
+    expect(predictStreakAfterMarkingToday(habit, saved(3, '2026-11-09'), NOW)).toBe(4);
+    expect(predictStreakAfterMarkingToday(habit, saved(3, '2026-11-06'), NOW)).toBe(1);
+  });
+
+  it('meta semanal: não prevê (streak contado por semanas)', () => {
+    const habit = makeHabit({ frequency_goal_value: 3, frequency_goal_period: 'week' });
+    expect(predictStreakAfterMarkingToday(habit, saved(6, '2026-11-10'), NOW)).toBeNull();
   });
 });

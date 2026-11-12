@@ -153,6 +153,10 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Ao concluir o último hábito do dia: "Tudo feito hoje!" e confete; marcar os outros hábitos **não** solta confete
 - [ ] Abrir o app com o dia já completo: mostra "Tudo feito hoje!" sem confete
 - [ ] Navegar para outra semana: o resumo some; voltar para a atual: reaparece
+- [ ] Marcar hoje um hábito diário feito ontem: toast "Completado! · N dias seguidos" com N = streak anterior + 1 (também offline); sem ontem, só "Completado!"
+- [ ] Hábito de dias específicos (ex.: seg/qua/sex) feito no dia programado anterior: o toast soma o streak
+- [ ] Meta numérica: o "N dias seguidos" só aparece no registro que atinge a meta; hábito "3x por semana" não mostra
+- [ ] Ao alcançar 7 dias seguidos (ex.: hábito com 6 dias, marcar hoje): confete mesmo sem o dia completo
 
 ## 18. Hábitos negativos e acessibilidade
 

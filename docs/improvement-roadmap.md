@@ -22,10 +22,10 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 ## C. Visual e experiência
 
 - [x] **Resumo do dia** no topo da home ("3 de 5 hoje" + barra de progresso). `utils/todaySummary.ts` (com testes) + `TodaySummaryCard`; hábitos com meta semanal só contam enquanto a meta da semana não foi batida.
-- [x] **Celebração com propósito**: confete só ao concluir todos os hábitos do dia e em marcos de streak (7, 30, 100...), não a cada marcação. Feito o "tudo feito hoje"; os marcos de streak ficam com o item do "N dias seguidos", que calcula o streak localmente.
+- [x] **Celebração com propósito**: confete só ao concluir todos os hábitos do dia e em marcos de streak (7, 30, 100...), não a cada marcação. Feitos o "tudo feito hoje" e os marcos (7, 30, 100 e 365 dias), a partir da previsão local do streak.
 - [x] **Hábitos negativos**: deixar claro o que marcar significa ("Resisti hoje"). Etiqueta "Evitar" no card, dia evitado em verde (era amarelo, parecia algo ruim), toast "Evitado hoje!" e descrições que dizem o que marcar.
 - [x] **Acessibilidade**: rótulos para leitores de tela nos dias da semana e no calendário ("Terça, 11 de novembro, concluído"). `utils/a11y.ts` (com testes) gera rótulo, dica e estado de cada dia na home e no calendário dos detalhes; o cabeçalho de cada hábito anuncia o progresso da semana e o streak, e o resumo do dia tem rótulo próprio.
-- [ ] **"N dias seguidos" de volta** no toast de hoje, calculado localmente (sumiu com a fila offline).
+- [x] **"N dias seguidos" de volta** no toast de hoje, calculado localmente (sumiu com a fila offline). `predictStreakAfterMarkingToday` (`utils/streak.ts`, com testes) prevê o streak a partir do salvo — funciona offline; meta semanal não mostra (streak por semanas) e meta numérica só ao atingir o valor.
 
 ## D. Funcionalidades
 
