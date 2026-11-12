@@ -1,7 +1,7 @@
 // services/soundPreview.ts
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { NotificationSound, getReminderChannelId } from './notifications';
+import { NotificationSound, getReminderChannelId } from './notificationService';
 
 /**
  * Serviço para reproduzir preview dos sons de notificação.

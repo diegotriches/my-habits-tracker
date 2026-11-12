@@ -74,16 +74,13 @@ Se a build local falhar com `OutOfMemoryError: Metaspace`, aumente a memória do
    npm install
    ```
 
-2. Crie um `.env.local` na raiz com as credenciais do Supabase:
+2. Copie o `.env.example` para `.env.local` e preencha com a URL e a chave `anon` do Supabase (Project Settings → API). O arquivo explica cada variável. Nunca use a chave `service_role` no app: tudo o que começa com `EXPO_PUBLIC_` vai embutido no APK.
 
-   ```
-   EXPO_PUBLIC_SUPABASE_URL=...
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=...
-   ```
+3. **Builds do EAS não leem o `.env.local`** (ele fica de fora do upload, como tudo no `.gitignore`). Cadastre as mesmas variáveis em expo.dev → projeto → **Environment variables**, marcando os três ambientes (`development`, `preview` e `production`) — cada perfil do `eas.json` usa o ambiente de mesmo nome. Sem elas, a build abre e fecha na hora. Visibilidade "Plain text" ou "Sensitive" basta: "Secret" não protege nada, porque o valor vai embutido no app.
 
-3. Peça o `google-services.json` (necessário para o build Android — referenciado em `app.json`) e coloque na raiz do projeto.
+4. O `google-services.json` (Firebase, referenciado no `app.json`) já está commitado na raiz; troque-o só se mudar o projeto do Firebase.
 
-4. Variáveis de sistema (Windows), se for buildar localmente com `expo run:android`:
+5. Variáveis de sistema (Windows), se for buildar localmente com `expo run:android`:
    - `JAVA_HOME` → pasta `jbr` (ou `jre`) dentro da instalação do Android Studio
    - `ANDROID_HOME` → pasta do Android SDK (geralmente `%LOCALAPPDATA%\Android\Sdk`)
    - Adicione `%JAVA_HOME%\bin` e `%ANDROID_HOME%\platform-tools` ao `Path`
@@ -179,7 +176,7 @@ Limites conhecidos do modo offline: os detalhes de um hábito nunca aberto onlin
 - **Próxima ocorrência**: depois de cada disparo (e no reboot), o horário é recalculado a partir do dia da semana e do horário do lembrete (`AlarmReceiver.nextWeeklyTrigger`), não "agora + 7 dias" — assim atrasos de Doze não se acumulam semana a semana
 - **Botão "Feito" com o app fechado**: o `AlarmReceiver` não tem acesso ao Supabase (o React Native não está rodando), então grava a conclusão, com o horário do toque, numa fila local (`PendingCompletionStorage.java`). O JS a envia ao banco em `services/pendingCompletionService.ts` — ao abrir o app, ao voltar para o primeiro plano ou na hora, se o app estiver aberto (evento `PendingCompletionsChanged`) — e recalcula o streak. O envio é idempotente (não duplica se o dia já estiver concluído) e itens com falha de rede ficam para a próxima tentativa. Hábitos com meta numérica mostram "Registrar" em vez de "Feito": abre `habittracker://habits/<id>?action=register`, e a tela de detalhes já abre o modal de progresso de hoje (`hooks/useRegisterProgressAction.ts`)
 - **Tocar na notificação** abre os detalhes do hábito pelo deep link `habittracker://habits/<id>`, roteado pelo Expo Router. O intent usa `FLAG_ACTIVITY_CLEAR_TASK`: com o processo do app morto mas a tarefa ainda nos recentes, o Android só traz a tarefa antiga para frente e descarta o link (`SINGLE_TOP` e `CLEAR_TOP` não resolvem). O custo é recriar a interface quando o app já está aberto
-- **Sons**: no Android 8+ o som pertence ao canal, e um canal não muda de som depois de criado — por isso há um canal por som (`habits`, `habits-water`, `habits-bell`, `habits-chime`, `habits-silent`), criados pelo JS (`services/notifications.ts`, também usados no preview) e, se ainda não existirem, pelo `AlarmReceiver`. Os `.wav` ficam em `assets/sounds/` e entram na build pelo `sounds` do plugin `expo-notifications` no `app.json`
+- **Sons**: no Android 8+ o som pertence ao canal, e um canal não muda de som depois de criado — por isso há um canal por som (`habits`, `habits-water`, `habits-bell`, `habits-chime`, `habits-silent`), criados pelo JS (`services/notificationService.ts`, também usados no preview) e, se ainda não existirem, pelo `AlarmReceiver`. Os `.wav` ficam em `assets/sounds/` e entram na build pelo `sounds` do plugin `expo-notifications` no `app.json`
 - **Ressincronização ao abrir o app** (`services/reminderSyncService.ts`, chamado pelo `NotificationHandler` após a permissão): os alarmes vivem só no aparelho e se perdem ao reinstalar o app, limpar os dados ou trocar de celular, enquanto os lembretes continuam ativos no banco. A cada login/abertura, o app cancela os alarmes persistidos e reagenda os lembretes ativos dos hábitos ativos — o que também limpa órfãos (lembretes excluídos em outro aparelho, ids legados). Se a busca no banco falhar (ex.: offline), nada é alterado. Também roda depois de salvar a edição de um hábito, já que o nome e a meta numérica ("Feito" x "Registrar") vão gravados no alarme. Só Android
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.

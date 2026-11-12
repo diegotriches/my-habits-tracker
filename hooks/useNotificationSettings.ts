@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { NotificationSettings, NotificationSettingsUpdate } from '@/types/database';
-import { NotificationSound } from '@/services/notifications';
+import { NotificationSound } from '@/services/notificationService';
 
 const DEFAULT_SETTINGS: Omit<NotificationSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'> =
   {

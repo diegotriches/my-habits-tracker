@@ -2,7 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReminders } from '@/hooks/useReminders';
-import { NotificationSound } from '@/services/notifications';
+import { NotificationSound } from '@/services/notificationService';
 import { hapticFeedback } from '@/utils/haptics';
 import { ensureOnline } from '@/services/network';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';

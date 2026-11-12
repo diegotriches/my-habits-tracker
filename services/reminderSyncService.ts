@@ -2,7 +2,7 @@
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
-import { notificationService } from './notifications';
+import { notificationService } from './notificationService';
 import { Habit, Reminder, ReminderUpdate } from '@/types/database';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];

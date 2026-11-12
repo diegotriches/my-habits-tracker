@@ -3,7 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useReminderReliability } from '@/hooks/useReminderReliability';
 import { ReminderReliabilityCard } from '@/components/notifications/ReminderReliabilityCard';
-import { notificationService, NotificationSound } from '@/services/notifications';
+import { notificationService, NotificationSound } from '@/services/notificationService';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';

@@ -1,4 +1,5 @@
-// app/habits/createStyles.ts
+// components/habits/createHabitStyles.ts — estilos da tela de criação de hábito.
+// Fora de app/: lá, todo arquivo vira rota (este virava /habits/createStyles).
 import { StyleSheet, Dimensions, Platform } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');

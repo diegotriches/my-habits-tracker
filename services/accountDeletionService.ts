@@ -1,7 +1,7 @@
 // services/accountDeletionService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
-import { notificationService } from './notifications';
+import { notificationService } from './notificationService';
 import { exactAlarmService } from './exactAlarmService';
 
 /**

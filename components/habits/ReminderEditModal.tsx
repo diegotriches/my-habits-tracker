@@ -1,7 +1,7 @@
 // components/habits/ReminderEditModal.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { NotificationSound } from '@/services/notifications';
+import { NotificationSound } from '@/services/notificationService';
 import { soundPreviewService } from '@/services/soundPreview';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import React, { useState, useEffect } from 'react';

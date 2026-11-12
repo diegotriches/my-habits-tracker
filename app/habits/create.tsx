@@ -25,7 +25,7 @@ import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@/constants/HabitForm';
 import { MAX_REMINDERS, useCreateHabitForm } from '@/hooks/useCreateHabitForm';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../contexts/ThemeContext';
-import { styles as createStylesFn } from './createStyles';
+import { styles as createStylesFn } from '@/components/habits/createHabitStyles';
 
 export default function CreateHabitScreen() {
   const { colors } = useTheme();
