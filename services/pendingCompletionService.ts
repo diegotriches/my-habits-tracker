@@ -4,6 +4,7 @@ import { endOfDay, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
 import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { completionOutbox } from './completionOutbox';
 import { CompletionInsert, Habit } from '@/types/database';
 
 /** Emitido quando conclusões vindas da notificação foram gravadas no banco. */
@@ -67,9 +68,10 @@ export async function completeHabitFromNotification(
 let inFlight: Promise<void> | null = null;
 
 /**
- * Envia ao banco as conclusões que o botão "Feito" deixou na fila local
- * (Android). Chamado ao abrir o app, ao voltar para o primeiro plano e quando
- * o botão é tocado com o app aberto.
+ * Envia ao banco as conclusões pendentes: as que o botão "Feito" deixou na
+ * fila nativa (Android) e as marcações do app feitas sem conexão (fila de
+ * saída). Chamado ao abrir o app, ao voltar para o primeiro plano e quando o
+ * botão é tocado com o app aberto.
  */
 export const pendingCompletionService = {
   drain(): Promise<void> {
@@ -83,6 +85,13 @@ export const pendingCompletionService = {
 };
 
 async function runDrain(): Promise<void> {
+  await drainNativeQueue();
+  // Mesma ocasião (abrir, voltar ao app, "Feito" com o app aberto) para
+  // enviar as marcações feitas no app sem conexão (modo offline).
+  await completionOutbox.flush();
+}
+
+async function drainNativeQueue(): Promise<void> {
   try {
     const pending = await exactAlarmService.getPendingCompletions();
     if (pending.length === 0) return;

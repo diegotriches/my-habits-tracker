@@ -80,3 +80,14 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Em Samsung/Xiaomi, aparece a dica com o caminho do fabricante
 - [ ] Com algo a ajustar, criar o primeiro lembrete (pelo modal e pela criação de hábito) mostra o aviso "Garanta seus lembretes" uma única vez; "Ajustar" leva à seção
 - [ ] Com tudo liberado, o aviso não aparece
+
+## 10. Marcações offline (fila de saída)
+
+- [ ] Online: marcar/desmarcar hoje e dias passados (home e detalhes) continua instantâneo e persiste ao reabrir o app
+- [ ] Hábito com meta: registrar valor hoje (somar e substituir) e num dia passado; o modal mostra o valor **do dia escolhido**
+- [ ] Com o app aberto, ativar o modo avião e marcar/desmarcar alguns dias: nada reverte nem mostra erro
+- [ ] Ainda offline, marcar e desmarcar o mesmo dia: ao reconectar, o dia fica desmarcado (só a última vale)
+- [ ] Desativar o modo avião e voltar ao app (sair e entrar): as marcações aparecem no banco (puxar para atualizar / reabrir) e os streaks se atualizam
+- [ ] Marcar offline, **fechar o app** (recentes), religar a rede e abrir: a home se atualiza sozinha com as marcações enviadas
+- [ ] Marcar hoje offline às 23:5x e enviar depois da meia-noite: a conclusão fica no dia em que foi marcada
+- [ ] Excluir um hábito em outro aparelho com uma marcação dele pendente: ao enviar, a marcação é descartada sem travar as demais

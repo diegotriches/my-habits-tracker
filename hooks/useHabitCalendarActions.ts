@@ -1,23 +1,22 @@
 import { useCallback, useState } from 'react';
-import { Completion } from '@/types/database';
-import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
+import { isSameDay } from 'date-fns';
+import { Completion, Habit } from '@/types/database';
+import { completionDayFields, completionOutbox } from '@/services/completionOutbox';
 import { hapticFeedback } from '@/utils/haptics';
 
 function makeOptimisticId(habitId: string, date: Date): string {
   return `optimistic-${habitId}-${date.getTime()}-${Math.random().toString(36).slice(2)}`;
 }
 
+const SAVE_FAILED_MESSAGE = 'Não foi possível salvar a marcação';
+
 interface UseHabitCalendarActionsParams {
-  // Tipagem do hábito do projeto (Habit) — usando `any` aqui para não
-  // depender de um import específico que pode variar; substitua pelo
-  // tipo real (`Habit` de '@/types/database') se preferir tipagem estrita.
-  habit: any;
+  habit: Habit | null;
   userId: string | undefined;
   completions: Completion[];
   onSuccessMessage: (message: string) => void;
-  // Mutação otimista local (de useHabitDetails), para refletir
-  // marcações/desmarcações retroativas na UI sem esperar a rede nem
-  // disparar o loading de tela cheia.
+  // Mutação otimista local (de useHabitDetails), para refletir as marcações
+  // na UI sem esperar a rede nem disparar o loading de tela cheia.
   addOptimisticCompletion: (completion: Completion) => void;
   removeCompletionById: (id: string) => void;
   removeCompletionForDate: (date: Date) => void;
@@ -25,6 +24,11 @@ interface UseHabitCalendarActionsParams {
   refetchStreak: () => Promise<void>;
 }
 
+/**
+ * Marcações pelo calendário dos detalhes. A UI muda na hora e a operação vai
+ * para a fila de saída (services/completionOutbox.ts), que a envia agora ou,
+ * sem conexão, depois; a UI só reverte em erro definitivo.
+ */
 export function useHabitCalendarActions({
   habit,
   userId,
@@ -40,6 +44,39 @@ export function useHabitCalendarActions({
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
   const [pendingProgressCurrentValue, setPendingProgressCurrentValue] = useState(0);
+
+  const findCompletion = useCallback((date: Date) => {
+    return completions.find(c => isSameDay(new Date(c.completed_at), date));
+  }, [completions]);
+
+  /** Marca o dia (ou grava o valor final, em hábitos com meta). */
+  const markDay = useCallback((date: Date, value: number | null) => {
+    if (!habit || !userId) return;
+    const existing = findCompletion(date);
+    const fields = completionDayFields(date);
+    const optimisticId = makeOptimisticId(habit.id, date);
+
+    if (existing) removeCompletionForDate(date);
+    addOptimisticCompletion({
+      id: optimisticId,
+      habit_id: habit.id,
+      completed_at: fields.completedAt,
+      value_achieved: value,
+      was_synced: false,
+      created_at: new Date().toISOString(),
+    });
+
+    void completionOutbox
+      .enqueue({ userId, habitId: habit.id, kind: 'complete', value, ...fields })
+      .then(result => {
+        if (result === 'synced') void refetchStreak();
+        if (result === 'dropped') {
+          removeCompletionById(optimisticId);
+          if (existing) addOptimisticCompletion(existing);
+          onSuccessMessage(SAVE_FAILED_MESSAGE);
+        }
+      });
+  }, [habit, userId, findCompletion, removeCompletionForDate, addOptimisticCompletion, removeCompletionById, refetchStreak, onSuccessMessage]);
 
   const handleCalendarDayPress = useCallback((date: Date, isCompleted: boolean, currentValue?: number) => {
     if (!habit || !userId) return;
@@ -59,63 +96,29 @@ export function useHabitCalendarActions({
       return;
     }
 
-    // Feedback imediato: preenche o dia no calendário na hora.
-    const optimisticId = makeOptimisticId(habit.id, date);
-    addOptimisticCompletion({
-      id: optimisticId,
-      habit_id: habit.id,
-      completed_at: date.toISOString(),
-      value_achieved: null,
-      was_synced: false,
-      created_at: new Date().toISOString(),
-    });
+    markDay(date, null);
     hapticFeedback.success();
-
-    // Requisição em segundo plano — não bloqueia a UI, permite marcar
-    // o próximo dia imediatamente.
-    (async () => {
-      const result = await retroactiveCompletionService.completeRetroactively(habit, date, userId);
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        await refetchStreak();
-      } else {
-        removeCompletionById(optimisticId);
-        onSuccessMessage(result.message);
-      }
-    })();
-  }, [habit, userId, addOptimisticCompletion, removeCompletionById, refetchStreak, onSuccessMessage]);
+  }, [habit, userId, markDay]);
 
   const handleConfirmUncomplete = useCallback(() => {
-    if (!habit || !userId || !pendingUncompleteDate) {
-      setShowUncompleteConfirm(false);
-      setPendingUncompleteDate(null);
-      return;
-    }
-
     const date = pendingUncompleteDate;
-    // Guarda a completion atual para restaurar se a requisição falhar.
-    const existingCompletion = completions.find(c => {
-      const d = new Date(c.completed_at);
-      return d.toDateString() === date.toDateString();
-    });
-
     setShowUncompleteConfirm(false);
     setPendingUncompleteDate(null);
+    if (!habit || !userId || !date) return;
 
-    // Feedback imediato: o dia esvazia na hora.
+    const existing = findCompletion(date);
     removeCompletionForDate(date);
 
-    (async () => {
-      const result = await retroactiveCompletionService.uncompleteRetroactively(habit, date, userId);
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        await refetchStreak();
-      } else {
-        if (existingCompletion) addOptimisticCompletion(existingCompletion);
-        onSuccessMessage(result.message);
-      }
-    })();
-  }, [habit, userId, pendingUncompleteDate, completions, removeCompletionForDate, addOptimisticCompletion, refetchStreak, onSuccessMessage]);
+    void completionOutbox
+      .enqueue({ userId, habitId: habit.id, kind: 'uncomplete', value: null, ...completionDayFields(date) })
+      .then(result => {
+        if (result === 'synced') void refetchStreak();
+        if (result === 'dropped') {
+          if (existing) addOptimisticCompletion(existing);
+          onSuccessMessage(SAVE_FAILED_MESSAGE);
+        }
+      });
+  }, [habit, userId, pendingUncompleteDate, findCompletion, removeCompletionForDate, addOptimisticCompletion, refetchStreak, onSuccessMessage]);
 
   const cancelUncomplete = useCallback(() => {
     setShowUncompleteConfirm(false);
@@ -123,66 +126,17 @@ export function useHabitCalendarActions({
   }, []);
 
   const handleProgressConfirm = useCallback((value: number, mode: 'add' | 'replace') => {
-    if (!habit || !userId || !pendingProgressDate) {
-      setShowProgressModal(false);
-      setPendingProgressDate(null);
-      setPendingProgressCurrentValue(0);
-      return;
-    }
-
     const date = pendingProgressDate;
     const finalValue = mode === 'add' ? pendingProgressCurrentValue + value : value;
-    const hadExisting = pendingProgressCurrentValue > 0;
-    const optimisticId = makeOptimisticId(habit.id, date);
-    // Guarda a completion atual para restaurar se a requisição falhar.
-    const existingCompletion = hadExisting
-      ? completions.find(c => new Date(c.completed_at).toDateString() === date.toDateString())
-      : undefined;
-
     setShowProgressModal(false);
     setPendingProgressDate(null);
     setPendingProgressCurrentValue(0);
+    if (!date) return;
 
-    // Feedback imediato: mostra o dia já com o valor final confirmado.
-    if (hadExisting) {
-      removeCompletionForDate(date);
-    }
-    addOptimisticCompletion({
-      id: optimisticId,
-      habit_id: habit.id,
-      completed_at: date.toISOString(),
-      value_achieved: finalValue,
-      was_synced: false,
-      created_at: new Date().toISOString(),
-    });
-
-    (async () => {
-      // Se já havia uma completion nesse dia, apaga antes de recriar
-      // (mesma lógica do fluxo original).
-      if (hadExisting) {
-        const removed = await retroactiveCompletionService.uncompleteRetroactively(habit, date, userId);
-        if (!removed.success) {
-          // O valor antigo continua no banco: desfaz a troca na UI.
-          removeCompletionById(optimisticId);
-          if (existingCompletion) addOptimisticCompletion(existingCompletion);
-          onSuccessMessage(removed.message);
-          return;
-        }
-      }
-
-      const result = await retroactiveCompletionService.completeRetroactively(habit, date, userId, finalValue);
-
-      if (result.success) {
-        await retroactiveCompletionService.recalculateStreak(habit.id);
-        await refetchStreak();
-      } else {
-        // Se o valor antigo já foi apagado, não há o que restaurar: o
-        // dia fica vazio, que é o estado real do banco.
-        removeCompletionById(optimisticId);
-        onSuccessMessage(result.message);
-      }
-    })();
-  }, [habit, userId, completions, pendingProgressDate, pendingProgressCurrentValue, addOptimisticCompletion, removeCompletionById, removeCompletionForDate, refetchStreak, onSuccessMessage]);
+    // A fila grava o valor final direto (atualiza o registro do dia, se
+    // houver) — antes era "apagar e recriar", em duas requisições.
+    markDay(date, finalValue);
+  }, [pendingProgressDate, pendingProgressCurrentValue, markDay]);
 
   const cancelProgress = useCallback(() => {
     setShowProgressModal(false);

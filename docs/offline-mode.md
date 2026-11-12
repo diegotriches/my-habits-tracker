@@ -18,7 +18,7 @@ Hoje, sem internet, a marcação falha e a UI reverte — e o app nem consegue a
 
 - **UI otimista** na home (`applyOptimistic`/`settle` em `useWeeklyCompletions`) e nos detalhes (setters do `useHabitDetails`): a tela já atualiza antes da rede.
 - **Fila do botão "Feito"** (`PendingCompletionStorage.java` + `services/pendingCompletionService.ts`): grava localmente e envia depois, de forma idempotente — o mesmo padrão, só que hoje restrito à notificação.
-- **Envio idempotente**: `completeRetroactively` não insere se o dia já está concluído; `uncompleteRetroactively` apaga o dia inteiro e trata "nada a apagar" como sucesso.
+- **Envio idempotente**: o padrão do antigo `completeRetroactively`/`uncompleteRetroactively` (não inserir se o dia já está concluído; apagar o dia inteiro e tratar "nada a apagar" como sucesso) — hoje dentro da própria fila.
 - **Recálculo de streak** a partir do histórico (`recalculateStreak`), sem depender da ordem das marcações.
 
 ## Decisões de desenho
@@ -37,13 +37,16 @@ Hoje, sem internet, a marcação falha e a UI reverte — e o app nem consegue a
 
 Cada fase numa branch própria, testável no aparelho antes da seguinte.
 
-### Fase 1 — Fila de saída para marcações (só JS)
-Resolve perder a conexão com o app aberto.
-- [ ] `services/completionOutbox.ts`: persistência, compactação por hábito/dia e envio em ordem
-- [ ] Unificar o envio com a fila do "Feito" (um único "drenar pendências")
-- [ ] Home e detalhes passam a enfileirar em vez de chamar o serviço direto; falha de rede não reverte
-- [ ] Recalcular streaks dos hábitos afetados após o envio
-- [ ] Testes no aparelho (seção nova em `docs/manual-testing.md`)
+### Fase 1 — Fila de saída para marcações (só JS) — implementada, aguardando teste no aparelho
+Resolve perder a conexão com o app aberto. Branch `feat/offline-outbox`.
+- [x] `services/completionOutbox.ts`: persistência, compactação por hábito/dia e envio em ordem
+- [x] Unificar o envio com a fila do "Feito" (`pendingCompletionService.drain` drena as duas)
+- [x] Home (hoje e dias passados) e detalhes passam a enfileirar; falha de rede não reverte
+- [x] Recalcular streaks dos hábitos afetados após o envio
+- [x] Removidos `useCompletions`, `completeRetroactively`/`uncompleteRetroactively` e `updateStreakWithFrequency` (sem uso)
+- [ ] Testes no aparelho (seção 10 de `docs/manual-testing.md`)
+
+Limitações conhecidas desta fase: com operações pendentes de uma sessão anterior, a home mostra o estado do banco até a fila ser enviada (há um refetch automático em seguida); o toast de hoje mostra só "Completado!" (antes trazia "N dias seguidos", que dependia da resposta do servidor).
 
 ### Fase 2 — Abrir o app offline (só JS)
 - [ ] Cache de hábitos, streaks e conclusões recentes, atualizado a cada busca bem-sucedida

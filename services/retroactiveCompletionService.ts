@@ -3,7 +3,6 @@ import { supabase } from './supabase';
 import { Habit } from '@/types/database';
 import {
   startOfDay,
-  endOfDay,
   startOfWeek,
   endOfWeek,
   format,
@@ -16,111 +15,11 @@ import {
 } from 'date-fns';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 
-interface RetroactiveResult {
-  success: boolean;
-  message: string;
-  action: 'completed' | 'uncompleted';
-}
-
 /**
- * Serviço para completar/descompletar dias retroativamente
+ * Cálculo de streaks a partir do histórico de conclusões. (As marcações em
+ * si passam pela fila de saída — services/completionOutbox.ts.)
  */
 export const retroactiveCompletionService = {
-  /**
-   * Completar um dia no passado
-   */
-  async completeRetroactively(
-    habit: Habit,
-    date: Date,
-    userId: string,
-    achievedValue?: number
-  ): Promise<RetroactiveResult> {
-    try {
-      // limit(1) em vez de maybeSingle(): com duplicatas no mesmo dia o
-      // maybeSingle() devolve erro, que era ignorado, e uma nova
-      // duplicata acabava inserida.
-      const { data: existing, error: fetchError } = await supabase
-        .from('completions')
-        .select('id')
-        .eq('habit_id', habit.id)
-        .gte('completed_at', startOfDay(date).toISOString())
-        .lte('completed_at', endOfDay(date).toISOString())
-        .limit(1);
-
-      if (fetchError) throw fetchError;
-
-      if (existing && existing.length > 0) {
-        return {
-          success: false,
-          message: 'Este dia já foi completado',
-          action: 'completed',
-        };
-      }
-
-      const { error: insertError } = await supabase.from('completions')
-        .insert({
-          habit_id: habit.id,
-          completed_at: startOfDay(date).toISOString(),
-          value_achieved: achievedValue || null,
-          was_synced: true,
-        });
-
-      if (insertError) throw insertError;
-
-      return {
-        success: true,
-        message: 'Dia completado retroativamente',
-        action: 'completed',
-      };
-    } catch (error) {
-      console.error('Erro ao completar retroativamente:', error);
-      return {
-        success: false,
-        message: 'Erro ao completar dia',
-        action: 'completed',
-      };
-    }
-  },
-
-  /**
-   * Descompletar um dia no passado
-   */
-  async uncompleteRetroactively(
-    habit: Habit,
-    date: Date,
-    userId: string
-  ): Promise<RetroactiveResult> {
-    try {
-      // Apaga todas as completions do dia (cobre duplicatas) numa única
-      // requisição. O erro precisa ser verificado: antes ele era
-      // ignorado, a UI otimista mostrava o dia desmarcado e o banco
-      // continuava com a completion, sem nunca reverter.
-      // Se não havia nada para apagar, o estado final (dia desmarcado) já
-      // é o desejado, então também conta como sucesso.
-      const { error: deleteError } = await supabase
-        .from('completions')
-        .delete()
-        .eq('habit_id', habit.id)
-        .gte('completed_at', startOfDay(date).toISOString())
-        .lte('completed_at', endOfDay(date).toISOString());
-
-      if (deleteError) throw deleteError;
-
-      return {
-        success: true,
-        message: 'Dia desmarcado',
-        action: 'uncompleted',
-      };
-    } catch (error) {
-      console.error('Erro ao descompletar retroativamente:', error);
-      return {
-        success: false,
-        message: 'Erro ao desmarcar dia',
-        action: 'uncompleted',
-      };
-    }
-  },
-
   /**
    * Recalcular streak após mudanças.
    * 

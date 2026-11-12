@@ -39,37 +39,6 @@ export const useStreaks = () => {
     return streaks.find(s => s.habit_id === habitId);
   };
 
-  const updateStreakWithFrequency = async (
-    habitId: string,
-    habit: Habit,
-    wasCompleted: boolean
-  ) => {
-    try {
-      await ensureStreakExists(habitId);
-      await retroactiveCompletionService.recalculateStreak(habitId);
-
-      const { data: updatedData } = await streaksTable()
-        .select('*')
-        .eq('habit_id', habitId)
-        .maybeSingle();
-
-      const updatedStreak = updatedData as Streak | null;
-
-      if (updatedStreak) {
-        setStreaks(prev => {
-          const filtered = prev.filter(s => s.habit_id !== habitId);
-          return [...filtered, updatedStreak];
-        });
-      }
-
-      return { data: updatedStreak, error: null };
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao atualizar streak';
-      setError(errorMsg);
-      return { data: null, error: errorMsg };
-    }
-  };
-
   const checkExpiredStreaks = async (habits: Habit[]) => {
     if (hasRecalculated.current || habits.length === 0) return;
     hasRecalculated.current = true;
@@ -99,7 +68,6 @@ export const useStreaks = () => {
     error,
     fetchStreaks,
     getStreak,
-    updateStreakWithFrequency,
     checkExpiredStreaks,
   };
 };

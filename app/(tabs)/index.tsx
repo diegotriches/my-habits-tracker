@@ -10,7 +10,6 @@ import { Icon } from '@/components/ui/Icon';
 import { Confetti } from '@/components/ui/Confetti';
 import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
-import { useCompletions } from '@/hooks/useCompletions';
 import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
 import { useHabits } from '@/hooks/useHabits';
 import { useHabitOrder } from '@/hooks/useHabitOrder';
@@ -19,6 +18,7 @@ import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { useCurrentDay } from '@/hooks/useCurrentDay';
 import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
+import { OUTBOX_SYNCED_EVENT } from '@/services/completionOutbox';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
 import { router } from 'expo-router';
@@ -41,16 +41,6 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
-
-  const {
-    completions,
-    loading: completionsLoading,
-    completeHabit,
-    uncompleteHabit,
-    isCompletedToday,
-    getCompletion,
-    refetch: refetchCompletions
-  } = useCompletions();
 
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 0 })
@@ -78,7 +68,7 @@ export default function HomeScreen() {
     );
   }, [today]);
 
-  const { fetchStreaks, getStreak, updateStreakWithFrequency, checkExpiredStreaks } = useStreaks();
+  const { fetchStreaks, getStreak, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
   const {
     isVisible: showConfetti,
@@ -94,29 +84,19 @@ export default function HomeScreen() {
   const {
     showSuccessToast, setShowSuccessToast, successMessage,
     showUncompleteConfirm, handleConfirmUncomplete, cancelUncomplete,
-    showProgressModal, selectedHabit, handleConfirmProgress, cancelProgress,
+    showProgressModal, selectedHabit, progressCurrentValue, handleConfirmProgress, cancelProgress,
     handleDayPress,
-    handleComplete,
   } = useHabitCompletionActions({
-    habits,
     userId: user?.id,
     weeklyCompletions,
-    selectedWeekStart,
-    getStreak,
-    completeHabit,
-    uncompleteHabit,
-    isCompletedToday,
-    updateStreakWithFrequency,
     fetchStreaks,
     celebrate,
-    refetchCompletions,
-    refetchWeeklyCompletions,
     applyOptimistic,
     addOptimisticCompletion,
     removeCompletionById,
   });
 
-  const loading = habitsLoading || completionsLoading;
+  const loading = habitsLoading;
 
   const getGreeting = (): string => {
     const hour = new Date().getHours();
@@ -151,22 +131,25 @@ export default function HomeScreen() {
   const handleRefresh = useCallback(async () => {
     await Promise.all([
       refetchHabits(),
-      refetchCompletions(),
       refetchWeeklyCompletions(selectedWeekStart),
       refetchProfile(),
     ]);
-  }, [refetchHabits, refetchCompletions, refetchWeeklyCompletions, selectedWeekStart, refetchProfile]);
+  }, [refetchHabits, refetchWeeklyCompletions, selectedWeekStart, refetchProfile]);
 
-  // Conclusões feitas pelo botão "Feito" da notificação chegam ao banco pela
-  // fila local (pendingCompletionService); atualiza a home quando isso ocorre.
+  // Conclusões que chegam ao banco sem esta tela ter feito a marcação — pelo
+  // botão "Feito" da notificação ou por operações da fila de saída de uma
+  // sessão anterior — pedem uma nova busca.
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener(COMPLETIONS_SYNCED_EVENT, () => {
-      refetchCompletions();
+    const refresh = () => {
       refetchWeeklyCompletions(selectedWeekStart);
       fetchStreaks(habitIds);
-    });
-    return () => subscription.remove();
-  }, [refetchCompletions, refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
+    };
+    const subscriptions = [
+      DeviceEventEmitter.addListener(COMPLETIONS_SYNCED_EVENT, refresh),
+      DeviceEventEmitter.addListener(OUTBOX_SYNCED_EVENT, refresh),
+    ];
+    return () => subscriptions.forEach(s => s.remove());
+  }, [refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
 
   const renderHabit = useCallback((item: Habit) => {
     const isDueToday = isHabitDueToday(item);
@@ -233,7 +216,7 @@ export default function HomeScreen() {
           habitName={selectedHabit.name}
           targetValue={selectedHabit.target_value || 0}
           targetUnit={selectedHabit.target_unit || ''}
-          currentValue={getCompletion(selectedHabit.id)?.value_achieved || 0}
+          currentValue={progressCurrentValue}
           onConfirm={handleConfirmProgress}
           onCancel={cancelProgress}
         />

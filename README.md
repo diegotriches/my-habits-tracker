@@ -24,7 +24,8 @@ components/
   profile/, skeletons/
 hooks/                 # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
 services/              # Chamadas ao Supabase e serviços de domínio
-  retroactiveCompletionService.ts   # completar/desmarcar dias retroativos, cálculo de streak
+  completionOutbox.ts               # fila de saída das marcações (funciona offline)
+  retroactiveCompletionService.ts   # cálculo de streak
   notificationService.ts, exactAlarmService.ts
 constants/             # Ícones, cores, constantes de formulário compartilhadas
 contexts/              # ThemeContext (claro/escuro/automático)
@@ -117,11 +118,15 @@ Cada tela grande segue o padrão: **hook(s) para lógica + componentes memoizado
 
 Componentes extraídos de UI repetida ou pesada usam `React.memo`. Evite definir componentes (ex: modais) dentro do corpo de outro componente de tela — isso faz o React recriá-los a cada render, causando remount desnecessário da subárvore.
 
-### UI otimista
+### UI otimista e marcações offline
 
-Marcar/desmarcar um dia retroativamente (no card semanal da home e no calendário de detalhes) **não espera a rede**: o estado local é atualizado na hora, a requisição roda em segundo plano, e só reverte visualmente se der erro. Isso evita travar a UI ao marcar vários dias em sequência. Como consequência, **não há refetch completo após cada sucesso individual** — o estado local se autocorrige na próxima atualização natural (pull-to-refresh, reabrir a tela).
+Marcar/desmarcar um dia (no card semanal da home, hoje ou dias passados, e no calendário de detalhes) **não espera a rede**: o estado local é atualizado na hora e a operação vai para a **fila de saída** (`services/completionOutbox.ts`), persistida no aparelho. Com conexão, ela é enviada em seguida; sem conexão, fica guardada e é reenviada ao abrir o app, ao voltar para ele ou na próxima marcação. A UI só reverte em erro definitivo (ex.: hábito excluído) — nunca por falta de rede. A fila guarda uma operação por hábito + dia (vale a última), e metas numéricas guardam o valor final, então reenviar nunca duplica.
 
-Na home, as mutações passam por `applyOptimistic(op)` do `useWeeklyCompletions`, que devolve um `settle(ok)` a ser chamado quando a requisição termina. Enquanto um refetch puder ter lido o banco antes da gravação, a mutação é reaplicada sobre a resposta — assim, marcar dias e logo em seguida trocar de semana ou puxar para atualizar não "desmarca" nada na tela. Respostas de buscas antigas (fora de ordem) são descartadas. Na tela de detalhes, que só busca ao abrir, o `useHabitDetails` expõe setters simples (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`).
+Como consequência, **não há refetch completo após cada sucesso individual** — o estado local se autocorrige na próxima atualização natural (pull-to-refresh, reabrir a tela).
+
+Na home, as mutações passam por `applyOptimistic(op)` do `useWeeklyCompletions`, que devolve um `settle(ok)` a ser chamado quando a fila resolver a operação. Enquanto um refetch puder ter lido o banco antes da gravação, a mutação é reaplicada sobre a resposta — assim, marcar dias e logo em seguida trocar de semana ou puxar para atualizar não "desmarca" nada na tela. Respostas de buscas antigas (fora de ordem) são descartadas. Na tela de detalhes, que só busca ao abrir, o `useHabitDetails` expõe setters simples (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`).
+
+Ainda não dá para **abrir** o app sem conexão (a home busca tudo do Supabase ao iniciar) — ver as próximas fases em [docs/offline-mode.md](docs/offline-mode.md).
 
 ### Sistema de notificações
 
