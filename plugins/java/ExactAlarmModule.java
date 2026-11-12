@@ -260,13 +260,70 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
     public void openAlarmSettings(Promise promise) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                // Com o pacote, abre direto a página do app em vez da lista.
+                Intent intent = new Intent(
+                    android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    android.net.Uri.parse("package:" + reactContext.getPackageName())
+                );
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 reactContext.startActivity(intent);
                 promise.resolve(true);
             } else {
                 promise.resolve(false);
             }
+        } catch (Exception e) {
+            promise.reject("SETTINGS_ERROR", e.getMessage(), e);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Otimização de bateria
+    // -------------------------------------------------------------------------
+
+    /**
+     * Se o app está fora da otimização de bateria do Android (Doze/App
+     * Standby). Não cobre as otimizações próprias de fabricantes (ex.:
+     * "Apps em suspensão" da Samsung), que não têm API.
+     */
+    @ReactMethod
+    public void isIgnoringBatteryOptimizations(Promise promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.os.PowerManager pm =
+                    (android.os.PowerManager) reactContext.getSystemService(Context.POWER_SERVICE);
+                promise.resolve(pm != null && pm.isIgnoringBatteryOptimizations(reactContext.getPackageName()));
+            } else {
+                promise.resolve(true);
+            }
+        } catch (Exception e) {
+            promise.reject("CHECK_ERROR", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Abre a lista de otimização de bateria do sistema. Não usa
+     * ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS de propósito: ele exige a
+     * permissão REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, restrita pela Play Store.
+     * Se a tela não existir no aparelho, cai nos detalhes do app.
+     */
+    @ReactMethod
+    public void openBatteryOptimizationSettings(Promise promise) {
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                reactContext.startActivity(intent);
+            } catch (android.content.ActivityNotFoundException notFound) {
+                // Tentar abrir em vez de resolveActivity(): no Android 11+ a
+                // visibilidade de pacotes pode esconder telas que existem.
+                Intent details = new Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:" + reactContext.getPackageName())
+                );
+                details.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                reactContext.startActivity(details);
+            }
+            promise.resolve(true);
         } catch (Exception e) {
             promise.reject("SETTINGS_ERROR", e.getMessage(), e);
         }

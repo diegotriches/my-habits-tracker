@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { notificationService, NotificationSound } from '@/services/notificationService';
+import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
 
 export interface Reminder {
   id: string;
@@ -146,6 +147,8 @@ export function useReminders(habitId?: string) {
       setReminders((prev) => [...prev, newReminder]);
 
       console.log('✅ Lembrete criado com sucesso');
+      // Aviso único sobre bateria/alarmes exatos, se houver algo a ajustar.
+      void maybePromptAfterFirstReminder();
       return newReminder;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erro ao criar lembrete';

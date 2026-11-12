@@ -71,3 +71,12 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Recorde de um hábito com meta semanal continua correto (não cai para zero)
 - [ ] Recordes podem cair uma vez para o valor real ao abrir a home (os antigos podiam estar inflados) — confira se os valores fazem sentido
 - [ ] Detalhes de um hábito com dias específicos: os dias aparecem em ordem (Seg, Qua, Sex) e a edição mostra os mesmos dias marcados
+
+## 9. Lembretes confiáveis (bateria e alarmes exatos)
+
+- [ ] Configurações → Notificações mostra a seção "Lembretes confiáveis" com o estado de "Otimização de bateria" e "Alarmes e lembretes"
+- [ ] Com o app otimizado, "Ajustar" da bateria abre a tela do sistema; ao marcar "Não otimizar"/"Sem restrições" e voltar, a linha fica verde sem reabrir a tela
+- [ ] Revogar "Alarmes e lembretes" do app nas configurações do Android: a linha fica amarela, e "Ajustar" abre direto a página do app
+- [ ] Em Samsung/Xiaomi, aparece a dica com o caminho do fabricante
+- [ ] Com algo a ajustar, criar o primeiro lembrete (pelo modal e pela criação de hábito) mostra o aviso "Garanta seus lembretes" uma única vez; "Ajustar" leva à seção
+- [ ] Com tudo liberado, o aviso não aparece

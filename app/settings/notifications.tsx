@@ -1,6 +1,8 @@
 // app/settings/notifications.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { useReminderReliability } from '@/hooks/useReminderReliability';
+import { ReminderReliabilityCard } from '@/components/notifications/ReminderReliabilityCard';
 import { notificationService, NotificationSound } from '@/services/notifications';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
@@ -47,6 +49,7 @@ export default function NotificationSettingsScreen() {
     updateDefaultSnoozeMinutes,
     resetToDefault,
   } = useNotificationSettings();
+  const reliability = useReminderReliability();
 
   const [showSoundPicker, setShowSoundPicker] = useState(false);
   const [showSnoozePicker, setShowSnoozePicker] = useState(false);
@@ -189,6 +192,16 @@ export default function NotificationSettingsScreen() {
             />
           </View>
         </View>
+
+        {/* Lembretes confiáveis (Android): bateria e alarmes exatos */}
+        {reliability.status && (
+          <ReminderReliabilityCard
+            status={reliability.status}
+            manufacturerTip={reliability.manufacturerTip}
+            onOpenBatterySettings={reliability.openBatterySettings}
+            onOpenExactAlarmSettings={reliability.openExactAlarmSettings}
+          />
+        )}
 
         {/* Configurações Gerais */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>

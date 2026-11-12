@@ -188,6 +188,27 @@ class ExactAlarmService {
     }
   }
 
+  /** Se o app está fora da otimização de bateria do Android. */
+  async isIgnoringBatteryOptimizations(): Promise<boolean> {
+    if (Platform.OS !== 'android') return true;
+    if (!ExactAlarmModule) return false;
+    try {
+      return await ExactAlarmModule.isIgnoringBatteryOptimizations();
+    } catch {
+      return false;
+    }
+  }
+
+  /** Abre a tela de otimização de bateria do sistema. */
+  async openBatteryOptimizationSettings(): Promise<void> {
+    if (Platform.OS !== 'android' || !ExactAlarmModule) return;
+    try {
+      await ExactAlarmModule.openBatteryOptimizationSettings();
+    } catch (error) {
+      console.error('Erro ao abrir otimização de bateria:', error);
+    }
+  }
+
   /** Lê a fila de conclusões feitas pelo botão "Feito". */
   async getPendingCompletions(): Promise<PendingCompletion[]> {
     if (Platform.OS !== 'android' || !ExactAlarmModule) return [];

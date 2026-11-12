@@ -154,11 +154,10 @@ npx supabase functions deploy delete-account --project-ref <ref> --use-api
 
 - **Export Web quebrado**: `eas update` sem `--platform android` falha, porque o cliente Supabase acessa `AsyncStorage`/`window` durante a renderização estática (SSR) do `expo-router`, e `window` não existe em Node. Não afeta Android/iOS.
 - **Ícone de notificação precisa ser monocromático**: silhueta branca sobre transparente — o Android ignora cor em ícones de notificação e usa o alpha channel para desenhar. Um ícone colorido vira um quadrado genérico na barra de status. O `AlarmReceiver` usa o drawable `notification_icon`, gerado pelo plugin do `expo-notifications` a partir de `assets/images/notification-icon.png`.
-- **Otimização de bateria de fabricante** (Xiaomi/MIUI, Samsung) pode ainda encerrar o app e cancelar alarmes mesmo com o `BootReceiver` funcionando — pendente adicionar um prompt pedindo para o usuário desativar a otimização de bateria (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
+- **Otimização de bateria de fabricante** (Samsung, Xiaomi, Huawei...) pode encerrar o app e atrasar ou cancelar alarmes mesmo com o `BootReceiver` funcionando, e não tem API para o app verificar. A seção "Lembretes confiáveis" em Configurações → Notificações (`ReminderReliabilityCard`, `services/reminderReliabilityService.ts`) mostra se o app está fora da otimização de bateria do Android e se tem a permissão de alarmes exatos, abre as telas do sistema e dá o caminho específico do fabricante; um aviso único aparece depois do primeiro lembrete criado. De propósito, o app **não** usa `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: ele exige a permissão `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, restrita pela Play Store.
 
 ## Pendências conhecidas
 
-- Prompt de desativação de otimização de bateria (ver acima)
 - Validação manual das correções de 11–12/11/2026 no aparelho (inclui avatar e perfil): ver [docs/manual-testing.md](docs/manual-testing.md)
 
 ## Contribuindo

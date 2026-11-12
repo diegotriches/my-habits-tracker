@@ -12,6 +12,7 @@ import { getScheduledWeekDays } from '@/utils/habitHelpers';
 import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
+import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
 
 const remindersTable = () => supabase.from('reminders');
 
@@ -392,7 +393,12 @@ export function useCreateHabitForm() {
     setLoading(false);
     hapticFeedback.success();
     setShowSuccessToast(true);
-    setTimeout(() => router.back(), 1500);
+    const createdReminders = reminders.length > 0;
+    setTimeout(() => {
+      router.back();
+      // Depois de sair do formulário, para o aviso não cobrir a tela.
+      if (createdReminders) void maybePromptAfterFirstReminder();
+    }, 1500);
   }, [validateForm, user?.id, name, description, habitType, frequencyType, frequencyDays, hasTarget, targetValue, targetUnit, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays, selectedColor, createHabit, reminders, formatTime, progressNotificationConfig]);
 
   const handleCancel = useCallback(() => {
