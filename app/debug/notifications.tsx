@@ -1,7 +1,6 @@
 // app/debug/notifications.tsx
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -20,7 +19,6 @@ import {
 
 export default function NotificationTestScreen() {
   const { colors } = useTheme();
-  const { user } = useAuth();
   const [testResults, setTestResults] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<any>(null);

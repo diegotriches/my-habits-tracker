@@ -54,7 +54,7 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
           eveningTime: savedConfig.evening_time,
         });
       }
-    } catch (error) {
+    } catch {
       // Erro silencioso
     }
   }, []);
@@ -127,7 +127,7 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
       }
 
       hapticFeedback.success();
-    } catch (error) {
+    } catch {
       hapticFeedback.error();
       Alert.alert('Erro', 'Não foi possível salvar as configurações de notificação');
     } finally {

@@ -33,10 +33,6 @@ interface DraggableHabitListProps {
   contentContainerStyle?: object;
 }
 
-interface ItemLayout {
-  height: number;
-}
-
 export function DraggableHabitList({
   habits,
   orderedIds,
@@ -98,7 +94,6 @@ export function DraggableHabitList({
       containerPageY.current = pageY;
 
       const cardY = getItemY(index);
-      const cardHeight = itemHeights.current[sortedHabits[index]?.id] ?? 0;
 
       // Posição absoluta do topo do card na tela
       const cardAbsoluteTop = pageY + cardY - scrollOffsetY.current;
@@ -117,7 +112,7 @@ export function DraggableHabitList({
       setDragTargetIndex(index);
       hapticFeedback.selection();
     });
-  }, [sortedHabits, floatingScale, floatingOpacity, getItemY]);
+  }, [floatingScale, floatingOpacity, getItemY]);
 
   const moveDrag = useCallback((absoluteY: number) => {
     if (draggingIndexRef.current === null) return;

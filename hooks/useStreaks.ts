@@ -1,5 +1,5 @@
 // hooks/useStreaks.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';

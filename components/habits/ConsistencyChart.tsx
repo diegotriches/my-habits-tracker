@@ -2,7 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, subWeeks, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import React, { useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

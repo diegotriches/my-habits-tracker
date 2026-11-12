@@ -249,7 +249,7 @@ class ProgressCheckerService {
   async getHabitsNeedingProgressNotification(
     userId: string,
     period: NotificationPeriod
-  ): Promise<Array<{ habit: Habit; progress: ProgressStatus }>> {
+  ): Promise<{ habit: Habit; progress: ProgressStatus }[]> {
     try {
       const { data: configs, error: configError } = await supabase
         .from('habit_progress_notifications')
@@ -270,7 +270,7 @@ class ProgressCheckerService {
         return [];
       }
 
-      const results: Array<{ habit: Habit; progress: ProgressStatus }> = [];
+      const results: { habit: Habit; progress: ProgressStatus }[] = [];
 
       for (const config of configs) {
         const habit: Habit = config.habits;

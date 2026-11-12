@@ -22,7 +22,7 @@ interface FrequencyGoalInputProps {
   onCustomDaysChange: (days: number) => void;
 }
 
-const PERIOD_OPTIONS: Array<{ key: FrequencyGoalPeriod; label: string; icon: IconName }> = [
+const PERIOD_OPTIONS: { key: FrequencyGoalPeriod; label: string; icon: IconName }[] = [
   { key: 'week', label: 'por semana', icon: 'calendar' },
   { key: 'month', label: 'por mês', icon: 'activity' },
   { key: 'custom', label: 'personalizado', icon: 'settings' },

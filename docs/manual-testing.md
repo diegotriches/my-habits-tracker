@@ -127,3 +127,9 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Home carrega a semana normalmente (a consulta foi enxugada), inclusive aberta offline pelo cache
 - [ ] Detalhes e streaks de um hábito continuam corretos (agora paginados)
 - [ ] Em build de produção, abrir `habittracker://debug/notifications` (ex.: `adb shell am start -a android.intent.action.VIEW -d "habittracker://debug/notifications"`) leva à home, não à tela de debug
+
+## 15. Limpeza do template e lint
+
+- [ ] Abrir um link inexistente (ex.: `adb shell am start -a android.intent.action.VIEW -d "habittracker://nao-existe"`): aparece "Página não encontrada" em português, no tema do app, e "Voltar para o início" leva à home
+- [ ] Arrastar hábitos para reordenar na home continua funcionando (houve limpeza no `DraggableHabitList`)
+- [ ] Confete ao concluir um hábito continua aparecendo (houve limpeza no `Confetti`)

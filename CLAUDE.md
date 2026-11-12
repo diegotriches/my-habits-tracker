@@ -15,7 +15,9 @@ npm install
 npx expo start --dev-client     # servidor de dev, quando já existe uma build de dev client instalada no celular/emulador
 npx expo run:android            # gera e instala o dev client (primeira vez, ou após qualquer mudança nativa)
 npx expo prebuild --clean       # regenera android/ após mudanças em plugins/ ou na config nativa do app.json
-npx tsc --noEmit                # checagem de tipos (não há script de lint)
+npm run typecheck               # checagem de tipos (tsc --noEmit)
+npm run lint                    # ESLint (regras do Expo + eslint-config-prettier)
+npm run format                  # Prettier (format:check só confere)
 npm test                        # testes (Jest, preset jest-expo)
 npx supabase gen types typescript --project-id <ref> --schema public > types/supabase.ts   # regenera os tipos do banco (requer `npx supabase login`; <ref> é o subdomínio de EXPO_PUBLIC_SUPABASE_URL)
 
@@ -54,7 +56,7 @@ eas update --branch preview --platform android --message "..."             # OTA
 ## Fluxo de trabalho
 
 - Nunca altere arquivos direto na `main`: antes da primeira edição, crie uma branch com o prefixo adequado (`feat/`, `fix/`, `refactor/`, `docs/`, `chore/`).
-- Após editar arquivos `.ts`/`.tsx`, rode `npx tsc --noEmit` e `npm test` e corrija os erros antes de considerar a tarefa concluída.
+- Após editar arquivos `.ts`/`.tsx`, rode `npm run typecheck`, `npm run lint`, `npm run format` e `npm test` e corrija os erros antes de considerar a tarefa concluída — o CI (`.github/workflows/ci.yml`) roda os mesmos comandos a cada push e falha com erro de tipo, de lint, de formatação ou de teste (avisos do lint não falham).
 - Não execute `git commit`, `git push`, `eas build` nem `eas update` sem pedido explícito.
 - A cada mudança relevante (nova funcionalidade, pendência resolvida, mudança de arquitetura, setup ou build), verifique se o `README.md` precisa ser atualizado — inclusive removendo itens resolvidos de "Pendências conhecidas" — e avise antes de concluir. Se o README ficar grande demais, proponha mover detalhes para documentação por módulo em `docs/`.
 - Ao concluir uma tarefa, apresente:

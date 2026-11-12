@@ -1,6 +1,6 @@
 // components/habits/ViewModeSelector.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
@@ -22,7 +22,7 @@ export const ViewModeSelector: React.FC<Props> = ({ mode, onChange }) => {
     }
   };
 
-  const modes: Array<{ key: ViewMode; icon: any; label: string }> = [
+  const modes: { key: ViewMode; icon: any; label: string }[] = [
     { key: 'cards', icon: 'home', label: 'Cards' },
     { key: 'compact', icon: 'list', label: 'Lista' },
     { key: 'weekly', icon: 'calendar', label: 'Semanal' },

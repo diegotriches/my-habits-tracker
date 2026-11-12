@@ -13,7 +13,7 @@ export const hapticFeedback = {
   light: async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -25,7 +25,7 @@ export const hapticFeedback = {
   medium: async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -37,7 +37,7 @@ export const hapticFeedback = {
   heavy: async () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -51,7 +51,7 @@ export const hapticFeedback = {
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success
       );
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -65,7 +65,7 @@ export const hapticFeedback = {
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Warning
       );
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -79,7 +79,7 @@ export const hapticFeedback = {
       await Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Error
       );
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },
@@ -91,7 +91,7 @@ export const hapticFeedback = {
   selection: async () => {
     try {
       await Haptics.selectionAsync();
-    } catch (error) {
+    } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
   },

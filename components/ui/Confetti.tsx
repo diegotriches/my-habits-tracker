@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,7 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
-interface ConfettiPiece {
+interface ConfettiPieceData {
   id: number;
   x: number;
   color: string;
@@ -51,7 +51,7 @@ export function Confetti({
   ];
 
   // Gerar peças de confetti aleatórias
-  const pieces: ConfettiPiece[] = Array.from({ length: particleCount }, (_, i) => ({
+  const pieces: ConfettiPieceData[] = Array.from({ length: particleCount }, (_, i) => ({
     id: i,
     x: Math.random() * width,
     color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
@@ -92,7 +92,7 @@ export function Confetti({
   );
 }
 
-function ConfettiPiece({ x, color, rotation, delay }: Omit<ConfettiPiece, 'id'>) {
+function ConfettiPiece({ x, color, rotation, delay }: Omit<ConfettiPieceData, 'id'>) {
   const translateY = useSharedValue(-20);
   const translateX = useSharedValue(0);
   const rotate = useSharedValue(0);

@@ -1,0 +1,8 @@
+android/
+ios/
+dist/
+.expo/
+node_modules/
+package-lock.json
+types/supabase.ts
+supabase/functions/

@@ -5,12 +5,6 @@ import { Habit, Completion, Streak } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { applyPendingOps, completionOutbox } from '@/services/completionOutbox';
 import { readCache, writeCache } from '@/services/offlineCache';
-
-interface HabitDetailsCache {
-  habit: Habit;
-  completions: Completion[];
-  streak: Streak | null;
-}
 import { 
   startOfWeek, 
   addDays,
@@ -19,6 +13,12 @@ import {
   format,
   differenceInDays,
 } from 'date-fns';
+
+interface HabitDetailsCache {
+  habit: Habit;
+  completions: Completion[];
+  streak: Streak | null;
+}
 
 interface PeriodStats {
   completed: number;

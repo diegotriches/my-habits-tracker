@@ -96,7 +96,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const themeOptions: Array<{ mode: ThemeMode; icon: IconName; label: string; description: string }> = [
+  const themeOptions: { mode: ThemeMode; icon: IconName; label: string; description: string }[] = [
     { mode: 'light', icon: 'sun', label: 'Claro', description: 'Tema claro padrão' },
     { mode: 'dark', icon: 'moon', label: 'Escuro', description: 'Ideal para ambientes escuros' },
     { mode: 'system', icon: 'palette', label: 'Automático', description: 'Segue as configurações do sistema' },

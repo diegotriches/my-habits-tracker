@@ -14,9 +14,10 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 ## B. Qualidade de código
 
 - [x] **Testes automatizados** (Jest) para a lógica pura: cálculo de streak, `applyPendingOps`, `parseBackup`, `backupToCsv`, helpers de datas/agenda. Branch `chore/automated-tests`: 55 testes; a lógica foi extraída para módulos puros em `utils/` (`streak`, `completionOps`, `backupFormat`), com os serviços reexportando. O teste do template (`StyledText-test.js`) saiu.
-- [ ] **ESLint + Prettier** (script `lint`) e **CI** no GitHub Actions rodando `tsc`, lint e testes a cada push.
-- [ ] **Restos do template do Expo**: `components/__tests__/StyledText-test.js`, `app/modal.tsx`, `app/+html.tsx`, `utils/supabaseHelpers.ts` (sem uso) e o que mais aparecer.
+- [x] **ESLint + Prettier** (script `lint`) e **CI** no GitHub Actions rodando `tsc`, lint e testes a cada push. Branch `chore/lint-and-ci`: regras do Expo + `eslint-config-prettier`; 4 erros e 32 avisos corrigidos; o código todo formatado num commit só de formatação.
+- [x] **Restos do template do Expo** (removidos na `chore/lint-and-ci`; a tela 404 foi reescrita em português com o tema do app): `components/__tests__/StyledText-test.js`, `app/modal.tsx`, `app/+html.tsx`, `utils/supabaseHelpers.ts` (sem uso) e o que mais aparecer.
 - [ ] **Renomear `retroactiveCompletionService` → `streakService`** (hoje só calcula streaks).
+- [ ] **Revisar os 24 avisos de `react-hooks/exhaustive-deps`** do lint, um a um (corrigir no automático muda o comportamento dos efeitos e pode criar loops). Os 4 `require()` do `app/_layout.tsx` são do fluxo do OAuth e ficam como estão.
 
 ## C. Visual e experiência
 

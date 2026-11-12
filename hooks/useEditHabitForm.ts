@@ -257,7 +257,7 @@ export function useEditHabitForm(habitId: string) {
       Alert.alert('Sucesso!', 'Hábito atualizado com sucesso!', [
         { text: 'OK', onPress: () => router.back() },
       ]);
-    } catch (error) {
+    } catch {
       setSaving(false);
       Alert.alert('Erro', 'Ocorreu um erro ao salvar o hábito');
     }

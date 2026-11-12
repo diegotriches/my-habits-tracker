@@ -117,7 +117,7 @@ export default function LoginScreen() {
         );
         setForgotEmail('');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível enviar o email');
     } finally {
       setSendingReset(false);

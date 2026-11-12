@@ -1,11 +1,11 @@
 // components/habits/ProgressNotificationSettings.tsx
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity , Platform } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { Platform } from 'react-native';
+
 
 export interface ProgressNotificationConfig {
   enabled: boolean;

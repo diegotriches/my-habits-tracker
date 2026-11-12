@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  View,
+  
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import Svg, { Path } from 'react-native-svg';

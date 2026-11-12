@@ -229,7 +229,7 @@ export default function AuthCallbackScreen() {
               {error}
             </Text>
             <Text style={[styles.redirect, { color: colors.textTertiary }]}>
-              Toque em "Voltar ao Login" no alerta
+              Toque em “Voltar ao Login” no alerta
             </Text>
           </>
         )}
