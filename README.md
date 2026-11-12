@@ -160,6 +160,16 @@ npx supabase functions deploy delete-account --project-ref <ref> --use-api
 
 - Validação manual das correções de 11–12/11/2026 no aparelho (inclui avatar e perfil): ver [docs/manual-testing.md](docs/manual-testing.md)
 
+## Antes de publicar na Play Store
+
+O app hoje é um projeto de portfólio, sem publicação prevista. Se isso mudar, resolva antes:
+
+- **`USE_EXACT_ALARM`** (declarada no `app.json`): a Play Store restringe essa permissão a apps de despertador/agenda e pode recusar a publicação. Remova-a e mantenha só a `SCHEDULE_EXACT_ALARM` (a seção "Lembretes confiáveis" já trata o caso de o usuário revogá-la).
+- **Permissões que vêm de dependências** e o app não usa: `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`. Descubra a origem no manifesto gerado e bloqueie-as (`android.blockedPermissions` no `app.json`), justificando na "Segurança dos dados" o que ficar.
+- **Link web para pedido de exclusão de conta**: o Play Console exige uma página onde o usuário peça a exclusão sem o app (a exclusão pelo app já existe — ver "Exclusão de conta").
+- **Política de privacidade** publicada e o formulário de "Segurança dos dados" preenchido (dados coletados: e-mail, nome, avatar, hábitos).
+- **Rodar o roteiro de [docs/manual-testing.md](docs/manual-testing.md)** numa build de produção.
+
 ## Contribuindo
 
 - Branches: `refactor/`, `fix/`, `feat/` como prefixo (ex: `refactor/habit-details-screen`)
