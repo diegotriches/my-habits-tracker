@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { HABIT_COLORS } from '@/constants/GameConfig';
+import { HABIT_COLORS } from '@/constants/HabitForm';
 
 interface CompactColorSelectorProps {
   selectedColor: string;

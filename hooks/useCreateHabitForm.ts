@@ -9,8 +9,7 @@ import { progressNotificationScheduler } from '@/services/progressNotificationSc
 import { supabase } from '@/services/supabase';
 import { FrequencyGoalPeriod, Reminder } from '@/types/database';
 import { getScheduledWeekDays } from '@/utils/habitHelpers';
-import { HABIT_COLORS } from '@/constants/GameConfig';
-import { MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
+import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
 
