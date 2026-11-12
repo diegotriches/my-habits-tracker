@@ -16,13 +16,14 @@ npx expo start --dev-client     # servidor de dev, quando já existe uma build d
 npx expo run:android            # gera e instala o dev client (primeira vez, ou após qualquer mudança nativa)
 npx expo prebuild --clean       # regenera android/ após mudanças em plugins/ ou na config nativa do app.json
 npx tsc --noEmit                # checagem de tipos (não há script de lint)
+npm test                        # testes (Jest, preset jest-expo)
 npx supabase gen types typescript --project-id <ref> --schema public > types/supabase.ts   # regenera os tipos do banco (requer `npx supabase login`; <ref> é o subdomínio de EXPO_PUBLIC_SUPABASE_URL)
 
 eas build --platform android --profile preview                               # APK de teste (profiles: development, preview, production)
 eas update --branch preview --platform android --message "..."             # OTA para mudanças só em JS/TSX
 ```
 
-- Não há setup de testes funcionando: `components/__tests__/StyledText-test.js` é sobra do template do Expo; o jest não está instalado e não existe script `test`.
+- **Testes**: Jest com `jest-expo`, em `**/__tests__/**/*.test.ts(x)` (helpers de teste em `utils/__tests__/testHelpers.ts`). Rodam no fuso `America/Sao_Paulo`, fixado por `jest.global-setup.js` — o app agrupa pelo dia local, e o `environment.test.ts` falha se o fuso não estiver valendo. A lógica testada fica em módulos puros, sem acesso ao banco/armazenamento (`utils/streak.ts`, `utils/completionOps.ts`, `utils/backupFormat.ts`, `utils/habitHelpers.ts`); os serviços os importam e reexportam. Lógica nova com regra de negócio deve seguir esse padrão e vir com teste. Funções que dependem de "hoje" recebem `now` como parâmetro. Escreva o BOM como escape `\uFEFF`, nunca o caractere literal (invisível, some fácil em editores).
 - Sempre passe `--platform android` para o `eas update` — o export web está quebrado porque o cliente Supabase acessa `AsyncStorage`/`window` durante a renderização estática do expo-router.
 - `android/` é gerado pelo prebuild e não é commitado. Mudanças em `plugins/`, em campos nativos do `app.json` ou em dependências nativas exigem build nova, não OTA. O `runtimeVersion` usa a política `fingerprint`: OTA só chega a builds com o mesmo nativo, então depois de uma mudança nativa a build nova precisa ser distribuída antes de qualquer `eas update` útil (não volte para versão fixa: um OTA com JS que importa módulo nativo novo quebraria as builds antigas).
 - Na build local, o `expo run:android` **não** recopia `plugins/java/*.java`: o config plugin só copia no prebuild. Depois de editar um `.java`, rode o prebuild de novo (ou copie o arquivo para `android/app/src/main/java/com/dtriches/myhabitstracker/`) e confira com `diff` antes de testar — senão a build sai com o Java antigo, sem erro nenhum.
@@ -53,7 +54,7 @@ eas update --branch preview --platform android --message "..."             # OTA
 ## Fluxo de trabalho
 
 - Nunca altere arquivos direto na `main`: antes da primeira edição, crie uma branch com o prefixo adequado (`feat/`, `fix/`, `refactor/`, `docs/`, `chore/`).
-- Após editar arquivos `.ts`/`.tsx`, rode `npx tsc --noEmit` e corrija os erros antes de considerar a tarefa concluída.
+- Após editar arquivos `.ts`/`.tsx`, rode `npx tsc --noEmit` e `npm test` e corrija os erros antes de considerar a tarefa concluída.
 - Não execute `git commit`, `git push`, `eas build` nem `eas update` sem pedido explícito.
 - A cada mudança relevante (nova funcionalidade, pendência resolvida, mudança de arquitetura, setup ou build), verifique se o `README.md` precisa ser atualizado — inclusive removendo itens resolvidos de "Pendências conhecidas" — e avise antes de concluir. Se o README ficar grande demais, proponha mover detalhes para documentação por módulo em `docs/`.
 - Ao concluir uma tarefa, apresente:

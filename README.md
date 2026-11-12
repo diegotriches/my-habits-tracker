@@ -87,6 +87,14 @@ Se precisar gerar/instalar a build de desenvolvedor pela primeira vez (ou depois
 npx expo run:android
 ```
 
+## Testes
+
+```bash
+npm test
+```
+
+Jest com o preset `jest-expo`. Os testes ficam em `__tests__/` (`*.test.ts`) e cobrem a lógica pura: cálculo de streak (`utils/streak.ts`), operações da fila offline (`utils/completionOps.ts`), formato do backup e CSV (`utils/backupFormat.ts`) e helpers de agenda e texto. Rodam no fuso `America/Sao_Paulo` (`jest.global-setup.js`), já que o app agrupa conclusões pelo dia local. O comportamento no aparelho (notificações, alarmes, offline) é validado pelo roteiro manual em [docs/manual-testing.md](docs/manual-testing.md).
+
 ## Build e distribuição
 
 O projeto usa três profiles no `eas.json`:

@@ -13,7 +13,7 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 
 ## B. Qualidade de código
 
-- [ ] **Testes automatizados** (Jest) para a lógica pura: cálculo de streak, `applyPendingOps`, `parseBackup`, `backupToCsv`, helpers de datas/agenda.
+- [x] **Testes automatizados** (Jest) para a lógica pura: cálculo de streak, `applyPendingOps`, `parseBackup`, `backupToCsv`, helpers de datas/agenda. Branch `chore/automated-tests`: 55 testes; a lógica foi extraída para módulos puros em `utils/` (`streak`, `completionOps`, `backupFormat`), com os serviços reexportando. O teste do template (`StyledText-test.js`) saiu.
 - [ ] **ESLint + Prettier** (script `lint`) e **CI** no GitHub Actions rodando `tsc`, lint e testes a cada push.
 - [ ] **Restos do template do Expo**: `components/__tests__/StyledText-test.js`, `app/modal.tsx`, `app/+html.tsx`, `utils/supabaseHelpers.ts` (sem uso) e o que mais aparecer.
 - [ ] **Renomear `retroactiveCompletionService` → `streakService`** (hoje só calcula streaks).

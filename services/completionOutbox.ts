@@ -1,10 +1,14 @@
 // services/completionOutbox.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter } from 'react-native';
-import { endOfDay, format, isSameDay, parseISO, startOfDay } from 'date-fns';
+import { endOfDay, parseISO, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { retroactiveCompletionService } from './retroactiveCompletionService';
-import { Completion } from '@/types/database';
+import { CompletionOp } from '@/utils/completionOps';
+
+// Reexportados: as telas importam daqui.
+export type { CompletionOp } from '@/utils/completionOps';
+export { applyPendingOps, completionDayFields } from '@/utils/completionOps';
 
 /**
  * Fila de saída das marcações (modo offline, fase 1 — ver docs/offline-mode.md).
@@ -19,20 +23,6 @@ import { Completion } from '@/types/database';
  * - Envio idempotente: reenviar uma operação já gravada não duplica nada.
  * - Metas numéricas guardam o valor final, não um incremento.
  */
-
-export interface CompletionOp {
-  id: string;
-  userId: string;
-  habitId: string;
-  /** Dia local da marcação (yyyy-MM-dd). */
-  day: string;
-  kind: 'complete' | 'uncomplete';
-  /** ISO do completed_at a gravar (complete). */
-  completedAt: string;
-  /** Valor final do dia, para hábitos com meta; null nos demais. */
-  value: number | null;
-  createdAt: string;
-}
 
 /**
  * - `synced`: gravada no banco.
@@ -183,57 +173,6 @@ async function runFlush(): Promise<void> {
   for (const id of syncedOps) resolveWaiter(id, 'synced');
 
   if (syncedWithoutWaiter) DeviceEventEmitter.emit(OUTBOX_SYNCED_EVENT);
-}
-
-/**
- * Aplica as operações ainda não enviadas sobre uma lista de conclusões (vinda
- * do cache offline ou do banco), para a tela refletir o que o usuário fez —
- * inclusive em sessões anteriores do app. Mesma regra do envio: desmarcar
- * remove o dia; marcar adiciona (ou, com meta, troca o valor).
- */
-export function applyPendingOps(completions: Completion[], ops: CompletionOp[]): Completion[] {
-  let result = completions;
-  for (const op of ops) {
-    const inSlot = (c: Completion) =>
-      c.habit_id === op.habitId && format(new Date(c.completed_at), 'yyyy-MM-dd') === op.day;
-
-    if (op.kind === 'uncomplete') {
-      result = result.filter(c => !inSlot(c));
-      continue;
-    }
-
-    const index = result.findIndex(inSlot);
-    if (index >= 0) {
-      if (op.value !== null) {
-        result = result.map((c, i) => (i === index ? { ...c, value_achieved: op.value } : c));
-      }
-      continue;
-    }
-    result = [
-      {
-        id: `pending-${op.id}`,
-        habit_id: op.habitId,
-        completed_at: op.completedAt,
-        value_achieved: op.value,
-        was_synced: false,
-        created_at: op.createdAt,
-      },
-      ...result,
-    ];
-  }
-  return result;
-}
-
-/**
- * Dia local e completed_at de uma marcação em `date`: hoje grava a hora atual
- * (como o fluxo de hoje sempre fez); dias passados, o início do dia.
- */
-export function completionDayFields(date: Date): Pick<CompletionOp, 'day' | 'completedAt'> {
-  const now = new Date();
-  return {
-    day: format(date, 'yyyy-MM-dd'),
-    completedAt: (isSameDay(date, now) ? now : startOfDay(date)).toISOString(),
-  };
 }
 
 export const completionOutbox = {
