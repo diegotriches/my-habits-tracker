@@ -68,14 +68,14 @@ function computeDerivedFields(habit: Habit, completions: Completion[]): DerivedF
   const yearStart = subDays(today, 364);
   const weekEnd = addDays(weekStart, 6);
 
-  const weekStats = calculatePeriodStats(habit as any, weekStart, today, completions, weekEnd);
-  const monthStats = calculatePeriodStats(habit as any, monthStart, today, completions);
-  const semesterStats = calculatePeriodStats(habit as any, semesterStart, today, completions);
-  const yearStats = calculatePeriodStats(habit as any, yearStart, today, completions);
-  const overallStats = calculateOverallStats(habit as any, completions);
+  const weekStats = calculatePeriodStats(habit, weekStart, today, completions, weekEnd);
+  const monthStats = calculatePeriodStats(habit, monthStart, today, completions);
+  const semesterStats = calculatePeriodStats(habit, semesterStart, today, completions);
+  const yearStats = calculatePeriodStats(habit, yearStart, today, completions);
+  const overallStats = calculateOverallStats(habit, completions);
 
-  const last30DaysData = generateDaysData(subDays(today, 29), today, completions, habit as any);
-  const last90DaysData = generateDaysData(subDays(today, 89), today, completions, habit as any);
+  const last30DaysData = generateDaysData(subDays(today, 29), today, completions, habit);
+  const last90DaysData = generateDaysData(subDays(today, 89), today, completions, habit);
 
   return { weekStats, monthStats, semesterStats, yearStats, overallStats, last30DaysData, last90DaysData };
 }

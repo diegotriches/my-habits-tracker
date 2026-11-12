@@ -67,7 +67,7 @@ export default function EditProfileScreen() {
 
     setSavingName(true);
     try {
-      const { error } = await (supabase.from('profiles') as any)
+      const { error } = await supabase.from('profiles')
         .update({ display_name: trimmed })
         .eq('id', user.id);
 

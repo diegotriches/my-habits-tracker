@@ -14,7 +14,7 @@ export interface Reminder {
   created_at: string;
 }
 
-const remindersTable = () => supabase.from('reminders') as any;
+const remindersTable = () => supabase.from('reminders');
 
 export function useReminders(habitId?: string) {
   const [reminders, setReminders] = useState<Reminder[]>([]);

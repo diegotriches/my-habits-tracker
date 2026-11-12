@@ -113,7 +113,7 @@ export const useCompletions = () => {
         was_synced: true,
       };
 
-      const { data: completionResponse, error: completionError } = await (supabase.from('completions') as any)
+      const { data: completionResponse, error: completionError } = await supabase.from('completions')
         .insert(completionData)
         .select()
         .single();
@@ -157,7 +157,7 @@ export const useCompletions = () => {
         value_achieved: finalValue,
       };
 
-      const { data: updatedCompletionData, error: updateError } = await (supabase.from('completions') as any)
+      const { data: updatedCompletionData, error: updateError } = await supabase.from('completions')
         .update(completionUpdate)
         .eq('id', completionId)
         .select()
@@ -229,7 +229,7 @@ export const useCompletions = () => {
         const streak = streakData as Streak;
         const newStreak = Math.max(0, (streak.current_streak || 0) - 1);
 
-        await (supabase.from('streaks') as any)
+        await supabase.from('streaks')
           .update({ current_streak: newStreak })
           .eq('habit_id', habitId);
       }

@@ -87,7 +87,7 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
         .maybeSingle();
 
       if (existingConfig) {
-        await (supabase.from('habit_progress_notifications') as any)
+        await supabase.from('habit_progress_notifications')
           .update({
             enabled: newConfig.enabled,
             morning_enabled: newConfig.morningEnabled,
@@ -105,7 +105,7 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
           await progressNotificationScheduler.disableProgressNotifications(habitId);
         }
       } else {
-        await (supabase.from('habit_progress_notifications') as any)
+        await supabase.from('habit_progress_notifications')
           .insert({
             habit_id: habitId,
             user_id: userId,

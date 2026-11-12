@@ -251,10 +251,10 @@ export default function HabitDetailsScreen() {
             hasTarget={habit.has_target}
             targetValue={habit.target_value || 0}
             targetUnit={habit.target_unit || ''}
-            hasFrequencyGoal={!!((habit as any).frequency_goal_value)}
-            frequencyGoalValue={(habit as any).frequency_goal_value || 0}
-            frequencyGoalPeriod={(habit as any).frequency_goal_period || null}
-            frequencyGoalCustomDays={(habit as any).frequency_goal_custom_days || null}
+            hasFrequencyGoal={!!(habit.frequency_goal_value)}
+            frequencyGoalValue={habit.frequency_goal_value || 0}
+            frequencyGoalPeriod={habit.frequency_goal_period || null}
+            frequencyGoalCustomDays={habit.frequency_goal_custom_days || null}
             currentMonth={calendarMonth}
             onMonthChange={setCalendarMonth}
             onDayPress={handleCalendarDayPress}

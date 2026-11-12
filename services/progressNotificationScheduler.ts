@@ -67,8 +67,8 @@ class ProgressNotificationSchedulerService {
         if (id) notificationIds.evening = id;
       }
 
-      const { error: updateError } = await (supabase
-        .from('habit_progress_notifications') as any)
+      const { error: updateError } = await supabase
+        .from('habit_progress_notifications')
         .update({
           morning_notification_id: notificationIds.morning || null,
           afternoon_notification_id: notificationIds.afternoon || null,
@@ -163,7 +163,7 @@ class ProgressNotificationSchedulerService {
         }
       }
 
-      await (supabase.from('habit_progress_notifications') as any)
+      await supabase.from('habit_progress_notifications')
         .update({
           morning_notification_id: null,
           afternoon_notification_id: null,
@@ -234,7 +234,7 @@ class ProgressNotificationSchedulerService {
 
   async enableProgressNotifications(habitId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await (supabase.from('habit_progress_notifications') as any)
+      const { error } = await supabase.from('habit_progress_notifications')
         .upsert({ habit_id: habitId, user_id: userId, enabled: true }, { onConflict: 'habit_id' });
 
       if (error) {
@@ -253,7 +253,7 @@ class ProgressNotificationSchedulerService {
     try {
       await this.cancelProgressNotifications(habitId);
 
-      const { error } = await (supabase.from('habit_progress_notifications') as any)
+      const { error } = await supabase.from('habit_progress_notifications')
         .update({ enabled: false })
         .eq('habit_id', habitId);
 
@@ -281,7 +281,7 @@ class ProgressNotificationSchedulerService {
       updates[`${period}_enabled`] = enabled;
       if (time) updates[`${period}_time`] = time;
 
-      const { error } = await (supabase.from('habit_progress_notifications') as any)
+      const { error } = await supabase.from('habit_progress_notifications')
         .update(updates)
         .eq('habit_id', habitId);
 
@@ -319,7 +319,7 @@ class ProgressNotificationSchedulerService {
 
   async createDefaultSettings(habitId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await (supabase.from('habit_progress_notifications') as any)
+      const { error } = await supabase.from('habit_progress_notifications')
         .insert({ habit_id: habitId, user_id: userId, enabled: false });
 
       if (error) {

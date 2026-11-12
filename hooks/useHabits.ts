@@ -2,11 +2,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
-import { Habit, HabitInsert, ReminderUpdate } from '@/types/database';
+import { FrequencyGoalPeriod, Habit, HabitInsert, ReminderUpdate } from '@/types/database';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 
-const habitsTable = () => supabase.from('habits') as any;
+const habitsTable = () => supabase.from('habits');
 
 async function cleanupHabitNotifications(habitId: string): Promise<void> {
   try {
@@ -14,11 +14,9 @@ async function cleanupHabitNotifications(habitId: string): Promise<void> {
     await progressNotificationScheduler.disableProgressNotifications(habitId);
 
     const update: ReminderUpdate = { is_active: false, notification_ids: [] };
-    // `as never`: o tipo Database atual faz o supabase-js inferir `never`
-    // no update; o payload já está tipado acima.
     const { error } = await supabase
       .from('reminders')
-      .update(update as never)
+      .update(update)
       .eq('habit_id', habitId);
 
     if (error) throw error;
@@ -93,7 +91,7 @@ export const useHabits = () => {
     target_value?: number | null;
     target_unit?: string | null;
     frequency_goal_value?: number | null;
-    frequency_goal_period?: string | null;
+    frequency_goal_period?: FrequencyGoalPeriod | null;
     frequency_goal_custom_days?: number | null;
     color: string;
     icon?: string;
@@ -103,7 +101,7 @@ export const useHabits = () => {
     }
 
     try {
-      const dataToInsert: Partial<HabitInsert> = {
+      const dataToInsert: HabitInsert = {
         user_id: user.id,
         name: habitData.name,
         description: habitData.description || null,
@@ -119,13 +117,13 @@ export const useHabits = () => {
       };
 
       if (habitData.frequency_goal_value) {
-        (dataToInsert as any).frequency_goal_value = habitData.frequency_goal_value;
+        dataToInsert.frequency_goal_value = habitData.frequency_goal_value;
       }
       if (habitData.frequency_goal_period) {
-        (dataToInsert as any).frequency_goal_period = habitData.frequency_goal_period;
+        dataToInsert.frequency_goal_period = habitData.frequency_goal_period;
       }
       if (habitData.frequency_goal_custom_days) {
-        (dataToInsert as any).frequency_goal_custom_days = habitData.frequency_goal_custom_days;
+        dataToInsert.frequency_goal_custom_days = habitData.frequency_goal_custom_days;
       }
 
       const { data, error: insertError } = await habitsTable()
@@ -160,7 +158,7 @@ export const useHabits = () => {
       frequency_type?: 'daily' | 'weekly' | 'custom';
       frequency_days?: number[] | null;
       frequency_goal_value?: number | null;
-      frequency_goal_period?: string | null;
+      frequency_goal_period?: FrequencyGoalPeriod | null;
       frequency_goal_custom_days?: number | null;
     }
   ) => {

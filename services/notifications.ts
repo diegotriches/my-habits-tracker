@@ -393,7 +393,7 @@ class NotificationService {
         .eq('id', habitId)
         .single();
       if (error) throw error;
-      return data as any;
+      return data;
     } catch (error) {
       console.error('Erro ao buscar habito:', error);
       return null;

@@ -28,7 +28,9 @@ services/              # Chamadas ao Supabase e serviços de domínio
   notificationService.ts, exactAlarmService.ts
 constants/             # Ícones, cores, constantes de formulário compartilhadas
 contexts/              # ThemeContext (claro/escuro/automático)
-types/database.ts      # Tipos gerados a partir do schema do Supabase
+types/supabase.ts      # Tipos gerados do schema do Supabase (não editar; ver CLAUDE.md)
+types/database.ts      # Aliases do app sobre os tipos gerados (Habit, Completion, ...)
+supabase/migrations/   # Migrations SQL do banco, executadas no SQL Editor
 plugins/                # Config plugin do Expo para o módulo nativo de alarmes
   withExactAlarm.js
   java/                 # AlarmReceiver, AlarmStorage, BootReceiver, ExactAlarmModule (Java)
@@ -147,9 +149,8 @@ Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilh
 ## Pendências conhecidas
 
 - Prompt de desativação de otimização de bateria (ver acima)
-- Migration SQL no Supabase para remover tabelas de gamificação (removida do produto)
-- Remover arquivos obsoletos relacionados à gamificação
 - Testar upload de avatar e edição de perfil de ponta a ponta
+- Exclusão de conta incompleta (`components/account/DeleteAccountButton.tsx`): não remove o usuário do Supabase Auth (exige chave de serviço — ex.: Edge Function), ignora erros e deixa lembretes, streaks, notificações de progresso e alarmes; mesmo assim diz que tudo foi excluído
 
 ## Contribuindo
 

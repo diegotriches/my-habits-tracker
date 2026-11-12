@@ -35,8 +35,8 @@ export function useNotificationSettings() {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await (supabase
-        .from('notification_settings') as any)
+      const { data, error: fetchError } = await supabase
+        .from('notification_settings')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -64,8 +64,8 @@ export function useNotificationSettings() {
     if (!user) return null;
 
     try {
-      const { data, error } = await (supabase
-        .from('notification_settings') as any)
+      const { data, error } = await supabase
+        .from('notification_settings')
         .insert({
           user_id: user.id,
           ...DEFAULT_SETTINGS,
@@ -91,8 +91,8 @@ export function useNotificationSettings() {
     if (!user || !settings) return false;
 
     try {
-      const { data, error } = await (supabase
-        .from('notification_settings') as any)
+      const { data, error } = await supabase
+        .from('notification_settings')
         .update(updates)
         .eq('user_id', user.id)
         .select()

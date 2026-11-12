@@ -56,7 +56,7 @@ export const retroactiveCompletionService = {
         };
       }
 
-      const { error: insertError } = await (supabase.from('completions') as any)
+      const { error: insertError } = await supabase.from('completions')
         .insert({
           habit_id: habit.id,
           completed_at: startOfDay(date).toISOString(),
@@ -150,7 +150,7 @@ export const retroactiveCompletionService = {
         .order('completed_at', { ascending: false });
 
       if (!rawCompletions || rawCompletions.length === 0) {
-        await (supabase.from('streaks') as any)
+        await supabase.from('streaks')
           .upsert({
             habit_id: habitId,
             current_streak: 0,
@@ -172,20 +172,20 @@ export const retroactiveCompletionService = {
       }
 
       if (completions.length === 0) {
-        await (supabase.from('streaks') as any)
+        await supabase.from('streaks')
           .upsert({
             habit_id: habitId,
             current_streak: 0,
             best_streak: 0,
             last_completion_date: rawCompletions[0] 
-              ? format(startOfDay(new Date((rawCompletions[0] as any).completed_at)), 'yyyy-MM-dd')
+              ? format(startOfDay(new Date(rawCompletions[0].completed_at)), 'yyyy-MM-dd')
               : null,
           }, { onConflict: 'habit_id' });
         return;
       }
 
-      const goalValue = (habitData as any).frequency_goal_value;
-      const goalPeriod = (habitData as any).frequency_goal_period;
+      const goalValue = habitData.frequency_goal_value;
+      const goalPeriod = habitData.frequency_goal_period;
 
       let currentStreak: number;
       let bestStreak: number;
@@ -222,15 +222,15 @@ export const retroactiveCompletionService = {
 
       bestStreak = Math.max(
         bestStreak,
-        (existingStreak as any)?.best_streak || 0
+        existingStreak?.best_streak || 0
       );
 
       const lastCompletionDate = format(
-        startOfDay(new Date((completions[0] as any).completed_at)),
+        startOfDay(new Date(completions[0].completed_at)),
         'yyyy-MM-dd'
       );
 
-      await (supabase.from('streaks') as any)
+      await supabase.from('streaks')
         .upsert({
           habit_id: habitId,
           current_streak: currentStreak,

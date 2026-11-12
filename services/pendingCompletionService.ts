@@ -54,9 +54,7 @@ export async function completeHabitFromNotification(
       completed_at: completedAt.toISOString(),
       was_synced: true,
     };
-    // `as never`: o tipo Database atual faz o supabase-js inferir `never`
-    // no insert; o payload já está tipado acima.
-    const { error: insertError } = await supabase.from('completions').insert(completion as never);
+    const { error: insertError } = await supabase.from('completions').insert(completion);
     if (insertError) throw insertError;
 
     return 'completed';

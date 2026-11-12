@@ -85,9 +85,9 @@ export function useEditHabitForm(habitId: string) {
     setFrequencyType(h.frequency_type || 'daily');
     setFrequencyDays(h.frequency_days || [0, 1, 2, 3, 4, 5, 6]);
 
-    const goalValue = (h as any).frequency_goal_value;
-    const goalPeriod = (h as any).frequency_goal_period;
-    const goalCustomDays = (h as any).frequency_goal_custom_days;
+    const goalValue = h.frequency_goal_value;
+    const goalPeriod = h.frequency_goal_period;
+    const goalCustomDays = h.frequency_goal_custom_days;
 
     if (goalValue && goalValue > 0) {
       setHasFrequencyGoal(true);

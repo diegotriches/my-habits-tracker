@@ -43,7 +43,7 @@ export const updateCompletion = async (
   completionId: string,
   updates: Partial<Completion>
 ) => {
-  const { error } = await (supabase.from('completions') as any)
+  const { error } = await supabase.from('completions')
     .update(updates)
     .eq('id', completionId);
 
@@ -57,7 +57,7 @@ export const updateProfile = async (
   userId: string,
   updates: Partial<Profile>
 ) => {
-  const { error } = await (supabase.from('profiles') as any)
+  const { error } = await supabase.from('profiles')
     .update(updates)
     .eq('id', userId);
 

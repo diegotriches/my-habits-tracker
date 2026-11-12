@@ -5,7 +5,7 @@ import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';
 import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
 
-const streaksTable = () => (supabase.from('streaks') as any);
+const streaksTable = () => supabase.from('streaks');
 
 export const useStreaks = () => {
   const { user } = useAuth();

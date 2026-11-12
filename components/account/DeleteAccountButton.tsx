@@ -68,11 +68,18 @@ export function DeleteAccountButton() {
       }
 
       // 1. Deletar dados do Supabase (ordem importante por causa das foreign keys)
+      // `completions` não tem user_id: o dono é o hábito. (Antes apontava
+      // para a tabela inexistente `habit_completions`, e o erro era ignorado.)
       console.log('🗑️ Deletando completions...');
-      const { error: completionsError } = await supabase
-        .from('habit_completions')
-        .delete()
+      const { data: userHabits } = await supabase
+        .from('habits')
+        .select('id')
         .eq('user_id', user.id);
+      const habitIds = (userHabits ?? []).map(h => h.id);
+
+      const { error: completionsError } = habitIds.length > 0
+        ? await supabase.from('completions').delete().in('habit_id', habitIds)
+        : { error: null };
 
       if (completionsError) {
         console.error('Erro ao deletar completions:', completionsError);

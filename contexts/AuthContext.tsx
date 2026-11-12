@@ -130,8 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture;
       const displayName = googleName || (user.email?.split('@')[0] || 'Usuário');
 
-      const { error: insertError } = await (supabase
-        .from('profiles') as any)
+      const { error: insertError } = await supabase
+        .from('profiles')
         .insert({
           id: user.id,
           display_name: displayName,

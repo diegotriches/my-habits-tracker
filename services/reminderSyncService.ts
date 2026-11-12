@@ -103,11 +103,9 @@ async function runSync(userId: string): Promise<void> {
         // Atualiza os ids salvos se mudaram (ex.: formato legado).
         if (!sameIds(reminder.notification_ids, alarmIds)) {
           const update: ReminderUpdate = { notification_ids: alarmIds };
-          // `as never`: o tipo Database atual faz o supabase-js inferir
-          // `never` no update; o payload já está tipado acima.
           const { error } = await supabase
             .from('reminders')
-            .update(update as never)
+            .update(update)
             .eq('id', reminder.id);
           if (error) console.warn('Erro ao salvar ids do lembrete:', error);
         }

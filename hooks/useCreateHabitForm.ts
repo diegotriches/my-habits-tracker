@@ -13,7 +13,7 @@ import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH,
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
 
-const remindersTable = () => (supabase.from('reminders') as any);
+const remindersTable = () => supabase.from('reminders');
 
 export const MAX_REMINDERS = 5;
 
@@ -372,7 +372,7 @@ export function useCreateHabitForm() {
 
     if (progressNotificationConfig.enabled) {
       try {
-        await (supabase.from('habit_progress_notifications') as any).insert({
+        await supabase.from('habit_progress_notifications').insert({
           habit_id: habit.id, user_id: user.id, enabled: true,
           morning_enabled: progressNotificationConfig.morningEnabled,
           morning_time: progressNotificationConfig.morningTime,

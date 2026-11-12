@@ -273,7 +273,7 @@ class ProgressCheckerService {
       const results: Array<{ habit: Habit; progress: ProgressStatus }> = [];
 
       for (const config of configs) {
-        const habit = (config as any).habits as Habit;
+        const habit: Habit = config.habits;
 
         if (!habit.has_target) continue;
         if (!this.isHabitDueToday(habit)) continue;

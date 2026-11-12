@@ -85,8 +85,8 @@ export default function ProfileHeader({ profile, onAvatarUpdated }: ProfileHeade
 
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
-      const { error: updateError } = await (supabase
-        .from('profiles') as any)
+      const { error: updateError } = await supabase
+        .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id);
 
