@@ -35,24 +35,12 @@ export const ViewModeSelector: React.FC<Props> = ({ mode, onChange }) => {
         return (
           <TouchableOpacity
             key={item.key}
-            style={[
-              styles.option,
-              isActive && { backgroundColor: colors.primary },
-            ]}
+            style={[styles.option, isActive && { backgroundColor: colors.primary }]}
             onPress={() => handlePress(item.key)}
             activeOpacity={0.7}
           >
-            <Icon 
-              name={item.icon} 
-              size={18} 
-              color={isActive ? '#FFFFFF' : colors.textSecondary} 
-            />
-            <Text 
-              style={[
-                styles.label,
-                { color: isActive ? '#FFFFFF' : colors.textSecondary }
-              ]}
-            >
+            <Icon name={item.icon} size={18} color={isActive ? '#FFFFFF' : colors.textSecondary} />
+            <Text style={[styles.label, { color: isActive ? '#FFFFFF' : colors.textSecondary }]}>
               {item.label}
             </Text>
           </TouchableOpacity>

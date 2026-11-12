@@ -85,7 +85,9 @@ export function NotificationHandler() {
     // alarmes nativos se perdem ao reinstalar o app ou trocar de celular.
     let remindersSynced = false;
     const syncReminders = () => {
-      reminderSyncService.syncReminders(user.id).then((ok) => { remindersSynced = ok; });
+      reminderSyncService.syncReminders(user.id).then((ok) => {
+        remindersSynced = ok;
+      });
     };
     notificationService.requestPermissions().then((granted) => {
       console.log('Permissao de notificacao:', granted ? 'concedida' : 'negada');

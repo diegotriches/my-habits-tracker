@@ -39,13 +39,13 @@ export function getManufacturerTip(): string | null {
   if (manufacturer.includes('samsung')) {
     return 'Na Samsung: Configurações → Bateria → Limites de uso em segundo plano → Apps que nunca entram em suspensão → adicione o app.';
   }
-  if (['xiaomi', 'redmi', 'poco'].some(m => manufacturer.includes(m))) {
+  if (['xiaomi', 'redmi', 'poco'].some((m) => manufacturer.includes(m))) {
     return 'Na Xiaomi: Configurações → Apps → Gerenciar apps → este app → ative o Início automático e, em Economia de bateria, escolha "Sem restrições".';
   }
   if (manufacturer.includes('huawei') || manufacturer.includes('honor')) {
     return 'Na Huawei/Honor: Configurações → Bateria → Inicialização de apps → desative "Gerenciar automaticamente" para este app e permita todas as opções.';
   }
-  if (['oppo', 'realme', 'oneplus'].some(m => manufacturer.includes(m))) {
+  if (['oppo', 'realme', 'oneplus'].some((m) => manufacturer.includes(m))) {
     return 'Na Oppo/Realme/OnePlus: Configurações → Bateria → este app → permita a atividade em segundo plano e desative a otimização.';
   }
   return null;

@@ -5,16 +5,17 @@ import { useAuth } from './useAuth';
 import { NotificationSettings, NotificationSettingsUpdate } from '@/types/database';
 import { NotificationSound } from '@/services/notifications';
 
-const DEFAULT_SETTINGS: Omit<NotificationSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
-  enabled: true,
-  default_sound: 'default',
-  vibration_enabled: true,
-  smart_notifications: true,
-  quiet_hours_enabled: false,
-  quiet_hours_start: '22:00',
-  quiet_hours_end: '07:00',
-  default_snooze_minutes: 10,
-};
+const DEFAULT_SETTINGS: Omit<NotificationSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'> =
+  {
+    enabled: true,
+    default_sound: 'default',
+    vibration_enabled: true,
+    smart_notifications: true,
+    quiet_hours_enabled: false,
+    quiet_hours_start: '22:00',
+    quiet_hours_end: '07:00',
+    default_snooze_minutes: 10,
+  };
 
 export function useNotificationSettings() {
   const { user } = useAuth();
@@ -85,9 +86,7 @@ export function useNotificationSettings() {
   /**
    * Atualizar configurações
    */
-  const updateSettings = async (
-    updates: NotificationSettingsUpdate
-  ): Promise<boolean> => {
+  const updateSettings = async (updates: NotificationSettingsUpdate): Promise<boolean> => {
     if (!user || !settings) return false;
 
     try {
@@ -150,10 +149,7 @@ export function useNotificationSettings() {
   /**
    * Atualizar horários de silêncio
    */
-  const updateQuietHours = async (
-    start: string,
-    end: string
-  ): Promise<boolean> => {
+  const updateQuietHours = async (start: string, end: string): Promise<boolean> => {
     return await updateSettings({
       quiet_hours_start: start,
       quiet_hours_end: end,

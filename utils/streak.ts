@@ -35,9 +35,7 @@ export function calculateDailyStreak(
   now: Date = new Date()
 ): StreakResult {
   const completedDates = new Set(
-    completions.map((c) =>
-      format(startOfDay(new Date(c.completed_at)), 'yyyy-MM-dd')
-    )
+    completions.map((c) => format(startOfDay(new Date(c.completed_at)), 'yyyy-MM-dd'))
   );
 
   const sortedDates = [...completedDates].sort().reverse();
@@ -111,9 +109,7 @@ export function calculateScheduledDaysStreak(
   now: Date = new Date()
 ): StreakResult {
   const completedDates = new Set(
-    completions.map((c) =>
-      format(startOfDay(new Date(c.completed_at)), 'yyyy-MM-dd')
-    )
+    completions.map((c) => format(startOfDay(new Date(c.completed_at)), 'yyyy-MM-dd'))
   );
 
   // Gerar todos os dias programados desde a criação até hoje
@@ -121,8 +117,8 @@ export function calculateScheduledDaysStreak(
   const today = startOfDay(now);
   const allDays = eachDayOfInterval({ start: createdAt, end: today });
   const scheduledDays = allDays
-    .filter(d => shouldHabitAppearOnDate(habit, d))
-    .map(d => format(d, 'yyyy-MM-dd'))
+    .filter((d) => shouldHabitAppearOnDate(habit, d))
+    .map((d) => format(d, 'yyyy-MM-dd'))
     .reverse(); // mais recente primeiro
 
   // Current streak: dias programados consecutivos completados
@@ -166,7 +162,7 @@ export function calculateScheduledDaysStreak(
  * Streak por meta semanal (ex: 3x por semana).
  * Conta DIAS completados em semanas consecutivas em que a meta foi atingida.
  * Uma "semana" vai de domingo a sábado.
- * 
+ *
  * Ex: meta 3x/sem, completou 3 dias em 2 semanas + 2 dias na semana atual
  *     → streak = 3 + 3 + 2 = 8 dias
  */
@@ -175,9 +171,7 @@ export function calculateWeeklyGoalStreak(
   goalValue: number,
   now: Date = new Date()
 ): StreakResult {
-  const completedDates = completions.map((c) =>
-    startOfDay(new Date(c.completed_at))
-  );
+  const completedDates = completions.map((c) => startOfDay(new Date(c.completed_at)));
 
   const today = now;
 
@@ -191,9 +185,7 @@ export function calculateWeeklyGoalStreak(
     const ws = startOfWeek(subWeeks(today, i), { weekStartsOn: 0 });
     const we = endOfWeek(ws, { weekStartsOn: 0 });
 
-    const count = completedDates.filter(d =>
-      !isBefore(d, ws) && !isAfter(d, we)
-    ).length;
+    const count = completedDates.filter((d) => !isBefore(d, ws) && !isAfter(d, we)).length;
 
     weeklyData.push({ weekStart: ws, count });
   }
@@ -207,7 +199,7 @@ export function calculateWeeklyGoalStreak(
   // Semana atual: sempre somar os dias (semana em andamento)
   if (weeklyData[0].count > 0) {
     currentStreakDays += weeklyData[0].count;
-    
+
     // Se a semana atual ainda não bateu a meta, começar a verificar da semana passada
     // mas manter os dias da semana atual
     if (weeklyData[0].count < goalValue) {
@@ -253,7 +245,6 @@ export function calculateWeeklyGoalStreak(
       tempStreakDays = 0;
     }
   }
-
 
   return {
     currentStreak: currentStreakDays,

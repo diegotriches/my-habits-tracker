@@ -26,12 +26,15 @@ export type NotificationSound = 'default' | 'water' | 'bell' | 'chime' | 'silenc
  * AlarmReceiver.ensureChannel (Java), que cria o mesmo canal se o JS ainda
  * não o tiver criado.
  */
-const REMINDER_CHANNELS: Record<NotificationSound, { id: string; name: string; sound: string | null }> = {
-  default: { id: 'habits',        name: 'Lembretes de Habitos',    sound: 'default' },
-  water:   { id: 'habits-water',  name: "Lembretes (Gota d'água)", sound: 'water_drop.wav' },
-  bell:    { id: 'habits-bell',   name: 'Lembretes (Sino)',        sound: 'bell.wav' },
-  chime:   { id: 'habits-chime',  name: 'Lembretes (Carrilhão)',   sound: 'chime.wav' },
-  silence: { id: 'habits-silent', name: 'Lembretes (Silencioso)',  sound: null },
+const REMINDER_CHANNELS: Record<
+  NotificationSound,
+  { id: string; name: string; sound: string | null }
+> = {
+  default: { id: 'habits', name: 'Lembretes de Habitos', sound: 'default' },
+  water: { id: 'habits-water', name: "Lembretes (Gota d'água)", sound: 'water_drop.wav' },
+  bell: { id: 'habits-bell', name: 'Lembretes (Sino)', sound: 'bell.wav' },
+  chime: { id: 'habits-chime', name: 'Lembretes (Carrilhão)', sound: 'chime.wav' },
+  silence: { id: 'habits-silent', name: 'Lembretes (Silencioso)', sound: null },
 };
 
 export function getReminderChannelId(sound: NotificationSound): string {
@@ -39,7 +42,6 @@ export function getReminderChannelId(sound: NotificationSound): string {
 }
 
 class NotificationService {
-
   // ---------------------------------------------------------------------------
   // Permissões e canais
   // ---------------------------------------------------------------------------
@@ -169,9 +171,12 @@ class NotificationService {
     sound: NotificationSound = 'default'
   ): Promise<string | null> {
     const ids = await this.scheduleWeeklyReminder(
-      habitId, habitName, time,
+      habitId,
+      habitName,
+      time,
       [0, 1, 2, 3, 4, 5, 6],
-      reminderId, sound
+      reminderId,
+      sound
     );
     return ids.length > 0 ? ids[0] : null;
   }
@@ -402,12 +407,18 @@ class NotificationService {
 
   private getSoundFile(sound: NotificationSound): string | boolean | undefined {
     switch (sound) {
-      case 'default': return true;
-      case 'silence': return false;
-      case 'water':   return 'water_drop.wav';
-      case 'bell':    return 'bell.wav';
-      case 'chime':   return 'chime.wav';
-      default:        return true;
+      case 'default':
+        return true;
+      case 'silence':
+        return false;
+      case 'water':
+        return 'water_drop.wav';
+      case 'bell':
+        return 'bell.wav';
+      case 'chime':
+        return 'chime.wav';
+      default:
+        return true;
     }
   }
 }

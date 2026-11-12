@@ -8,7 +8,9 @@ import { OFFLINE_ACTION_MESSAGE } from '@/utils/networkErrors';
  * NetInfo ainda não sabe (valores null, logo ao abrir), assume online — no
  * pior caso a ação é tentada e falha como antes.
  */
-export function isOfflineState(state: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>): boolean {
+export function isOfflineState(
+  state: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>
+): boolean {
   return state.isConnected === false || state.isInternetReachable === false;
 }
 

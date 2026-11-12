@@ -27,9 +27,12 @@ export const HabitInfoCard = React.memo(function HabitInfoCard({
     const goalCustomDays = habit.frequency_goal_custom_days;
 
     if (goalValue && goalValue > 0) {
-      const periodLabel = goalPeriod === 'week' ? 'semana'
-        : goalPeriod === 'month' ? 'mês'
-          : `${goalCustomDays || '?'} dias`;
+      const periodLabel =
+        goalPeriod === 'week'
+          ? 'semana'
+          : goalPeriod === 'month'
+            ? 'mês'
+            : `${goalCustomDays || '?'} dias`;
       return `${goalValue}x por ${periodLabel}`;
     }
     if (habit.frequency_type === 'daily') return 'Todos os dias';
@@ -41,7 +44,12 @@ export const HabitInfoCard = React.memo(function HabitInfoCard({
   }, [habit]);
 
   return (
-    <View style={[styles.habitCard, { backgroundColor: colors.surface, borderLeftColor: themeColor, borderColor: tintBorder }]}>
+    <View
+      style={[
+        styles.habitCard,
+        { backgroundColor: colors.surface, borderLeftColor: themeColor, borderColor: tintBorder },
+      ]}
+    >
       <View style={styles.habitHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           {isNegative && <Icon name="xCircle" size={20} color={colors.warning} />}
@@ -57,7 +65,9 @@ export const HabitInfoCard = React.memo(function HabitInfoCard({
       )}
 
       {habit.description && (
-        <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>{habit.description}</Text>
+        <Text style={[styles.habitDescription, { color: colors.textSecondary }]}>
+          {habit.description}
+        </Text>
       )}
 
       <View style={[styles.habitInfo, { borderTopColor: tintBorder }]}>
@@ -85,18 +95,43 @@ export const HabitInfoCard = React.memo(function HabitInfoCard({
 
 const styles = StyleSheet.create({
   habitCard: {
-    borderRadius: 16, padding: 20, borderLeftWidth: 4, borderWidth: 1.5, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
+    borderRadius: 16,
+    padding: 20,
+    borderLeftWidth: 4,
+    borderWidth: 1.5,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  habitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  habitHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   habitName: { fontSize: 20, fontWeight: '700', flex: 1 },
   typeBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10,
-    borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
   },
   typeText: { fontSize: 12, fontWeight: '600' },
   habitDescription: { fontSize: 14, marginBottom: 16, lineHeight: 20 },
-  habitInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1 },
+  habitInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
   infoLabel: { fontSize: 14 },
   infoValue: { fontSize: 14, fontWeight: '600' },
 });

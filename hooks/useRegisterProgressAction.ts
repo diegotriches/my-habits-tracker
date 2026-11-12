@@ -44,7 +44,7 @@ export function useRegisterProgressAction({
     }
 
     const today = new Date();
-    const todayCompletion = completions.find(c => isSameDay(new Date(c.completed_at), today));
+    const todayCompletion = completions.find((c) => isSameDay(new Date(c.completed_at), today));
     // No Android, um Modal aberto durante a animação de entrada da tela pode
     // não aparecer: espera a navegação terminar. Sem cleanup que cancele a
     // tarefa: limpar o parâmetro muda `action` e re-executa este efeito, o que

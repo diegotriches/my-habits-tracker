@@ -60,7 +60,10 @@ const PAGE_SIZE = 1000;
  * repetir ou faltar entre páginas.
  */
 export async function fetchAllRows<T>(
-  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>
+  query: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>
 ): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -73,13 +76,17 @@ export async function fetchAllRows<T>(
 
 // Helper para verificar se está autenticado
 export const isAuthenticated = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return !!session;
 };
 
 // Helper para pegar usuário atual
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user;
 };
 

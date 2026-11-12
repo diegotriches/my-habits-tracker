@@ -8,11 +8,7 @@ import { fetchAllRows, supabase } from './supabase';
 import { retroactiveCompletionService } from './retroactiveCompletionService';
 import { reminderSyncService } from './reminderSyncService';
 import { progressNotificationScheduler } from './progressNotificationScheduler';
-import {
-  CompletionInsert,
-  HabitInsert,
-  ReminderInsert,
-} from '@/types/database';
+import { CompletionInsert, HabitInsert, ReminderInsert } from '@/types/database';
 import { MAX_REMINDERS } from '@/constants/HabitForm';
 import { BACKUP_FORMAT, BACKUP_VERSION, BackupFile, backupToCsv } from '@/utils/backupFormat';
 
@@ -24,7 +20,12 @@ export {
   backupToCsv,
   parseBackup,
 } from '@/utils/backupFormat';
-export type { BackupCompletion, BackupFile, BackupHabit, BackupReminder } from '@/utils/backupFormat';
+export type {
+  BackupCompletion,
+  BackupFile,
+  BackupHabit,
+  BackupReminder,
+} from '@/utils/backupFormat';
 
 /**
  * Exportação e importação dos dados de hábitos.
@@ -86,22 +87,23 @@ export async function buildBackup(userId: string): Promise<BackupFile> {
     .order('created_at', { ascending: true });
   if (habitsError) throw habitsError;
 
-  const habitIds = (habits ?? []).map(h => h.id);
+  const habitIds = (habits ?? []).map((h) => h.id);
   const completions = habitIds.length > 0 ? await fetchAllCompletions(habitIds) : [];
 
-  const { data: reminders, error: remindersError } = habitIds.length > 0
-    ? await supabase
-        .from('reminders')
-        .select('habit_id, time, days_of_week, is_active, sound')
-        .in('habit_id', habitIds)
-    : { data: [], error: null };
+  const { data: reminders, error: remindersError } =
+    habitIds.length > 0
+      ? await supabase
+          .from('reminders')
+          .select('habit_id, time, days_of_week, is_active, sound')
+          .in('habit_id', habitIds)
+      : { data: [], error: null };
   if (remindersError) throw remindersError;
 
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    habits: (habits ?? []).map(h => ({
+    habits: (habits ?? []).map((h) => ({
       name: h.name,
       description: h.description,
       type: h.type,
@@ -117,16 +119,26 @@ export async function buildBackup(userId: string): Promise<BackupFile> {
       frequency_goal_custom_days: h.frequency_goal_custom_days,
       created_at: h.created_at,
       completions: completions
-        .filter(c => c.habit_id === h.id)
-        .map(c => ({ completed_at: c.completed_at, value_achieved: c.value_achieved })),
+        .filter((c) => c.habit_id === h.id)
+        .map((c) => ({ completed_at: c.completed_at, value_achieved: c.value_achieved })),
       reminders: (reminders ?? [])
-        .filter(r => r.habit_id === h.id)
-        .map(r => ({ time: r.time, days_of_week: r.days_of_week, is_active: r.is_active, sound: r.sound })),
+        .filter((r) => r.habit_id === h.id)
+        .map((r) => ({
+          time: r.time,
+          days_of_week: r.days_of_week,
+          is_active: r.is_active,
+          sound: r.sound,
+        })),
     })),
   };
 }
 
-async function writeAndShare(fileName: string, content: string, mimeType: string, dialogTitle: string) {
+async function writeAndShare(
+  fileName: string,
+  content: string,
+  mimeType: string,
+  dialogTitle: string
+) {
   const file = new File(Paths.cache, fileName);
   file.create({ overwrite: true });
   file.write(content);
@@ -139,7 +151,12 @@ async function writeAndShare(fileName: string, content: string, mimeType: string
 export async function exportBackup(userId: string): Promise<number> {
   const backup = await buildBackup(userId);
   const fileName = `habitos-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
-  await writeAndShare(fileName, JSON.stringify(backup, null, 2), 'application/json', 'Salvar backup dos hábitos');
+  await writeAndShare(
+    fileName,
+    JSON.stringify(backup, null, 2),
+    'application/json',
+    'Salvar backup dos hábitos'
+  );
   return backup.habits.length;
 }
 
@@ -174,12 +191,16 @@ async function fetchExistingHabits(userId: string): Promise<Map<string, string>>
     .eq('user_id', userId)
     .eq('is_active', true);
   if (error) throw error;
-  return new Map((data ?? []).map(h => [nameKey(h.name), h.id]));
+  return new Map((data ?? []).map((h) => [nameKey(h.name), h.id]));
 }
 
-export async function previewImport(backup: BackupFile, userId: string, skipped: number): Promise<ImportPreview> {
+export async function previewImport(
+  backup: BackupFile,
+  userId: string,
+  skipped: number
+): Promise<ImportPreview> {
   const existing = await fetchExistingHabits(userId);
-  const keys = new Set(backup.habits.map(h => nameKey(h.name)));
+  const keys = new Set(backup.habits.map((h) => nameKey(h.name)));
   let merge = 0;
   for (const key of keys) if (existing.has(key)) merge++;
   return {
@@ -192,7 +213,12 @@ export async function previewImport(backup: BackupFile, userId: string, skipped:
 
 export async function importBackup(backup: BackupFile, userId: string): Promise<ImportSummary> {
   const existing = await fetchExistingHabits(userId);
-  const summary: ImportSummary = { habitsCreated: 0, habitsMerged: 0, completionsAdded: 0, remindersAdded: 0 };
+  const summary: ImportSummary = {
+    habitsCreated: 0,
+    habitsMerged: 0,
+    completionsAdded: 0,
+    remindersAdded: 0,
+  };
   const touchedHabits = new Set<string>();
 
   for (const h of backup.habits) {
@@ -244,10 +270,17 @@ export async function importBackup(backup: BackupFile, userId: string): Promise<
       const day = localDay(c.completed_at);
       if (knownDays.has(day)) continue;
       knownDays.add(day);
-      toInsert.push({ habit_id: habitId, completed_at: c.completed_at, value_achieved: c.value_achieved, was_synced: true });
+      toInsert.push({
+        habit_id: habitId,
+        completed_at: c.completed_at,
+        value_achieved: c.value_achieved,
+        was_synced: true,
+      });
     }
     for (let i = 0; i < toInsert.length; i += INSERT_BATCH) {
-      const { error } = await supabase.from('completions').insert(toInsert.slice(i, i + INSERT_BATCH));
+      const { error } = await supabase
+        .from('completions')
+        .insert(toInsert.slice(i, i + INSERT_BATCH));
       if (error) throw error;
     }
     summary.completionsAdded += toInsert.length;
@@ -259,8 +292,8 @@ export async function importBackup(backup: BackupFile, userId: string): Promise<
       .select('time, is_active')
       .eq('habit_id', habitId);
     if (remindersError) throw remindersError;
-    const knownTimes = new Set((current ?? []).map(r => r.time.slice(0, 5)));
-    let activeCount = (current ?? []).filter(r => r.is_active).length;
+    const knownTimes = new Set((current ?? []).map((r) => r.time.slice(0, 5)));
+    let activeCount = (current ?? []).filter((r) => r.is_active).length;
     for (const r of h.reminders) {
       if (knownTimes.has(r.time)) continue;
       if (r.is_active && activeCount >= MAX_REMINDERS) continue;

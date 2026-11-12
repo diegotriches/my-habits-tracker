@@ -31,9 +31,7 @@ export const CompactColorSelector: React.FC<CompactColorSelectorProps> = ({
         onPress={() => setShowPicker(true)}
       >
         <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
-        <Text style={[styles.buttonText, { color: colors.textPrimary }]}>
-          Cor do Hábito
-        </Text>
+        <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Cor do Hábito</Text>
         <Icon name="chevronDown" size={16} color={colors.textSecondary} />
       </TouchableOpacity>
 
@@ -72,9 +70,7 @@ export const CompactColorSelector: React.FC<CompactColorSelectorProps> = ({
                     setShowPicker(false);
                   }}
                 >
-                  {selectedColor === color && (
-                    <Icon name="check" size={20} color="#FFFFFF" />
-                  )}
+                  {selectedColor === color && <Icon name="check" size={20} color="#FFFFFF" />}
                 </TouchableOpacity>
               ))}
             </View>

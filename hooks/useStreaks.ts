@@ -24,15 +24,13 @@ export const useStreaks = () => {
 
       // Cache offline: mostra os últimos streaks conhecidos na hora.
       const cached = await readCache<Streak[]>('streaks', user.id);
-      if (cached) setStreaks(prev => (prev.length > 0 ? prev : cached));
+      if (cached) setStreaks((prev) => (prev.length > 0 ? prev : cached));
 
-      const { data, error: fetchError } = await streaksTable()
-        .select('*')
-        .in('habit_id', habitIds);
+      const { data, error: fetchError } = await streaksTable().select('*').in('habit_id', habitIds);
 
       if (fetchError) throw fetchError;
 
-      setStreaks(data as Streak[] || []);
+      setStreaks((data as Streak[]) || []);
       void writeCache('streaks', user.id, data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar streaks');
@@ -42,7 +40,7 @@ export const useStreaks = () => {
   };
 
   const getStreak = (habitId: string): Streak | undefined => {
-    return streaks.find(s => s.habit_id === habitId);
+    return streaks.find((s) => s.habit_id === habitId);
   };
 
   const checkExpiredStreaks = async (habits: Habit[]) => {
@@ -55,10 +53,8 @@ export const useStreaks = () => {
         await retroactiveCompletionService.recalculateStreak(habit.id);
       }
 
-      const habitIds = habits.map(h => h.id);
-      const { data } = await streaksTable()
-        .select('*')
-        .in('habit_id', habitIds);
+      const habitIds = habits.map((h) => h.id);
+      const { data } = await streaksTable().select('*').in('habit_id', habitIds);
 
       if (data) {
         setStreaks(data as Streak[]);

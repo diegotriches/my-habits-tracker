@@ -20,10 +20,7 @@ export const StaggeredList: React.FC<StaggeredListProps> = ({
   return (
     <Animated.View style={style}>
       {childrenArray.map((child, index) => (
-        <StaggeredItem
-          key={index}
-          delay={itemDelay + (index * staggerDelay)}
-        >
+        <StaggeredItem key={index} delay={itemDelay + index * staggerDelay}>
           {child}
         </StaggeredItem>
       ))}

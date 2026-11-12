@@ -33,7 +33,7 @@ export function applyPendingOps(completions: Completion[], ops: CompletionOp[]):
       c.habit_id === op.habitId && format(new Date(c.completed_at), 'yyyy-MM-dd') === op.day;
 
     if (op.kind === 'uncomplete') {
-      result = result.filter(c => !inSlot(c));
+      result = result.filter((c) => !inSlot(c));
       continue;
     }
 

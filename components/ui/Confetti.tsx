@@ -32,11 +32,7 @@ interface ConfettiProps {
  * Componente de celebração com confetti
  * Usado quando usuário atinge milestones importantes
  */
-export function Confetti({ 
-  visible, 
-  onComplete, 
-  particleCount = 50 
-}: ConfettiProps) {
+export function Confetti({ visible, onComplete, particleCount = 50 }: ConfettiProps) {
   const { colors } = useTheme();
   const opacity = useSharedValue(0);
 
@@ -126,10 +122,7 @@ function ConfettiPiece({ x, color, rotation, delay }: Omit<ConfettiPieceData, 'i
 
       scale.value = withDelay(
         delay,
-        withSequence(
-          withSpring(1.2, { damping: 8 }),
-          withTiming(0.8, { duration: 2000 })
-        )
+        withSequence(withSpring(1.2, { damping: 8 }), withTiming(0.8, { duration: 2000 }))
       );
     };
 

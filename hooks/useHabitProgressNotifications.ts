@@ -18,7 +18,10 @@ const DEFAULT_CONFIG: ProgressNotificationConfig = {
   eveningTime: '21:00:00',
 };
 
-export function useHabitProgressNotifications(habitId: string | undefined, userId: string | undefined) {
+export function useHabitProgressNotifications(
+  habitId: string | undefined,
+  userId: string | undefined
+) {
   const [hasPermission, setHasPermission] = useState(false);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<ProgressNotificationConfig>(DEFAULT_CONFIG);
@@ -73,43 +76,44 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
     }
   }, []);
 
-  const handleChange = useCallback(async (newConfig: ProgressNotificationConfig) => {
-    // Sem conexão, mantém a configuração anterior em vez de mudar e falhar.
-    if (userId && habitId && !(await ensureOnline())) return;
-    setConfig(newConfig);
-    if (!userId || !habitId) return;
+  const handleChange = useCallback(
+    async (newConfig: ProgressNotificationConfig) => {
+      // Sem conexão, mantém a configuração anterior em vez de mudar e falhar.
+      if (userId && habitId && !(await ensureOnline())) return;
+      setConfig(newConfig);
+      if (!userId || !habitId) return;
 
-    setSaving(true);
-    hapticFeedback.light();
+      setSaving(true);
+      hapticFeedback.light();
 
-    try {
-      const { data: existingConfig } = await supabase
-        .from('habit_progress_notifications')
-        .select('id')
-        .eq('habit_id', habitId)
-        .maybeSingle();
+      try {
+        const { data: existingConfig } = await supabase
+          .from('habit_progress_notifications')
+          .select('id')
+          .eq('habit_id', habitId)
+          .maybeSingle();
 
-      if (existingConfig) {
-        await supabase.from('habit_progress_notifications')
-          .update({
-            enabled: newConfig.enabled,
-            morning_enabled: newConfig.morningEnabled,
-            morning_time: newConfig.morningTime,
-            afternoon_enabled: newConfig.afternoonEnabled,
-            afternoon_time: newConfig.afternoonTime,
-            evening_enabled: newConfig.eveningEnabled,
-            evening_time: newConfig.eveningTime,
-          })
-          .eq('habit_id', habitId);
+        if (existingConfig) {
+          await supabase
+            .from('habit_progress_notifications')
+            .update({
+              enabled: newConfig.enabled,
+              morning_enabled: newConfig.morningEnabled,
+              morning_time: newConfig.morningTime,
+              afternoon_enabled: newConfig.afternoonEnabled,
+              afternoon_time: newConfig.afternoonTime,
+              evening_enabled: newConfig.eveningEnabled,
+              evening_time: newConfig.eveningTime,
+            })
+            .eq('habit_id', habitId);
 
-        if (newConfig.enabled) {
-          await progressNotificationScheduler.updateNotificationSchedule(habitId, userId);
+          if (newConfig.enabled) {
+            await progressNotificationScheduler.updateNotificationSchedule(habitId, userId);
+          } else {
+            await progressNotificationScheduler.disableProgressNotifications(habitId);
+          }
         } else {
-          await progressNotificationScheduler.disableProgressNotifications(habitId);
-        }
-      } else {
-        await supabase.from('habit_progress_notifications')
-          .insert({
+          await supabase.from('habit_progress_notifications').insert({
             habit_id: habitId,
             user_id: userId,
             enabled: newConfig.enabled,
@@ -121,24 +125,28 @@ export function useHabitProgressNotifications(habitId: string | undefined, userI
             evening_time: newConfig.eveningTime,
           });
 
-        if (newConfig.enabled) {
-          await progressNotificationScheduler.scheduleProgressNotifications(habitId, userId);
+          if (newConfig.enabled) {
+            await progressNotificationScheduler.scheduleProgressNotifications(habitId, userId);
+          }
         }
-      }
 
-      hapticFeedback.success();
-    } catch {
-      hapticFeedback.error();
-      Alert.alert('Erro', 'Não foi possível salvar as configurações de notificação');
-    } finally {
-      setSaving(false);
-    }
-  }, [habitId, userId]);
+        hapticFeedback.success();
+      } catch {
+        hapticFeedback.error();
+        Alert.alert('Erro', 'Não foi possível salvar as configurações de notificação');
+      } finally {
+        setSaving(false);
+      }
+    },
+    [habitId, userId]
+  );
 
   const summary = useMemo((): string => {
     const parts: string[] = [];
     if (config.enabled) {
-      const count = [config.morningEnabled, config.afternoonEnabled, config.eveningEnabled].filter(Boolean).length;
+      const count = [config.morningEnabled, config.afternoonEnabled, config.eveningEnabled].filter(
+        Boolean
+      ).length;
       parts.push(`progresso ${count > 0 ? `(${count}x/dia)` : 'ativo'}`);
     }
     if (parts.length === 0) return 'Toque para configurar lembretes';

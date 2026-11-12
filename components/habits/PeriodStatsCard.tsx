@@ -77,9 +77,7 @@ export function PeriodStatsCard({
         style={[styles.card, { backgroundColor: colors.surface }]}
       >
         <View style={styles.labelContainer}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>
-            {label}
-          </Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
           <Icon name="info" size={12} color={colors.textTertiary} />
         </View>
 
@@ -109,9 +107,7 @@ export function PeriodStatsCard({
             />
           </Svg>
           <View style={styles.percentageContainer}>
-            <Text style={[styles.percentage, { color }]}>
-              {percentage.toFixed(0)}%
-            </Text>
+            <Text style={[styles.percentage, { color }]}>{percentage.toFixed(0)}%</Text>
           </View>
         </View>
 
@@ -134,9 +130,7 @@ export function PeriodStatsCard({
               <View style={[styles.tooltipIconCircle, { backgroundColor: color + '20' }]}>
                 <Icon name="info" size={20} color={color} />
               </View>
-              <Text style={[styles.tooltipTitle, { color: colors.textPrimary }]}>
-                {label}
-              </Text>
+              <Text style={[styles.tooltipTitle, { color: colors.textPrimary }]}>{label}</Text>
             </View>
 
             <View style={styles.tooltipContent}>
@@ -176,16 +170,12 @@ export function PeriodStatsCard({
                   <Text style={[styles.tooltipStatLabel, { color: colors.textSecondary }]}>
                     Taxa de sucesso:
                   </Text>
-                  <Text style={[styles.tooltipStatValue, { color }]}>
-                    {percentage.toFixed(1)}%
-                  </Text>
+                  <Text style={[styles.tooltipStatValue, { color }]}>{percentage.toFixed(1)}%</Text>
                 </View>
               </View>
 
               <View style={[styles.motivationalBox, { backgroundColor: color + '15' }]}>
-                <Text style={[styles.motivationalText, { color }]}>
-                  {getMotivationalMessage()}
-                </Text>
+                <Text style={[styles.motivationalText, { color }]}>{getMotivationalMessage()}</Text>
               </View>
 
               <Text style={[styles.tooltipNote, { color: colors.textTertiary }]}>
@@ -197,9 +187,7 @@ export function PeriodStatsCard({
               style={[styles.closeButton, { backgroundColor: colors.primary }]}
               onPress={handleCloseTooltip}
             >
-              <Text style={[styles.closeButtonText, { color: colors.textInverse }]}>
-                Entendi
-              </Text>
+              <Text style={[styles.closeButtonText, { color: colors.textInverse }]}>Entendi</Text>
             </Pressable>
           </View>
         </Pressable>

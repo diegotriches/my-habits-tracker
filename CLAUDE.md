@@ -50,7 +50,7 @@ eas update --branch preview --platform android --message "..."             # OTA
 ## Convenções
 
 - Prefixos de branch: `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`.
-- Commits: `tipo: descrição curta` (`feat`, `fix`, `refactor`, `chore`, `style`, `docs`) em português, com corpo explicando o *porquê*.
+- Commits: `tipo: descrição curta` (`feat`, `fix`, `refactor`, `chore`, `style`, `docs`) em português, com corpo explicando o _porquê_.
 - Evite espaços no caminho da pasta do projeto — isso quebra o Gradle/autolinking. No Windows, a build local também exige um caminho curto (≤ ~17 caracteres, ex.: `C:\dev\habits`) por causa do limite de 260 caracteres do ninja; ver README.
 
 ## Fluxo de trabalho

@@ -16,11 +16,21 @@ interface ActionRowProps {
 }
 
 // Fora do corpo do cartão: definido dentro, seria remontado a cada render.
-const ActionRow = React.memo(function ActionRow({ icon, title, description, loading, disabled, onPress }: ActionRowProps) {
+const ActionRow = React.memo(function ActionRow({
+  icon,
+  title,
+  description,
+  loading,
+  disabled,
+  onPress,
+}: ActionRowProps) {
   const { colors } = useTheme();
   return (
     <TouchableOpacity
-      style={[styles.row, { borderTopColor: colors.border, opacity: disabled && !loading ? 0.5 : 1 }]}
+      style={[
+        styles.row,
+        { borderTopColor: colors.border, opacity: disabled && !loading ? 0.5 : 1 },
+      ]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"

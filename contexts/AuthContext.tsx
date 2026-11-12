@@ -16,8 +16,14 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  signInWithEmail: (email: string, password: string) => Promise<{ data: any; error: AuthError | null }>;
-  signUpWithEmail: (email: string, password: string) => Promise<{ data: any; error: AuthError | null }>;
+  signInWithEmail: (
+    email: string,
+    password: string
+  ) => Promise<{ data: any; error: AuthError | null }>;
+  signUpWithEmail: (
+    email: string,
+    password: string
+  ) => Promise<{ data: any; error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ data: any; error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -36,11 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log('🔐 AuthProvider: Initializing...');
-    
+
     const getSession = async () => {
       try {
         console.log('🔍 Fetching initial session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
         // Offline com o token expirado: a renovação falha por rede, mas a
         // sessão continua salva. Entra com ela (o app abre com o cache
@@ -56,13 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (error) throw error;
-        
+
         console.log('📊 Initial session:', {
           hasSession: !!session,
           hasUser: !!session?.user,
           userId: session?.user?.id,
         });
-        
+
         setAuthState({
           user: session?.user ?? null,
           session,
@@ -83,35 +92,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getSession();
 
     console.log('👂 Setting up auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔐 Auth state changed:', event, {
-          hasUser: !!session?.user,
-          userId: session?.user?.id,
-        });
-        
-        if (event === 'INITIAL_SESSION') {
-          console.log('⏭️ Ignoring INITIAL_SESSION (already processed)');
-          return;
-        }
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in');
-          await ensureProfileExists(session.user);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event, {
+        hasUser: !!session?.user,
+        userId: session?.user?.id,
+      });
 
-        if (event === 'SIGNED_OUT') {
-          console.log('👋 User signed out');
-        }
-        
-        setAuthState({
-          user: session?.user ?? null,
-          session,
-          loading: false,
-          error: null,
-        });
+      if (event === 'INITIAL_SESSION') {
+        console.log('⏭️ Ignoring INITIAL_SESSION (already processed)');
+        return;
       }
-    );
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('✅ User signed in');
+        await ensureProfileExists(session.user);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out');
+      }
+
+      setAuthState({
+        user: session?.user ?? null,
+        session,
+        loading: false,
+        error: null,
+      });
+    });
 
     return () => {
       console.log('🧹 Cleaning up auth listener...');
@@ -142,15 +151,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Extrair nome e avatar do Google se disponível
       const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
       const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture;
-      const displayName = googleName || (user.email?.split('@')[0] || 'Usuário');
+      const displayName = googleName || user.email?.split('@')[0] || 'Usuário';
 
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          display_name: displayName,
-          avatar_url: googleAvatar || null,
-        });
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: user.id,
+        display_name: displayName,
+        avatar_url: googleAvatar || null,
+      });
 
       if (insertError) {
         console.error('❌ Error creating profile:', insertError);
@@ -172,15 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       'Signup requires a valid password': 'Senha inválida',
       'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos.',
       'Invalid email or password': 'Email ou senha inválidos',
-      'For security purposes, you can only request this after 60 seconds.': 'Aguarde 60 segundos antes de tentar novamente.',
+      'For security purposes, you can only request this after 60 seconds.':
+        'Aguarde 60 segundos antes de tentar novamente.',
     };
     return errorMessages[error.message] || error.message || 'Erro desconhecido';
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
-      
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }));
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -188,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         const translatedError = { ...error, message: translateError(error) } as AuthError;
-        setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+        setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
 
@@ -203,14 +211,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const authError = error as AuthError;
       const translatedError = { ...authError, message: translateError(authError) } as AuthError;
-      setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+      setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }));
 
       const cleanEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.signUp({
@@ -223,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         const translatedError = { ...error, message: translateError(error) } as AuthError;
-        setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+        setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
 
@@ -242,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const authError = error as AuthError;
       const translatedError = { ...authError, message: translateError(authError) } as AuthError;
-      setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+      setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
   };
@@ -250,8 +258,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     try {
       console.log('🚀 ========== INICIANDO LOGIN GOOGLE ==========');
-      
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }));
 
       const redirectUrl = makeRedirectUri({
         scheme: 'habittracker',
@@ -271,41 +279,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('❌ OAuth setup error:', error);
         const translatedError = { ...error, message: translateError(error) } as AuthError;
-        setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+        setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
         return { data: null, error: translatedError };
       }
 
       if (data?.url) {
         console.log('🌐 Opening browser for OAuth...');
-        
+
         WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-          .then(result => {
+          .then((result) => {
             console.log('📱 Browser closed:', result.type);
           })
-          .catch(err => {
+          .catch((err) => {
             console.error('❌ Browser error:', err);
           });
 
         console.log('✅ Browser opened - waiting for callback via deep link');
-        
+
         return { data, error: null };
       }
 
       console.log('⚠️ No OAuth URL returned');
-      setAuthState(prev => ({ ...prev, loading: false }));
+      setAuthState((prev) => ({ ...prev, loading: false }));
       return { data, error: null };
     } catch (error) {
       console.error('❌ Unexpected error in signInWithGoogle:', error);
       const authError = error as AuthError;
       const translatedError = { ...authError, message: translateError(authError) } as AuthError;
-      setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+      setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
       return { data: null, error: translatedError };
     }
   };
 
   const signOut = async () => {
     try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+      setAuthState((prev) => ({ ...prev, loading: true, error: null }));
 
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -324,17 +332,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       const authError = error as AuthError;
       const translatedError = { ...authError, message: translateError(authError) } as AuthError;
-      setAuthState(prev => ({ ...prev, loading: false, error: translatedError }));
+      setAuthState((prev) => ({ ...prev, loading: false, error: translatedError }));
       return { error: translatedError };
     }
   };
 
   const resetPassword = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo: 'habittracker://reset-password' }
-      );
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: 'habittracker://reset-password',
+      });
 
       if (error) {
         const translatedError = { ...error, message: translateError(error) } as AuthError;

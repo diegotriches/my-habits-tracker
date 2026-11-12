@@ -1,11 +1,6 @@
 // components/habits/WeekNavigator.tsx
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
@@ -18,11 +13,7 @@ interface WeekNavigatorProps {
   maxWeeksBack?: number;
 }
 
-export function WeekNavigator({
-  weekStart,
-  onWeekChange,
-  maxWeeksBack = 12,
-}: WeekNavigatorProps) {
+export function WeekNavigator({ weekStart, onWeekChange, maxWeeksBack = 12 }: WeekNavigatorProps) {
   const { colors } = useTheme();
 
   const today = new Date();
@@ -67,10 +58,7 @@ export function WeekNavigator({
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
+      style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}
     >
       {/* Seta esquerda */}
       <TouchableOpacity
@@ -79,11 +67,7 @@ export function WeekNavigator({
         style={styles.arrowButton}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Icon
-          name="chevronLeft"
-          size={20}
-          color={canGoBack ? colors.textPrimary : colors.border}
-        />
+        <Icon name="chevronLeft" size={20} color={canGoBack ? colors.textPrimary : colors.border} />
       </TouchableOpacity>
 
       {/* Label da semana */}
@@ -92,17 +76,13 @@ export function WeekNavigator({
         disabled={isCurrentWeek}
         style={styles.labelContainer}
       >
-        <Text style={[styles.weekLabel, { color: colors.textPrimary }]}>
-          {weekLabel}
-        </Text>
+        <Text style={[styles.weekLabel, { color: colors.textPrimary }]}>{weekLabel}</Text>
         {isCurrentWeek ? (
           <View style={[styles.currentBadge, { backgroundColor: colors.primaryLight }]}>
             <Text style={[styles.currentBadgeText, { color: colors.primary }]}>Atual</Text>
           </View>
         ) : (
-          <Text style={[styles.tapHint, { color: colors.primary }]}>
-            Voltar para atual
-          </Text>
+          <Text style={[styles.tapHint, { color: colors.primary }]}>Voltar para atual</Text>
         )}
       </TouchableOpacity>
 

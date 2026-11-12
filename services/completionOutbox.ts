@@ -137,7 +137,9 @@ async function sendOp(op: CompletionOp): Promise<SendResult> {
 }
 
 async function runFlush(): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const userId = session?.user.id;
   if (!userId) return;
 
@@ -155,7 +157,7 @@ async function runFlush(): Promise<void> {
     if (result === 'retry') break; // sem rede: tenta tudo de novo depois
 
     // Relê antes de remover: novas operações podem ter entrado durante o envio.
-    queue = (await readQueue()).filter(o => o.id !== op.id);
+    queue = (await readQueue()).filter((o) => o.id !== op.id);
     await writeQueue(queue);
 
     if (result === 'synced') {
@@ -188,10 +190,10 @@ export const completionOutbox = {
       createdAt: new Date().toISOString(),
     };
 
-    const result = new Promise<OutboxResult>(resolve => waiters.set(op.id, resolve));
+    const result = new Promise<OutboxResult>((resolve) => waiters.set(op.id, resolve));
 
     const queue = await readQueue();
-    const kept = queue.filter(o => {
+    const kept = queue.filter((o) => {
       const sameSlot = o.habitId === op.habitId && o.day === op.day;
       if (sameSlot) resolveWaiter(o.id, 'superseded');
       return !sameSlot;
@@ -225,7 +227,7 @@ export const completionOutbox = {
 
   /** Operações deste usuário que aguardam envio, na ordem da fila. */
   async getPendingOps(userId: string): Promise<CompletionOp[]> {
-    return (await readQueue()).filter(op => op.userId === userId);
+    return (await readQueue()).filter((op) => op.userId === userId);
   },
 
   /** Quantas operações aguardam envio. */

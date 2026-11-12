@@ -120,9 +120,7 @@ export function ReminderEditModal({
 
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>
-                Editar Lembrete
-              </Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]}>Editar Lembrete</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <Icon name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -138,30 +136,31 @@ export function ReminderEditModal({
               {/* Hábito Info */}
               <View style={[styles.habitInfo, { backgroundColor: colors.surface }]}>
                 <Icon name="target" size={20} color={colors.primary} />
-                <Text style={[styles.habitName, { color: colors.textPrimary }]}>
-                  {habitName}
-                </Text>
+                <Text style={[styles.habitName, { color: colors.textPrimary }]}>{habitName}</Text>
               </View>
 
               {/* Horário */}
               <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  Horário
-                </Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Horário</Text>
 
                 <TouchableOpacity
-                  style={[styles.timeSelector, { 
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border 
-                  }]}
+                  style={[
+                    styles.timeSelector,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   onPress={() => setShowTimePicker(true)}
                 >
                   <Icon name="clock" size={20} color={colors.primary} />
                   <Text style={[styles.timeText, { color: colors.textPrimary }]}>
-                    {formatTime(selectedTime.toLocaleTimeString('pt-BR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    }))}
+                    {formatTime(
+                      selectedTime.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    )}
                   </Text>
                   <Icon name="chevronRight" size={20} color={colors.textTertiary} />
                 </TouchableOpacity>
@@ -196,21 +195,27 @@ export function ReminderEditModal({
                 </Text>
 
                 <TouchableOpacity
-                  style={[styles.soundSelector, {
-                    backgroundColor: colors.surface,
-                    borderColor: showSoundPicker ? colors.primary : colors.border,
-                  }]}
+                  style={[
+                    styles.soundSelector,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: showSoundPicker ? colors.primary : colors.border,
+                    },
+                  ]}
                   onPress={() => setShowSoundPicker(!showSoundPicker)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.soundSelectorLeft}>
                     <Icon
-                      name={(SOUND_OPTIONS.find(o => o.value === selectedSound)?.icon || 'sound') as any}
+                      name={
+                        (SOUND_OPTIONS.find((o) => o.value === selectedSound)?.icon ||
+                          'sound') as any
+                      }
                       size={20}
                       color={colors.primary}
                     />
                     <Text style={[styles.soundSelectorText, { color: colors.textPrimary }]}>
-                      {SOUND_OPTIONS.find(o => o.value === selectedSound)?.label || 'Padrão'}
+                      {SOUND_OPTIONS.find((o) => o.value === selectedSound)?.label || 'Padrão'}
                     </Text>
                   </View>
                   <View style={styles.soundSelectorRight}>
@@ -241,13 +246,11 @@ export function ReminderEditModal({
                         key={option.value}
                         style={[
                           styles.soundOption,
-                          { 
-                            backgroundColor: selectedSound === option.value
-                              ? colors.primaryLight
-                              : colors.surface,
-                            borderColor: selectedSound === option.value
-                              ? colors.primary
-                              : colors.border,
+                          {
+                            backgroundColor:
+                              selectedSound === option.value ? colors.primaryLight : colors.surface,
+                            borderColor:
+                              selectedSound === option.value ? colors.primary : colors.border,
                           },
                         ]}
                         onPress={() => {
@@ -256,15 +259,24 @@ export function ReminderEditModal({
                         }}
                       >
                         <View style={styles.soundOptionLeft}>
-                          <Icon 
-                            name={option.icon as any} 
-                            size={18} 
-                            color={selectedSound === option.value ? colors.primary : colors.textSecondary} 
+                          <Icon
+                            name={option.icon as any}
+                            size={18}
+                            color={
+                              selectedSound === option.value ? colors.primary : colors.textSecondary
+                            }
                           />
-                          <Text style={[
-                            styles.soundOptionText,
-                            { color: selectedSound === option.value ? colors.primary : colors.textPrimary }
-                          ]}>
+                          <Text
+                            style={[
+                              styles.soundOptionText,
+                              {
+                                color:
+                                  selectedSound === option.value
+                                    ? colors.primary
+                                    : colors.textPrimary,
+                              },
+                            ]}
+                          >
                             {option.label}
                           </Text>
                         </View>
@@ -272,11 +284,15 @@ export function ReminderEditModal({
                         <View style={styles.soundOptionRight}>
                           {option.value !== 'silence' && (
                             <TouchableOpacity
-                              style={[styles.previewButtonSmall, {
-                                backgroundColor: selectedSound === option.value
-                                  ? colors.primary + '20'
-                                  : colors.border + '60',
-                              }]}
+                              style={[
+                                styles.previewButtonSmall,
+                                {
+                                  backgroundColor:
+                                    selectedSound === option.value
+                                      ? colors.primary + '20'
+                                      : colors.border + '60',
+                                },
+                              ]}
                               onPress={(e) => {
                                 e.stopPropagation();
                                 soundPreviewService.playPreview(option.value, habitName);
@@ -286,7 +302,11 @@ export function ReminderEditModal({
                               <Icon
                                 name="sound"
                                 size={12}
-                                color={selectedSound === option.value ? colors.primary : colors.textSecondary}
+                                color={
+                                  selectedSound === option.value
+                                    ? colors.primary
+                                    : colors.textSecondary
+                                }
                               />
                             </TouchableOpacity>
                           )}
@@ -304,16 +324,19 @@ export function ReminderEditModal({
               <View style={[styles.infoBox, { backgroundColor: colors.infoLight }]}>
                 <Icon name="info" size={16} color={colors.info} />
                 <Text style={[styles.infoText, { color: colors.info }]}>
-                  As mudanças serão aplicadas imediatamente. Você receberá notificações no novo horário.
+                  As mudanças serão aplicadas imediatamente. Você receberá notificações no novo
+                  horário.
                 </Text>
               </View>
             </ScrollView>
 
             {/* Footer com botões */}
-            <View style={[
-              styles.footer,
-              { borderTopColor: colors.border, paddingBottom: footerPaddingBottom },
-            ]}>
+            <View
+              style={[
+                styles.footer,
+                { borderTopColor: colors.border, paddingBottom: footerPaddingBottom },
+              ]}
+            >
               <TouchableOpacity
                 style={[styles.cancelButton, { backgroundColor: colors.surface }]}
                 onPress={onClose}

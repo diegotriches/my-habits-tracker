@@ -110,9 +110,12 @@ export function useEditHabitForm(habitId: string) {
 
   const getFrequencySummary = useCallback((): string => {
     if (hasFrequencyGoal) {
-      const periodLabel = frequencyGoalPeriod === 'week' ? 'semana'
-        : frequencyGoalPeriod === 'month' ? 'mês'
-        : `${frequencyGoalCustomDays || '?'} dias`;
+      const periodLabel =
+        frequencyGoalPeriod === 'week'
+          ? 'semana'
+          : frequencyGoalPeriod === 'month'
+            ? 'mês'
+            : `${frequencyGoalCustomDays || '?'} dias`;
       return frequencyGoalValue > 0
         ? `${frequencyGoalValue}x por ${periodLabel}`
         : 'Meta personalizada';
@@ -122,12 +125,19 @@ export function useEditHabitForm(habitId: string) {
       if (frequencyDays.length === 0) return 'Nenhum dia';
       const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       if (frequencyDays.length <= 3) {
-        return frequencyDays.map(d => dayLabels[d]).join(', ');
+        return frequencyDays.map((d) => dayLabels[d]).join(', ');
       }
       return `${frequencyDays.length} dias/semana`;
     }
     return 'Todos os dias';
-  }, [hasFrequencyGoal, frequencyGoalPeriod, frequencyGoalCustomDays, frequencyGoalValue, frequencyType, frequencyDays]);
+  }, [
+    hasFrequencyGoal,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    frequencyGoalValue,
+    frequencyType,
+    frequencyDays,
+  ]);
 
   const getTargetSummary = useCallback((): string => {
     if (!hasTarget) return 'Desativada';
@@ -139,12 +149,23 @@ export function useEditHabitForm(habitId: string) {
 
   const openFrequencyModal = useCallback(() => {
     frequencySnapshot.current = {
-      frequencyType, frequencyDays: [...frequencyDays],
-      hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays,
+      frequencyType,
+      frequencyDays: [...frequencyDays],
+      hasFrequencyGoal,
+      frequencyGoalValue,
+      frequencyGoalPeriod,
+      frequencyGoalCustomDays,
     };
     hapticFeedback.light();
     setShowFrequencyModal(true);
-  }, [frequencyType, frequencyDays, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays]);
+  }, [
+    frequencyType,
+    frequencyDays,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+  ]);
 
   const cancelFrequencyModal = useCallback(() => {
     if (frequencySnapshot.current) {
@@ -168,19 +189,26 @@ export function useEditHabitForm(habitId: string) {
 
   const getMaxForPeriod = useCallback((): number => {
     switch (frequencyGoalPeriod) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return frequencyGoalCustomDays || 9999;
-      default: return 9999;
+      case 'week':
+        return 7;
+      case 'month':
+        return 31;
+      case 'custom':
+        return frequencyGoalCustomDays || 9999;
+      default:
+        return 9999;
     }
   }, [frequencyGoalPeriod, frequencyGoalCustomDays]);
 
   const validateForm = useCallback((): string | null => {
     const trimmedName = name.trim();
     if (!trimmedName) return 'Digite um nome para o hábito';
-    if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
-    if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
-    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
+    if (trimmedName.length < MIN_NAME_LENGTH)
+      return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
+    if (trimmedName.length > MAX_NAME_LENGTH)
+      return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH)
+      return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
 
     if (hasTarget) {
       const value = parseFloat(targetValue);
@@ -192,14 +220,30 @@ export function useEditHabitForm(habitId: string) {
 
     if (hasFrequencyGoal) {
       if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
-      if (frequencyGoalValue > getMaxForPeriod()) return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
-      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
+      if (frequencyGoalValue > getMaxForPeriod())
+        return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
+      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0)
+        return 'Digite o número de dias para a meta personalizada';
     }
 
-    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0) return 'Selecione pelo menos um dia da semana';
+    if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0)
+      return 'Selecione pelo menos um dia da semana';
 
     return null;
-  }, [name, description, hasTarget, targetValue, targetUnit, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays, frequencyType, frequencyDays, getMaxForPeriod]);
+  }, [
+    name,
+    description,
+    hasTarget,
+    targetValue,
+    targetUnit,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    frequencyType,
+    frequencyDays,
+    getMaxForPeriod,
+  ]);
 
   const handleSubmit = useCallback(async () => {
     Keyboard.dismiss();
@@ -230,8 +274,8 @@ export function useEditHabitForm(habitId: string) {
         frequency_days: frequencyType === 'weekly' ? frequencyDays : null,
         frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
         frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
-        frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom'
-          ? frequencyGoalCustomDays : null,
+        frequency_goal_custom_days:
+          hasFrequencyGoal && frequencyGoalPeriod === 'custom' ? frequencyGoalCustomDays : null,
       };
 
       if (!(await ensureOnline())) {
@@ -261,27 +305,57 @@ export function useEditHabitForm(habitId: string) {
       setSaving(false);
       Alert.alert('Erro', 'Ocorreu um erro ao salvar o hábito');
     }
-  }, [validateForm, user?.id, name, description, selectedColor, hasTarget, targetValue, targetUnit, frequencyType, frequencyDays, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays, habitId, updateHabit]);
+  }, [
+    validateForm,
+    user?.id,
+    name,
+    description,
+    selectedColor,
+    hasTarget,
+    targetValue,
+    targetUnit,
+    frequencyType,
+    frequencyDays,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    habitId,
+    updateHabit,
+  ]);
 
   const getAllUnits = useCallback(() => Object.values(TARGET_UNITS).flat(), []);
 
   return {
     loading,
     saving,
-    name, setName,
-    description, setDescription,
+    name,
+    setName,
+    description,
+    setDescription,
     habitType,
-    selectedColor, setSelectedColor,
-    hasTarget, setHasTarget,
-    targetValue, setTargetValue,
-    targetUnit, setTargetUnit,
-    showTargetInline, setShowTargetInline,
-    frequencyType, setFrequencyType,
-    frequencyDays, setFrequencyDays,
-    hasFrequencyGoal, setHasFrequencyGoal,
-    frequencyGoalValue, setFrequencyGoalValue,
-    frequencyGoalPeriod, setFrequencyGoalPeriod,
-    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    selectedColor,
+    setSelectedColor,
+    hasTarget,
+    setHasTarget,
+    targetValue,
+    setTargetValue,
+    targetUnit,
+    setTargetUnit,
+    showTargetInline,
+    setShowTargetInline,
+    frequencyType,
+    setFrequencyType,
+    frequencyDays,
+    setFrequencyDays,
+    hasFrequencyGoal,
+    setHasFrequencyGoal,
+    frequencyGoalValue,
+    setFrequencyGoalValue,
+    frequencyGoalPeriod,
+    setFrequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    setFrequencyGoalCustomDays,
     showFrequencyModal,
     openFrequencyModal,
     cancelFrequencyModal,

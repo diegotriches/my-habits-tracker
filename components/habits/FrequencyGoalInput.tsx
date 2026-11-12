@@ -5,13 +5,7 @@ import { FrequencyGoalPeriod } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
 import { IconName } from '@/constants/Icons';
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface FrequencyGoalInputProps {
   value: number;
@@ -60,17 +54,23 @@ export function FrequencyGoalInput({
 
   const getMaxForPeriod = (): number => {
     switch (period) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return customDays || 999;
+      case 'week':
+        return 7;
+      case 'month':
+        return 31;
+      case 'custom':
+        return customDays || 999;
     }
   };
 
   const getPeriodLabel = (): string => {
     switch (period) {
-      case 'week': return 'semana';
-      case 'month': return 'mês';
-      case 'custom': return `${customDays || '?'} dias`;
+      case 'week':
+        return 'semana';
+      case 'month':
+        return 'mês';
+      case 'custom':
+        return `${customDays || '?'} dias`;
     }
   };
 
@@ -178,7 +178,12 @@ export function FrequencyGoalInput({
 
       {/* Preview da meta */}
       {isValueValid && isCustomDaysValid && (
-        <View style={[styles.preview, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+        <View
+          style={[
+            styles.preview,
+            { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+          ]}
+        >
           <Icon name="target" size={16} color={colors.primary} />
           <Text style={[styles.previewText, { color: colors.primary }]}>
             Meta: {value} {value === 1 ? 'vez' : 'vezes'} por {getPeriodLabel()}

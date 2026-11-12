@@ -5,7 +5,6 @@ import { progressCheckerService } from './progressChecker';
 import { Habit, ProgressNotification, NotificationPeriod } from '@/types/database';
 
 class ProgressNotificationSchedulerService {
-
   // ---------------------------------------------------------------------------
   // Agendar todas as notificações de progresso de um hábito
   // ---------------------------------------------------------------------------
@@ -53,17 +52,29 @@ class ProgressNotificationSchedulerService {
       } = {};
 
       if (progressConfig.morning_enabled) {
-        const id = await this.scheduleNotification(habitData, 'morning', progressConfig.morning_time);
+        const id = await this.scheduleNotification(
+          habitData,
+          'morning',
+          progressConfig.morning_time
+        );
         if (id) notificationIds.morning = id;
       }
 
       if (progressConfig.afternoon_enabled) {
-        const id = await this.scheduleNotification(habitData, 'afternoon', progressConfig.afternoon_time);
+        const id = await this.scheduleNotification(
+          habitData,
+          'afternoon',
+          progressConfig.afternoon_time
+        );
         if (id) notificationIds.afternoon = id;
       }
 
       if (progressConfig.evening_enabled) {
-        const id = await this.scheduleNotification(habitData, 'evening', progressConfig.evening_time);
+        const id = await this.scheduleNotification(
+          habitData,
+          'evening',
+          progressConfig.evening_time
+        );
         if (id) notificationIds.evening = id;
       }
 
@@ -163,7 +174,8 @@ class ProgressNotificationSchedulerService {
         }
       }
 
-      await supabase.from('habit_progress_notifications')
+      await supabase
+        .from('habit_progress_notifications')
         .update({
           morning_notification_id: null,
           afternoon_notification_id: null,
@@ -180,10 +192,7 @@ class ProgressNotificationSchedulerService {
   // ---------------------------------------------------------------------------
   // Processar notificação quando dispara (chamado pelo NotificationHandler)
   // ---------------------------------------------------------------------------
-  async processProgressNotification(
-    habitId: string,
-    period: NotificationPeriod
-  ): Promise<void> {
+  async processProgressNotification(habitId: string, period: NotificationPeriod): Promise<void> {
     try {
       console.log('Processando notificacao de progresso:', { habitId, period });
 
@@ -211,9 +220,10 @@ class ProgressNotificationSchedulerService {
             percentage: Math.round(progress.percentage),
           },
           sound: 'default',
-          priority: message.urgency === 'high'
-            ? Notifications.AndroidNotificationPriority.HIGH
-            : Notifications.AndroidNotificationPriority.DEFAULT,
+          priority:
+            message.urgency === 'high'
+              ? Notifications.AndroidNotificationPriority.HIGH
+              : Notifications.AndroidNotificationPriority.DEFAULT,
         },
         trigger: null,
       });
@@ -234,7 +244,8 @@ class ProgressNotificationSchedulerService {
 
   async enableProgressNotifications(habitId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase.from('habit_progress_notifications')
+      const { error } = await supabase
+        .from('habit_progress_notifications')
         .upsert({ habit_id: habitId, user_id: userId, enabled: true }, { onConflict: 'habit_id' });
 
       if (error) {
@@ -253,7 +264,8 @@ class ProgressNotificationSchedulerService {
     try {
       await this.cancelProgressNotifications(habitId);
 
-      const { error } = await supabase.from('habit_progress_notifications')
+      const { error } = await supabase
+        .from('habit_progress_notifications')
         .update({ enabled: false })
         .eq('habit_id', habitId);
 
@@ -281,7 +293,8 @@ class ProgressNotificationSchedulerService {
       updates[`${period}_enabled`] = enabled;
       if (time) updates[`${period}_time`] = time;
 
-      const { error } = await supabase.from('habit_progress_notifications')
+      const { error } = await supabase
+        .from('habit_progress_notifications')
         .update(updates)
         .eq('habit_id', habitId);
 
@@ -319,7 +332,8 @@ class ProgressNotificationSchedulerService {
 
   async createDefaultSettings(habitId: string, userId: string): Promise<boolean> {
     try {
-      const { error } = await supabase.from('habit_progress_notifications')
+      const { error } = await supabase
+        .from('habit_progress_notifications')
         .insert({ habit_id: habitId, user_id: userId, enabled: false });
 
       if (error) {

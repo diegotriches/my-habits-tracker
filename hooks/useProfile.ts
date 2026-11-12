@@ -21,7 +21,7 @@ export const useProfile = () => {
       // Cache offline: nome e avatar do cabeçalho aparecem mesmo sem rede.
       const cached = await readCache<Profile>('profile', user.id);
       if (cached) {
-        setProfile(prev => prev ?? cached);
+        setProfile((prev) => prev ?? cached);
         setLoading(false);
       }
 

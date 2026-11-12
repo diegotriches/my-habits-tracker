@@ -39,21 +39,24 @@ export const HabitListSkeleton: React.FC<HabitListSkeletonProps> = ({ count = 5 
       {Array.from({ length: count }).map((_, index) => (
         <Animated.View
           key={index}
-          style={[styles.card, { 
-            opacity,
-            backgroundColor: colors.surface 
-          }]}
+          style={[
+            styles.card,
+            {
+              opacity,
+              backgroundColor: colors.surface,
+            },
+          ]}
         >
           <View style={[styles.colorIndicator, { backgroundColor: skeletonColor }]} />
-          
+
           <View style={styles.content}>
             <View style={styles.header}>
               <View style={[styles.titleSkeleton, { backgroundColor: skeletonColor }]} />
               <View style={[styles.streakSkeleton, { backgroundColor: skeletonColor }]} />
             </View>
-            
+
             <View style={[styles.descriptionSkeleton, { backgroundColor: skeletonColor }]} />
-            
+
             <View style={styles.footer}>
               <View style={[styles.badgeSkeleton, { backgroundColor: skeletonColor }]} />
               <View style={[styles.pointsSkeleton, { backgroundColor: skeletonColor }]} />

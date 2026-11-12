@@ -18,11 +18,16 @@ export type DataTransferTask = 'backup' | 'csv' | 'import';
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function confirm(title: string, message: string, confirmText: string): Promise<boolean> {
-  return new Promise(resolve => {
-    Alert.alert(title, message, [
-      { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-      { text: confirmText, onPress: () => resolve(true) },
-    ], { cancelable: true, onDismiss: () => resolve(false) });
+  return new Promise((resolve) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: confirmText, onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) }
+    );
   });
 }
 
@@ -31,20 +36,23 @@ export function useDataTransfer() {
   const { user } = useAuth();
   const [busy, setBusy] = useState<DataTransferTask | null>(null);
 
-  const runExport = useCallback(async (task: 'backup' | 'csv') => {
-    if (!user || busy) return;
-    if (!(await ensureOnline())) return;
-    setBusy(task);
-    try {
-      if (task === 'backup') await exportBackup(user.id);
-      else await exportHistoryCsv(user.id);
-    } catch (error) {
-      console.error('Erro ao exportar dados:', error);
-      Alert.alert('Erro', errorMessageFor(error, 'Não foi possível exportar os dados.'));
-    } finally {
-      setBusy(null);
-    }
-  }, [user, busy]);
+  const runExport = useCallback(
+    async (task: 'backup' | 'csv') => {
+      if (!user || busy) return;
+      if (!(await ensureOnline())) return;
+      setBusy(task);
+      try {
+        if (task === 'backup') await exportBackup(user.id);
+        else await exportHistoryCsv(user.id);
+      } catch (error) {
+        console.error('Erro ao exportar dados:', error);
+        Alert.alert('Erro', errorMessageFor(error, 'Não foi possível exportar os dados.'));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [user, busy]
+  );
 
   const runImport = useCallback(async () => {
     if (!user || busy) return;
@@ -75,7 +83,9 @@ export function useDataTransfer() {
         `${plural(preview.completions, 'conclusão', 'conclusões')} no arquivo.`,
       ];
       if (preview.skipped > 0) {
-        lines.push(`${plural(preview.skipped, 'hábito ignorado', 'hábitos ignorados')} por dados inválidos.`);
+        lines.push(
+          `${plural(preview.skipped, 'hábito ignorado', 'hábitos ignorados')} por dados inválidos.`
+        );
       }
       setBusy(null);
       if (!(await confirm('Importar backup?', lines.join('\n\n'), 'Importar'))) return;
@@ -99,7 +109,10 @@ export function useDataTransfer() {
         // Importar de novo é seguro: completa o que faltou sem duplicar.
         Alert.alert(
           'Erro',
-          errorMessageFor(error, 'A importação não terminou. Você pode importar o mesmo arquivo de novo: o que já entrou não será duplicado.')
+          errorMessageFor(
+            error,
+            'A importação não terminou. Você pode importar o mesmo arquivo de novo: o que já entrou não será duplicado.'
+          )
         );
       }
     } finally {

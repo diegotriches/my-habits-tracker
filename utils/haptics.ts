@@ -48,9 +48,7 @@ export const hapticFeedback = {
    */
   success: async () => {
     try {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
@@ -62,9 +60,7 @@ export const hapticFeedback = {
    */
   warning: async () => {
     try {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Warning
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }
@@ -76,9 +72,7 @@ export const hapticFeedback = {
    */
   error: async () => {
     try {
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Error
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch {
       // Silenciosamente falha se haptics não estiver disponível
     }

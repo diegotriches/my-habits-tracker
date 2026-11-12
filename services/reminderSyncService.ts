@@ -70,14 +70,17 @@ async function runSync(userId: string): Promise<boolean> {
     if (habitsError) throw habitsError;
 
     const habits = (habitsData ?? []) as Pick<Habit, 'id' | 'name' | 'has_target'>[];
-    const habitsById = new Map(habits.map(h => [h.id, h]));
+    const habitsById = new Map(habits.map((h) => [h.id, h]));
 
     let reminders: Reminder[] = [];
     if (habits.length > 0) {
       const { data: remindersData, error: remindersError } = await supabase
         .from('reminders')
         .select('*')
-        .in('habit_id', habits.map(h => h.id))
+        .in(
+          'habit_id',
+          habits.map((h) => h.id)
+        )
         .eq('is_active', true);
       if (remindersError) throw remindersError;
       reminders = (remindersData ?? []) as Reminder[];
@@ -107,10 +110,7 @@ async function runSync(userId: string): Promise<boolean> {
         // Atualiza os ids salvos se mudaram (ex.: formato legado).
         if (!sameIds(reminder.notification_ids, alarmIds)) {
           const update: ReminderUpdate = { notification_ids: alarmIds };
-          const { error } = await supabase
-            .from('reminders')
-            .update(update)
-            .eq('id', reminder.id);
+          const { error } = await supabase.from('reminders').update(update).eq('id', reminder.id);
           if (error) console.warn('Erro ao salvar ids do lembrete:', error);
         }
       } catch (error) {

@@ -20,23 +20,17 @@
       "resizeMode": "contain",
       "backgroundColor": "#4CAF50"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dtriches.myhabitstracker",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ],
+        "UIBackgroundModes": ["remote-notification"],
         "NSUserTrackingUsageDescription": "Usamos para melhorar sua experiência no app",
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": [
-              "habittracker"
-            ]
+            "CFBundleURLSchemes": ["habittracker"]
           }
         ]
       }
@@ -72,10 +66,7 @@
               "pathPrefix": "/callback"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },

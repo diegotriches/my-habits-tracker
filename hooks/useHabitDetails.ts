@@ -5,11 +5,11 @@ import { Habit, Completion, Streak } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { applyPendingOps, completionOutbox } from '@/services/completionOutbox';
 import { readCache, writeCache } from '@/services/offlineCache';
-import { 
-  startOfWeek, 
+import {
+  startOfWeek,
   addDays,
-  subDays, 
-  eachDayOfInterval, 
+  subDays,
+  eachDayOfInterval,
   format,
   differenceInDays,
 } from 'date-fns';
@@ -85,7 +85,15 @@ function computeDerivedFields(habit: Habit, completions: Completion[]): DerivedF
   const last30DaysData = generateDaysData(subDays(today, 29), today, completions, habit);
   const last90DaysData = generateDaysData(subDays(today, 89), today, completions, habit);
 
-  return { weekStats, monthStats, semesterStats, yearStats, overallStats, last30DaysData, last90DaysData };
+  return {
+    weekStats,
+    monthStats,
+    semesterStats,
+    yearStats,
+    overallStats,
+    last30DaysData,
+    last90DaysData,
+  };
 }
 
 export function useHabitDetails(habitId: string) {
@@ -121,7 +129,9 @@ export function useHabitDetails(habitId: string) {
     // anteriores) entram por cima dos dados, antes das estatísticas.
     const withPending = async (completions: Completion[]) => {
       if (!userId) return completions;
-      const queued = (await completionOutbox.getPendingOps(userId)).filter(op => op.habitId === habitId);
+      const queued = (await completionOutbox.getPendingOps(userId)).filter(
+        (op) => op.habitId === habitId
+      );
       return applyPendingOps(completions, queued);
     };
 
@@ -204,27 +214,39 @@ export function useHabitDetails(habitId: string) {
   // tela de "Carregando detalhes..." reaparecer a cada dia marcado.
 
   const addOptimisticCompletion = useCallback((completion: Completion) => {
-    setData(prev => {
+    setData((prev) => {
       if (!prev.habit) return prev;
       const newCompletions = [completion, ...prev.completions];
-      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+      return {
+        ...prev,
+        completions: newCompletions,
+        ...computeDerivedFields(prev.habit, newCompletions),
+      };
     });
   }, []);
 
   const removeCompletionById = useCallback((id: string) => {
-    setData(prev => {
+    setData((prev) => {
       if (!prev.habit) return prev;
-      const newCompletions = prev.completions.filter(c => c.id !== id);
-      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+      const newCompletions = prev.completions.filter((c) => c.id !== id);
+      return {
+        ...prev,
+        completions: newCompletions,
+        ...computeDerivedFields(prev.habit, newCompletions),
+      };
     });
   }, []);
 
   const removeCompletionForDate = useCallback((date: Date) => {
-    setData(prev => {
+    setData((prev) => {
       if (!prev.habit) return prev;
       const dateStr = format(date, 'yyyy-MM-dd');
-      const newCompletions = prev.completions.filter(c => completionDateKey(c) !== dateStr);
-      return { ...prev, completions: newCompletions, ...computeDerivedFields(prev.habit, newCompletions) };
+      const newCompletions = prev.completions.filter((c) => completionDateKey(c) !== dateStr);
+      return {
+        ...prev,
+        completions: newCompletions,
+        ...computeDerivedFields(prev.habit, newCompletions),
+      };
     });
   }, []);
 
@@ -243,7 +265,7 @@ export function useHabitDetails(habitId: string) {
         .maybeSingle();
 
       if (streakError) return;
-      setData(prev => ({ ...prev, streak: streak ? (streak as Streak) : null }));
+      setData((prev) => ({ ...prev, streak: streak ? (streak as Streak) : null }));
     } catch {
       // Silencioso — o próximo fetch completo (ex: reabrir a tela) corrige.
     }
@@ -261,7 +283,7 @@ export function useHabitDetails(habitId: string) {
       .eq('id', habitId)
       .single();
     if (habitError || !habit) return;
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
       habit: habit as Habit,
       ...computeDerivedFields(habit as Habit, prev.completions),
@@ -283,11 +305,7 @@ export function useHabitDetails(habitId: string) {
 
 // ========== FUNÇÕES AUXILIARES ==========
 
-function getExpectedDaysForPeriod(
-  habit: any,
-  startDate: Date,
-  endDate: Date
-): number {
+function getExpectedDaysForPeriod(habit: any, startDate: Date, endDate: Date): number {
   const goalValue = habit.frequency_goal_value;
   const goalPeriod = habit.frequency_goal_period;
   const goalCustomDays = habit.frequency_goal_custom_days;
@@ -309,7 +327,7 @@ function getExpectedDaysForPeriod(
   }
 
   const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-  return allDays.filter(day => shouldHabitAppearOnDate(habit, day)).length;
+  return allDays.filter((day) => shouldHabitAppearOnDate(habit, day)).length;
 }
 
 function calculatePeriodStats(
@@ -319,12 +337,10 @@ function calculatePeriodStats(
   completions: any[],
   fullPeriodEnd?: Date
 ): PeriodStats {
-  const completedDates = new Set(
-    completions.map(completionDateKey)
-  );
+  const completedDates = new Set(completions.map(completionDateKey));
 
   const actualDays = eachDayOfInterval({ start: startDate, end: endDate });
-  const completed = actualDays.filter(day =>
+  const completed = actualDays.filter((day) =>
     completedDates.has(format(day, 'yyyy-MM-dd'))
   ).length;
 
@@ -335,18 +351,13 @@ function calculatePeriodStats(
   return { completed, total, successRate };
 }
 
-function calculateOverallStats(
-  habit: any,
-  completions: any[]
-): OverallStats {
+function calculateOverallStats(habit: any, completions: any[]): OverallStats {
   if (!completions || completions.length === 0) {
     return { totalCompletions: 0, successRate: 0, totalPoints: 0 };
   }
 
   const totalCompletions = completions.length;
-  const totalPoints = completions.reduce(
-    (sum: number, c: any) => sum + (c.points_earned || 0), 0
-  );
+  const totalPoints = completions.reduce((sum: number, c: any) => sum + (c.points_earned || 0), 0);
 
   const valuesAchieved = completions
     .map((c: any) => c.value_achieved)
@@ -354,7 +365,8 @@ function calculateOverallStats(
 
   let averageValue, maxValue, minValue;
   if (valuesAchieved.length > 0) {
-    averageValue = valuesAchieved.reduce((sum: number, v: number) => sum + v, 0) / valuesAchieved.length;
+    averageValue =
+      valuesAchieved.reduce((sum: number, v: number) => sum + v, 0) / valuesAchieved.length;
     maxValue = Math.max(...valuesAchieved);
     minValue = Math.min(...valuesAchieved);
   }
@@ -383,10 +395,7 @@ function generateDaysData(
   habit: any
 ): DayData[] {
   const completionMap = new Map(
-    completions.map((c: any) => [
-      completionDateKey(c),
-      c.value_achieved,
-    ])
+    completions.map((c: any) => [completionDateKey(c), c.value_achieved])
   );
 
   const hasFrequencyGoal = habit.frequency_goal_value && habit.frequency_goal_value > 0;
@@ -395,7 +404,7 @@ function generateDaysData(
   if (hasFrequencyGoal) {
     // Inclui todos os dias — o calendário mostra apenas os completados
     // e o total esperado é calculado separadamente via getExpectedDaysForPeriod
-    return days.map(day => {
+    return days.map((day) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       return {
         date: dateStr,
@@ -407,8 +416,8 @@ function generateDaysData(
 
   // Dias fixos — filtrar por agendamento
   return days
-    .filter(day => shouldHabitAppearOnDate(habit, day))
-    .map(day => {
+    .filter((day) => shouldHabitAppearOnDate(habit, day))
+    .map((day) => {
       const dateStr = format(day, 'yyyy-MM-dd');
       return {
         date: dateStr,

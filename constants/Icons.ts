@@ -94,13 +94,13 @@ export const Icons = {
   profile: User,
   settings: Settings,
   list: List,
-  
+
   // Notifications
   bell: Bell,
   bellOff: BellOff,
   bellRing: BellRing,
   vibrate: Vibrate,
-  
+
   // Habits
   target: Target,
   check: Check,
@@ -109,7 +109,7 @@ export const Icons = {
   play: PlayCircle,
   pause: PauseCircle,
   repeat: Repeat,
-  
+
   // Gamification
   flame: Flame,
   star: Star,
@@ -120,17 +120,17 @@ export const Icons = {
   sparkles: Sparkles,
   gift: Gift,
   rocket: Rocket,
-  
+
   // Time & Calendar
   calendar: Calendar,
   clock: Clock,
   timer: Timer,
-  
+
   // Trends & Analytics
   trendingUp: TrendingUp,
   trendingDown: TrendingDown,
   activity: Activity,
-  
+
   // Actions
   edit: Edit,
   trash: Trash2,
@@ -141,14 +141,14 @@ export const Icons = {
   upload: Upload,
   share: Share2,
   refresh: RefreshCw,
-  
+
   // Navigation Arrows
   chevronRight: ChevronRight,
   chevronLeft: ChevronLeft,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
   arrowLeft: ArrowLeft,
-  
+
   // UI
   close: X,
   info: Info,
@@ -156,49 +156,49 @@ export const Icons = {
   alertCircle: AlertCircle,
   alertTriangle: AlertTriangle,
   lightbulb: Lightbulb,
-  
+
   // Theme
   moon: Moon,
   sun: Sun,
   sunrise: Sunrise,
   palette: Palette,
-  
+
   // Media
   sound: Volume2,
   soundOff: VolumeX,
   image: Image,
-  
+
   // Social
   users: Users,
   heart: Heart,
   bookmark: Bookmark,
-  
+
   // Visibility
   eye: Eye,
   eyeOff: EyeOff,
-  
+
   // Security
   lock: Lock,
   unlock: Unlock,
   shield: ShieldCheck,
-  
+
   // Communication
   mail: Mail,
   phone: Phone,
-  
+
   // Files
   file: FileText,
   folder: Folder,
-  
+
   // Resize
   maximize: Maximize2,
   minimize: Minimize2,
-  
+
   // Auth
   logout: LogOut,
   login: LogIn,
   userPlus: UserPlus,
-  
+
   // Categories (for habit types)
   droplet: Droplet,
   coffee: Coffee,
@@ -207,7 +207,7 @@ export const Icons = {
   brain: Brain,
   smile: Smile,
   location: MapPin,
-  
+
   // Development
   code: Code,
 } as const;

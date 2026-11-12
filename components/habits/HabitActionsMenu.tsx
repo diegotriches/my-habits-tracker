@@ -1,5 +1,14 @@
 import React from 'react';
-import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { IconName } from '@/constants/Icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -25,7 +34,8 @@ export const HabitActionsMenu = React.memo(function HabitActionsMenu({
   loading,
 }: HabitActionsMenuProps) {
   const { colors } = useTheme();
-  const { visible, menuAnim, triggerScale, toggle, close, handlePressIn, handlePressOut } = useActionsMenu();
+  const { visible, menuAnim, triggerScale, toggle, close, handlePressIn, handlePressOut } =
+    useActionsMenu();
 
   const handleItemPress = (onPress: () => void) => {
     close();
@@ -51,7 +61,13 @@ export const HabitActionsMenu = React.memo(function HabitActionsMenu({
         </TouchableOpacity>
       </Animated.View>
 
-      <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={close}>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={close}
+      >
         <Pressable style={styles.overlay} onPress={close}>
           <Animated.View
             style={[
@@ -63,7 +79,9 @@ export const HabitActionsMenu = React.memo(function HabitActionsMenu({
                 opacity: menuAnim,
                 transform: [
                   { scale: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
-                  { translateY: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) },
+                  {
+                    translateY: menuAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }),
+                  },
                 ],
               },
             ]}
@@ -76,7 +94,9 @@ export const HabitActionsMenu = React.memo(function HabitActionsMenu({
                   activeOpacity={0.7}
                 >
                   <Icon name={item.icon} size={18} color={item.color || colors.textPrimary} />
-                  <Text style={[styles.itemText, { color: item.color || colors.textPrimary }]}>{item.label}</Text>
+                  <Text style={[styles.itemText, { color: item.color || colors.textPrimary }]}>
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
                 {index < items.length - 1 && (
                   <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -106,7 +126,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16 },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
   itemText: { fontSize: 15, fontWeight: '600' },
   divider: { height: 1, marginHorizontal: 8 },
 });

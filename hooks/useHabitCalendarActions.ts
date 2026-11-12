@@ -45,60 +45,78 @@ export function useHabitCalendarActions({
   const [pendingProgressDate, setPendingProgressDate] = useState<Date | null>(null);
   const [pendingProgressCurrentValue, setPendingProgressCurrentValue] = useState(0);
 
-  const findCompletion = useCallback((date: Date) => {
-    return completions.find(c => isSameDay(new Date(c.completed_at), date));
-  }, [completions]);
+  const findCompletion = useCallback(
+    (date: Date) => {
+      return completions.find((c) => isSameDay(new Date(c.completed_at), date));
+    },
+    [completions]
+  );
 
   /** Marca o dia (ou grava o valor final, em hábitos com meta). */
-  const markDay = useCallback((date: Date, value: number | null) => {
-    if (!habit || !userId) return;
-    const existing = findCompletion(date);
-    const fields = completionDayFields(date);
-    const optimisticId = makeOptimisticId(habit.id, date);
+  const markDay = useCallback(
+    (date: Date, value: number | null) => {
+      if (!habit || !userId) return;
+      const existing = findCompletion(date);
+      const fields = completionDayFields(date);
+      const optimisticId = makeOptimisticId(habit.id, date);
 
-    if (existing) removeCompletionForDate(date);
-    addOptimisticCompletion({
-      id: optimisticId,
-      habit_id: habit.id,
-      completed_at: fields.completedAt,
-      value_achieved: value,
-      was_synced: false,
-      created_at: new Date().toISOString(),
-    });
-
-    void completionOutbox
-      .enqueue({ userId, habitId: habit.id, kind: 'complete', value, ...fields })
-      .then(result => {
-        if (result === 'synced') void refetchStreak();
-        if (result === 'dropped') {
-          removeCompletionById(optimisticId);
-          if (existing) addOptimisticCompletion(existing);
-          onSuccessMessage(SAVE_FAILED_MESSAGE);
-        }
+      if (existing) removeCompletionForDate(date);
+      addOptimisticCompletion({
+        id: optimisticId,
+        habit_id: habit.id,
+        completed_at: fields.completedAt,
+        value_achieved: value,
+        was_synced: false,
+        created_at: new Date().toISOString(),
       });
-  }, [habit, userId, findCompletion, removeCompletionForDate, addOptimisticCompletion, removeCompletionById, refetchStreak, onSuccessMessage]);
 
-  const handleCalendarDayPress = useCallback((date: Date, isCompleted: boolean, currentValue?: number) => {
-    if (!habit || !userId) return;
+      void completionOutbox
+        .enqueue({ userId, habitId: habit.id, kind: 'complete', value, ...fields })
+        .then((result) => {
+          if (result === 'synced') void refetchStreak();
+          if (result === 'dropped') {
+            removeCompletionById(optimisticId);
+            if (existing) addOptimisticCompletion(existing);
+            onSuccessMessage(SAVE_FAILED_MESSAGE);
+          }
+        });
+    },
+    [
+      habit,
+      userId,
+      findCompletion,
+      removeCompletionForDate,
+      addOptimisticCompletion,
+      removeCompletionById,
+      refetchStreak,
+      onSuccessMessage,
+    ]
+  );
 
-    // Hábito com meta numérica: sempre abre o modal de progresso
-    if (habit.has_target) {
-      setPendingProgressDate(date);
-      setPendingProgressCurrentValue(currentValue || 0);
-      setShowProgressModal(true);
-      return;
-    }
+  const handleCalendarDayPress = useCallback(
+    (date: Date, isCompleted: boolean, currentValue?: number) => {
+      if (!habit || !userId) return;
 
-    // Hábito sem meta, já completado: abre confirmação de desmarcar
-    if (isCompleted) {
-      setPendingUncompleteDate(date);
-      setShowUncompleteConfirm(true);
-      return;
-    }
+      // Hábito com meta numérica: sempre abre o modal de progresso
+      if (habit.has_target) {
+        setPendingProgressDate(date);
+        setPendingProgressCurrentValue(currentValue || 0);
+        setShowProgressModal(true);
+        return;
+      }
 
-    markDay(date, null);
-    hapticFeedback.success();
-  }, [habit, userId, markDay]);
+      // Hábito sem meta, já completado: abre confirmação de desmarcar
+      if (isCompleted) {
+        setPendingUncompleteDate(date);
+        setShowUncompleteConfirm(true);
+        return;
+      }
+
+      markDay(date, null);
+      hapticFeedback.success();
+    },
+    [habit, userId, markDay]
+  );
 
   const handleConfirmUncomplete = useCallback(() => {
     const date = pendingUncompleteDate;
@@ -110,33 +128,51 @@ export function useHabitCalendarActions({
     removeCompletionForDate(date);
 
     void completionOutbox
-      .enqueue({ userId, habitId: habit.id, kind: 'uncomplete', value: null, ...completionDayFields(date) })
-      .then(result => {
+      .enqueue({
+        userId,
+        habitId: habit.id,
+        kind: 'uncomplete',
+        value: null,
+        ...completionDayFields(date),
+      })
+      .then((result) => {
         if (result === 'synced') void refetchStreak();
         if (result === 'dropped') {
           if (existing) addOptimisticCompletion(existing);
           onSuccessMessage(SAVE_FAILED_MESSAGE);
         }
       });
-  }, [habit, userId, pendingUncompleteDate, findCompletion, removeCompletionForDate, addOptimisticCompletion, refetchStreak, onSuccessMessage]);
+  }, [
+    habit,
+    userId,
+    pendingUncompleteDate,
+    findCompletion,
+    removeCompletionForDate,
+    addOptimisticCompletion,
+    refetchStreak,
+    onSuccessMessage,
+  ]);
 
   const cancelUncomplete = useCallback(() => {
     setShowUncompleteConfirm(false);
     setPendingUncompleteDate(null);
   }, []);
 
-  const handleProgressConfirm = useCallback((value: number, mode: 'add' | 'replace') => {
-    const date = pendingProgressDate;
-    const finalValue = mode === 'add' ? pendingProgressCurrentValue + value : value;
-    setShowProgressModal(false);
-    setPendingProgressDate(null);
-    setPendingProgressCurrentValue(0);
-    if (!date) return;
+  const handleProgressConfirm = useCallback(
+    (value: number, mode: 'add' | 'replace') => {
+      const date = pendingProgressDate;
+      const finalValue = mode === 'add' ? pendingProgressCurrentValue + value : value;
+      setShowProgressModal(false);
+      setPendingProgressDate(null);
+      setPendingProgressCurrentValue(0);
+      if (!date) return;
 
-    // A fila grava o valor final direto (atualiza o registro do dia, se
-    // houver) — antes era "apagar e recriar", em duas requisições.
-    markDay(date, finalValue);
-  }, [pendingProgressDate, pendingProgressCurrentValue, markDay]);
+      // A fila grava o valor final direto (atualiza o registro do dia, se
+      // houver) — antes era "apagar e recriar", em duas requisições.
+      markDay(date, finalValue);
+    },
+    [pendingProgressDate, pendingProgressCurrentValue, markDay]
+  );
 
   const cancelProgress = useCallback(() => {
     setShowProgressModal(false);

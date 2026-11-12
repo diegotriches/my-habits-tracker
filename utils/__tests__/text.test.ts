@@ -20,12 +20,16 @@ describe('isNetworkError / errorMessageFor', () => {
   });
 
   it('não confunde erros do banco com falta de conexão', () => {
-    expect(isNetworkError({ message: 'violates row-level security policy', code: '42501' })).toBe(false);
+    expect(isNetworkError({ message: 'violates row-level security policy', code: '42501' })).toBe(
+      false
+    );
     expect(isNetworkError(null)).toBe(false);
   });
 
   it('troca a mensagem só quando o erro é de rede', () => {
-    expect(errorMessageFor(new Error('Network request failed'), 'Falhou')).toBe(OFFLINE_ACTION_MESSAGE);
+    expect(errorMessageFor(new Error('Network request failed'), 'Falhou')).toBe(
+      OFFLINE_ACTION_MESSAGE
+    );
     expect(errorMessageFor(new Error('outro'), 'Falhou')).toBe('Falhou');
   });
 });

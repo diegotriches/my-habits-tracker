@@ -1,11 +1,11 @@
 // components/habits/HabitStreakTracker.tsx
 import React, { useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
   isSameDay,
   addMonths,
   subMonths,
@@ -63,8 +63,8 @@ function getExpectedForPeriod(
   return goalValue;
 }
 
-export function HabitStreakTracker({ 
-  data, 
+export function HabitStreakTracker({
+  data,
   habitColor,
   hasTarget = false,
   targetValue = 0,
@@ -93,9 +93,9 @@ export function HabitStreakTracker({
   const calculateStreaks = useMemo(() => {
     if (!data || data.length === 0) return { streaks: [], currentStreak: 0, bestStreak: 0 };
 
-    const completedDays = data.filter(d => d.completed);
-    const sortedData = [...completedDays].sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+    const completedDays = data.filter((d) => d.completed);
+    const sortedData = [...completedDays].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
     const streaks: Streak[] = [];
@@ -142,7 +142,7 @@ export function HabitStreakTracker({
       else break;
     }
 
-    const bestStreak = streaks.length > 0 ? Math.max(...streaks.map(s => s.length)) : 0;
+    const bestStreak = streaks.length > 0 ? Math.max(...streaks.map((s) => s.length)) : 0;
 
     return {
       streaks: streaks.sort((a, b) => b.length - a.length).slice(0, 10),
@@ -158,29 +158,40 @@ export function HabitStreakTracker({
     const effectiveEnd = monthEnd < today ? monthEnd : today;
 
     if (hasFrequencyGoal && frequencyGoalValue > 0 && frequencyGoalPeriod) {
-      const completedInMonth = data.filter(d => {
+      const completedInMonth = data.filter((d) => {
         const date = parseISO(d.date);
         return d.completed && date >= monthStart && date <= effectiveEnd;
       }).length;
 
       const expected = getExpectedForPeriod(
-        monthStart, effectiveEnd, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays
+        monthStart,
+        effectiveEnd,
+        frequencyGoalValue,
+        frequencyGoalPeriod,
+        frequencyGoalCustomDays
       );
 
       const percentage = expected > 0 ? Math.round((completedInMonth / expected) * 100) : 0;
       return { completed: completedInMonth, total: expected, percentage };
     }
 
-    const monthDays = data.filter(day => {
+    const monthDays = data.filter((day) => {
       const date = parseISO(day.date);
       return date >= monthStart && date <= effectiveEnd;
     });
 
-    const completed = monthDays.filter(d => d.completed).length;
+    const completed = monthDays.filter((d) => d.completed).length;
     const total = monthDays.length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { completed, total, percentage };
-  }, [data, currentMonth, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays]);
+  }, [
+    data,
+    currentMonth,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+  ]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -192,7 +203,7 @@ export function HabitStreakTracker({
 
   const getDayData = (date: Date | null): DayData | undefined => {
     if (!date) return undefined;
-    return data.find(d => isSameDay(parseISO(d.date), date));
+    return data.find((d) => isSameDay(parseISO(d.date), date));
   };
 
   const getDayStatus = (date: Date | null) => {
@@ -213,9 +224,12 @@ export function HabitStreakTracker({
 
   const progressToOpacity = (progress: number): string => {
     if (progress <= 0) return '00';
-    const minOpacity = 0.20;
+    const minOpacity = 0.2;
     const mapped = minOpacity + progress * (1 - minOpacity);
-    return Math.round(mapped * 255).toString(16).padStart(2, '0').toUpperCase();
+    return Math.round(mapped * 255)
+      .toString(16)
+      .padStart(2, '0')
+      .toUpperCase();
   };
 
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -311,16 +325,25 @@ export function HabitStreakTracker({
     return (
       <View key={index} style={styles.dayCell}>
         {isClickable ? (
-          <TouchableOpacity style={styles.dayTouchable} onPress={() => handleDayPress(day)} activeOpacity={0.6}>
+          <TouchableOpacity
+            style={styles.dayTouchable}
+            onPress={() => handleDayPress(day)}
+            activeOpacity={0.6}
+          >
             {dayContent}
           </TouchableOpacity>
-        ) : dayContent}
+        ) : (
+          dayContent
+        )}
       </View>
     );
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.surface }]} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.surface }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.section}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
@@ -332,12 +355,21 @@ export function HabitStreakTracker({
             </Text>
             {monthStats.total > 0 && (
               <Text style={[styles.monthStatsText, { color: colors.textSecondary }]}>
-                {monthStats.completed}/{monthStats.total} {hasFrequencyGoal ? 'vezes' : 'dias'} • {monthStats.percentage}%
+                {monthStats.completed}/{monthStats.total} {hasFrequencyGoal ? 'vezes' : 'dias'} •{' '}
+                {monthStats.percentage}%
               </Text>
             )}
           </View>
-          <TouchableOpacity onPress={goToNextMonth} style={styles.navButton} disabled={!canGoNext()}>
-            <Icon name="chevronRight" size={24} color={canGoNext() ? colors.text : colors.textTertiary} />
+          <TouchableOpacity
+            onPress={goToNextMonth}
+            style={styles.navButton}
+            disabled={!canGoNext()}
+          >
+            <Icon
+              name="chevronRight"
+              size={24}
+              color={canGoNext() ? colors.text : colors.textTertiary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -377,7 +409,9 @@ export function HabitStreakTracker({
               {!hasFrequencyGoal && (
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDotOutline, { borderColor: habitColor + '45' }]} />
-                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>Não feito</Text>
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                    Não feito
+                  </Text>
                 </View>
               )}
             </>
@@ -405,7 +439,9 @@ export function HabitStreakTracker({
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Icon name="trendingUp" size={18} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Histórico de Sequências</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Histórico de Sequências
+            </Text>
           </View>
           <View style={styles.streaksChart}>
             {calculateStreaks.streaks.map((streak, index) => {
@@ -413,9 +449,16 @@ export function HabitStreakTracker({
               const percentage = (streak.length / maxStreak) * 100;
               return (
                 <View key={index} style={styles.streakRow}>
-                  <Text style={[styles.streakIndex, { color: colors.textTertiary }]}>#{index + 1}</Text>
+                  <Text style={[styles.streakIndex, { color: colors.textTertiary }]}>
+                    #{index + 1}
+                  </Text>
                   <View style={styles.streakBarContainer}>
-                    <View style={[styles.streakBar, { width: `${percentage}%`, backgroundColor: habitColor }]} />
+                    <View
+                      style={[
+                        styles.streakBar,
+                        { width: `${percentage}%`, backgroundColor: habitColor },
+                      ]}
+                    />
                   </View>
                   <Text style={[styles.streakValue, { color: colors.text }]}>
                     {streak.length} {streak.length === 1 ? 'dia' : 'dias'}
@@ -436,18 +479,43 @@ const styles = StyleSheet.create({
   container: { flex: 1, borderRadius: 12, padding: 16, marginTop: 8 },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
-  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   monthHeaderCenter: { alignItems: 'center' },
   navButton: { padding: 8 },
   monthTitle: { fontSize: 18, fontWeight: '700', textTransform: 'capitalize' },
   monthStatsText: { fontSize: 12, fontWeight: '500', marginTop: 2 },
-  hintContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginBottom: 12 },
+  hintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
   hintText: { fontSize: 12, fontWeight: '500' },
   legendRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendDotOutline: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, backgroundColor: 'transparent' },
-  legendDotBorder: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, backgroundColor: 'transparent' },
+  legendDotOutline: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    backgroundColor: 'transparent',
+  },
+  legendDotBorder: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
   legendText: { fontSize: 11, fontWeight: '500' },
   weekDaysRow: { flexDirection: 'row', marginBottom: 8 },
   weekDayCell: { flex: 1, alignItems: 'center' },
@@ -462,7 +530,13 @@ const styles = StyleSheet.create({
   streaksChart: { gap: 12 },
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   streakIndex: { fontSize: 12, fontWeight: '600', width: 24 },
-  streakBarContainer: { flex: 1, height: 28, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 6, overflow: 'hidden' },
+  streakBarContainer: {
+    flex: 1,
+    height: 28,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
   streakBar: { height: '100%', borderRadius: 6, minWidth: 28 },
   streakValue: { fontSize: 12, fontWeight: '600', width: 60, textAlign: 'right' },
   emptyContainer: { borderRadius: 12, padding: 40, alignItems: 'center', marginTop: 8 },

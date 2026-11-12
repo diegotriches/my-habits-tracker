@@ -37,26 +37,43 @@ export default function CreateHabitScreen() {
 
   const {
     loading,
-    name, setName,
-    description, setDescription,
-    habitType, setHabitType,
-    selectedColor, setSelectedColor,
-    hasTarget, setHasTarget,
-    targetValue, setTargetValue,
-    targetUnit, setTargetUnit,
-    showTargetInline, setShowTargetInline,
-    frequencyType, setFrequencyType,
-    frequencyDays, setFrequencyDays,
-    hasFrequencyGoal, setHasFrequencyGoal,
-    frequencyGoalValue, setFrequencyGoalValue,
-    frequencyGoalPeriod, setFrequencyGoalPeriod,
-    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    name,
+    setName,
+    description,
+    setDescription,
+    habitType,
+    setHabitType,
+    selectedColor,
+    setSelectedColor,
+    hasTarget,
+    setHasTarget,
+    targetValue,
+    setTargetValue,
+    targetUnit,
+    setTargetUnit,
+    showTargetInline,
+    setShowTargetInline,
+    frequencyType,
+    setFrequencyType,
+    frequencyDays,
+    setFrequencyDays,
+    hasFrequencyGoal,
+    setHasFrequencyGoal,
+    frequencyGoalValue,
+    setFrequencyGoalValue,
+    frequencyGoalPeriod,
+    setFrequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    setFrequencyGoalCustomDays,
     hasPermission,
     requestNotificationPermission,
     reminders,
-    showTimePicker, setShowTimePicker,
-    currentTime, setCurrentTime,
-    progressNotificationConfig, setProgressNotificationConfig,
+    showTimePicker,
+    setShowTimePicker,
+    currentTime,
+    setCurrentTime,
+    progressNotificationConfig,
+    setProgressNotificationConfig,
     showFrequencyModal,
     openFrequencyModal,
     cancelFrequencyModal,
@@ -78,17 +95,30 @@ export default function CreateHabitScreen() {
     showCancelConfirm,
     confirmDiscard,
     dismissDiscardConfirm,
-    showSuccessToast, setShowSuccessToast,
-    showErrorToast, setShowErrorToast,
+    showSuccessToast,
+    setShowSuccessToast,
+    showErrorToast,
+    setShowErrorToast,
     errorMessage,
   } = useCreateHabitForm();
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.container}>
         <LoadingOverlay visible={loading} message="Criando hábito..." />
-        <SuccessToast visible={showSuccessToast} message="Hábito criado com sucesso!" onHide={() => setShowSuccessToast(false)} />
-        <SuccessToast visible={showErrorToast} message={errorMessage} onHide={() => setShowErrorToast(false)} />
+        <SuccessToast
+          visible={showSuccessToast}
+          message="Hábito criado com sucesso!"
+          onHide={() => setShowSuccessToast(false)}
+        />
+        <SuccessToast
+          visible={showErrorToast}
+          message={errorMessage}
+          onHide={() => setShowErrorToast(false)}
+        />
         <ConfirmDialog
           visible={showCancelConfirm}
           title="Descartar Hábito?"
@@ -120,7 +150,12 @@ export default function CreateHabitScreen() {
           {/* TIPO DE HÁBITO */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tipo de Hábito</Text>
-            <HabitTypeSelector habitType={habitType} onChange={setHabitType} styles={styles} colors={colors} />
+            <HabitTypeSelector
+              habitType={habitType}
+              onChange={setHabitType}
+              styles={styles}
+              colors={colors}
+            />
           </View>
 
           {/* NOME */}
@@ -128,7 +163,7 @@ export default function CreateHabitScreen() {
             <Text style={styles.label}>Nome *</Text>
             <TextInput
               style={styles.input}
-              placeholder={habitType === 'positive' ? "Ex: Meditar, Ler..." : "Ex: Não fumar..."}
+              placeholder={habitType === 'positive' ? 'Ex: Meditar, Ler...' : 'Ex: Não fumar...'}
               placeholderTextColor={colors.textTertiary}
               value={name}
               onChangeText={setName}
@@ -155,7 +190,10 @@ export default function CreateHabitScreen() {
           <View style={styles.section}>
             <CompactColorSelector
               selectedColor={selectedColor}
-              onColorSelect={(color) => { hapticFeedback.selection(); setSelectedColor(color); }}
+              onColorSelect={(color) => {
+                hapticFeedback.selection();
+                setSelectedColor(color);
+              }}
             />
           </View>
 
@@ -163,7 +201,10 @@ export default function CreateHabitScreen() {
 
           {/* FREQUÊNCIA */}
           <TouchableOpacity
-            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.summaryRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={openFrequencyModal}
             activeOpacity={0.7}
           >
@@ -172,37 +213,71 @@ export default function CreateHabitScreen() {
             </View>
             <View style={styles.summaryTextContainer}>
               <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Frequência</Text>
-              <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>{getFrequencySummary()}</Text>
+              <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
+                {getFrequencySummary()}
+              </Text>
             </View>
             <Icon name="chevronRight" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
           {/* META NUMÉRICA — INLINE */}
           <TouchableOpacity
-            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => { hapticFeedback.light(); setShowTargetInline(v => !v); }}
+            style={[
+              styles.summaryRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => {
+              hapticFeedback.light();
+              setShowTargetInline((v) => !v);
+            }}
             activeOpacity={0.7}
           >
-            <View style={[styles.summaryIconCircle, { backgroundColor: hasTarget ? colors.successLight : colors.borderLight }]}>
-              <Icon name="target" size={18} color={hasTarget ? colors.success : colors.textTertiary} />
+            <View
+              style={[
+                styles.summaryIconCircle,
+                { backgroundColor: hasTarget ? colors.successLight : colors.borderLight },
+              ]}
+            >
+              <Icon
+                name="target"
+                size={18}
+                color={hasTarget ? colors.success : colors.textTertiary}
+              />
             </View>
             <View style={styles.summaryTextContainer}>
-              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Meta Numérica</Text>
-              <Text style={[styles.summaryValue, { color: hasTarget ? colors.success : colors.textSecondary }]}>
+              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>
+                Meta Numérica
+              </Text>
+              <Text
+                style={[
+                  styles.summaryValue,
+                  { color: hasTarget ? colors.success : colors.textSecondary },
+                ]}
+              >
                 {getTargetSummary()}
               </Text>
             </View>
-            <Icon name={showTargetInline ? "chevronUp" : "chevronRight"} size={18} color={colors.textTertiary} />
+            <Icon
+              name={showTargetInline ? 'chevronUp' : 'chevronRight'}
+              size={18}
+              color={colors.textTertiary}
+            />
           </TouchableOpacity>
 
           {/* Painel inline de meta */}
           {showTargetInline && (
-            <View style={[
-              styles.inlinePanel ?? {
-                borderRadius: 14, borderWidth: 1, padding: 16, marginTop: -4, marginBottom: 10,
-              },
-              { backgroundColor: colors.surface, borderColor: colors.border }
-            ]}>
+            <View
+              style={[
+                styles.inlinePanel ?? {
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  padding: 16,
+                  marginTop: -4,
+                  marginBottom: 10,
+                },
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.label, { marginBottom: 0 }]}>Ativar meta numérica</Text>
@@ -212,7 +287,10 @@ export default function CreateHabitScreen() {
                 </View>
                 <Switch
                   value={hasTarget}
-                  onValueChange={(v) => { hapticFeedback.selection(); setHasTarget(v); }}
+                  onValueChange={(v) => {
+                    hapticFeedback.selection();
+                    setHasTarget(v);
+                  }}
                   trackColor={{ false: colors.border, true: colors.primaryLight }}
                   thumbColor={hasTarget ? colors.primary : colors.surface}
                 />
@@ -231,20 +309,49 @@ export default function CreateHabitScreen() {
 
           {/* LEMBRETES */}
           <TouchableOpacity
-            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.summaryRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={openRemindersModal}
             activeOpacity={0.7}
           >
-            <View style={[styles.summaryIconCircle, {
-              backgroundColor: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warningLight : colors.borderLight
-            }]}>
-              <Icon name="bell" size={18} color={(reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textTertiary} />
+            <View
+              style={[
+                styles.summaryIconCircle,
+                {
+                  backgroundColor:
+                    reminders.length > 0 || progressNotificationConfig.enabled
+                      ? colors.warningLight
+                      : colors.borderLight,
+                },
+              ]}
+            >
+              <Icon
+                name="bell"
+                size={18}
+                color={
+                  reminders.length > 0 || progressNotificationConfig.enabled
+                    ? colors.warning
+                    : colors.textTertiary
+                }
+              />
             </View>
             <View style={styles.summaryTextContainer}>
               <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Lembretes</Text>
-              <Text style={[styles.summaryValue, {
-                color: (reminders.length > 0 || progressNotificationConfig.enabled) ? colors.warning : colors.textSecondary
-              }]}>{getRemindersSummary()}</Text>
+              <Text
+                style={[
+                  styles.summaryValue,
+                  {
+                    color:
+                      reminders.length > 0 || progressNotificationConfig.enabled
+                        ? colors.warning
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                {getRemindersSummary()}
+              </Text>
             </View>
             <Icon name="chevronRight" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -289,10 +396,15 @@ export default function CreateHabitScreen() {
           {!hasPermission && (
             <TouchableOpacity
               style={[styles.permissionButton, { backgroundColor: colors.primary }]}
-              onPress={async () => { hapticFeedback.light(); await requestNotificationPermission(); }}
+              onPress={async () => {
+                hapticFeedback.light();
+                await requestNotificationPermission();
+              }}
             >
               <Icon name="unlock" size={16} color={colors.textInverse} />
-              <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>Permitir Notificações</Text>
+              <Text style={[styles.permissionButtonText, { color: colors.textInverse }]}>
+                Permitir Notificações
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -301,7 +413,9 @@ export default function CreateHabitScreen() {
               <View style={styles.modalSection}>
                 <View style={styles.modalSectionHeader}>
                   <Icon name="clock" size={16} color={colors.textPrimary} />
-                  <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>Horários de Lembrete</Text>
+                  <Text style={[styles.modalSectionTitle, { color: colors.textPrimary }]}>
+                    Horários de Lembrete
+                  </Text>
                 </View>
                 <Text style={[styles.modalSectionSubtitle, { color: colors.textSecondary }]}>
                   Receba notificações nos horários definidos
@@ -310,10 +424,15 @@ export default function CreateHabitScreen() {
                 {reminders.length > 0 && (
                   <View style={styles.remindersList}>
                     {reminders.map((reminder) => (
-                      <View key={reminder.id} style={[styles.reminderItem, { borderColor: colors.border }]}>
+                      <View
+                        key={reminder.id}
+                        style={[styles.reminderItem, { borderColor: colors.border }]}
+                      >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                           <Icon name="bell" size={14} color={colors.primary} />
-                          <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>{formatTime(reminder.time)}</Text>
+                          <Text style={[styles.reminderTime, { color: colors.textPrimary }]}>
+                            {formatTime(reminder.time)}
+                          </Text>
                         </View>
                         <TouchableOpacity onPress={() => handleRemoveReminder(reminder.id)}>
                           <Icon name="trash" size={16} color={colors.danger} />
@@ -326,15 +445,25 @@ export default function CreateHabitScreen() {
                 {reminders.length < MAX_REMINDERS && (
                   <TouchableOpacity
                     style={[styles.addButton, { borderColor: colors.primary }]}
-                    onPress={() => { hapticFeedback.light(); setShowTimePicker(true); }}
+                    onPress={() => {
+                      hapticFeedback.light();
+                      setShowTimePicker(true);
+                    }}
                   >
                     <Icon name="add" size={14} color={colors.primary} />
-                    <Text style={[styles.addButtonText, { color: colors.primary }]}>Adicionar horário</Text>
+                    <Text style={[styles.addButtonText, { color: colors.primary }]}>
+                      Adicionar horário
+                    </Text>
                   </TouchableOpacity>
                 )}
 
                 {showTimePicker && (
-                  <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.pickerContainer,
+                      { backgroundColor: colors.surface, borderColor: colors.border },
+                    ]}
+                  >
                     <DateTimePicker
                       value={currentTime}
                       mode="time"
@@ -345,16 +474,27 @@ export default function CreateHabitScreen() {
                     {Platform.OS === 'ios' && (
                       <View style={styles.pickerButtons}>
                         <TouchableOpacity
-                          onPress={() => { hapticFeedback.light(); setShowTimePicker(false); setCurrentTime(new Date()); }}
+                          onPress={() => {
+                            hapticFeedback.light();
+                            setShowTimePicker(false);
+                            setCurrentTime(new Date());
+                          }}
                           style={[styles.pickerButton, { backgroundColor: colors.surface }]}
                         >
-                          <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>Cancelar</Text>
+                          <Text style={[styles.pickerButtonText, { color: colors.textSecondary }]}>
+                            Cancelar
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          onPress={() => { hapticFeedback.selection(); handleAddReminder(); }}
+                          onPress={() => {
+                            hapticFeedback.selection();
+                            handleAddReminder();
+                          }}
                           style={[styles.pickerButton, { backgroundColor: colors.primary }]}
                         >
-                          <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>Confirmar</Text>
+                          <Text style={[styles.pickerButtonText, { color: colors.textInverse }]}>
+                            Confirmar
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     )}

@@ -20,9 +20,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: colors.surface }]}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.message, { color: colors.textSecondary }]}>
-            {message}
-          </Text>
+          <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
         </View>
       </View>
     </Modal>

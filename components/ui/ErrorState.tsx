@@ -25,12 +25,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         <Icon name="alert" size={48} color={colors.danger} />
       </View>
 
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {title}
-      </Text>
-      <Text style={[styles.message, { color: colors.textSecondary }]}>
-        {message}
-      </Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
 
       {onRetry && (
         <TouchableOpacity

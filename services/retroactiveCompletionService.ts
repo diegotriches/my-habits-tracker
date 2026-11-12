@@ -1,10 +1,7 @@
 // services/retroactiveCompletionService.ts
 import { fetchAllRows, supabase } from './supabase';
 import { Habit } from '@/types/database';
-import {
-  startOfDay,
-  format,
-} from 'date-fns';
+import { startOfDay, format } from 'date-fns';
 import {
   calculateDailyStreak,
   calculateScheduledDaysStreak,
@@ -18,7 +15,7 @@ import {
 export const retroactiveCompletionService = {
   /**
    * Recalcular streak após mudanças.
-   * 
+   *
    * Estratégias:
    * 1. Meta semanal (frequency_goal_value + period=week): conta semanas consecutivas
    * 2. Dias fixos (frequency_type=weekly + frequency_days): conta dias programados consecutivos
@@ -53,13 +50,15 @@ export const retroactiveCompletionService = {
       );
 
       if (!rawCompletions || rawCompletions.length === 0) {
-        await supabase.from('streaks')
-          .upsert({
+        await supabase.from('streaks').upsert(
+          {
             habit_id: habitId,
             current_streak: 0,
             best_streak: 0,
             last_completion_date: null,
-          }, { onConflict: 'habit_id' });
+          },
+          { onConflict: 'habit_id' }
+        );
         return;
       }
 
@@ -75,15 +74,17 @@ export const retroactiveCompletionService = {
       }
 
       if (completions.length === 0) {
-        await supabase.from('streaks')
-          .upsert({
+        await supabase.from('streaks').upsert(
+          {
             habit_id: habitId,
             current_streak: 0,
             best_streak: 0,
-            last_completion_date: rawCompletions[0] 
+            last_completion_date: rawCompletions[0]
               ? format(startOfDay(new Date(rawCompletions[0].completed_at)), 'yyyy-MM-dd')
               : null,
-          }, { onConflict: 'habit_id' });
+          },
+          { onConflict: 'habit_id' }
+        );
         return;
       }
 
@@ -125,13 +126,15 @@ export const retroactiveCompletionService = {
         'yyyy-MM-dd'
       );
 
-      await supabase.from('streaks')
-        .upsert({
+      await supabase.from('streaks').upsert(
+        {
           habit_id: habitId,
           current_streak: currentStreak,
           best_streak: bestStreak,
           last_completion_date: lastCompletionDate,
-        }, { onConflict: 'habit_id' });
+        },
+        { onConflict: 'habit_id' }
+      );
     } catch (error) {
       console.error('Erro ao recalcular streak:', error);
     }

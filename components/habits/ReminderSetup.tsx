@@ -25,7 +25,8 @@ interface ReminderSetupProps {
 
 export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   const { colors } = useTheme();
-  const { reminders, createReminder, deleteReminder, toggleReminder, updateReminder } = useReminders(habitId);
+  const { reminders, createReminder, deleteReminder, toggleReminder, updateReminder } =
+    useReminders(habitId);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [showEditModal, setShowEditModal] = useState(false);
@@ -41,7 +42,7 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
     console.log('📅 Data selecionada:', selectedTime);
 
     const success = await createReminder(habitId, habitName, timeString);
-    
+
     if (success) {
       // ✅ SEM MODAL - Apenas feedback háptico
       hapticFeedback.success();
@@ -56,43 +57,39 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
 
   const handleDeleteReminder = (reminder: any) => {
     hapticFeedback.warning();
-    
+
     // ✅ MANTÉM confirmação antes de deletar (evita exclusões acidentais)
-    Alert.alert(
-      'Deletar Lembrete',
-      `Deseja remover o lembrete das ${reminder.time}?`,
-      [
-        { 
-          text: 'Cancelar', 
-          style: 'cancel',
-          onPress: () => hapticFeedback.light()
+    Alert.alert('Deletar Lembrete', `Deseja remover o lembrete das ${reminder.time}?`, [
+      {
+        text: 'Cancelar',
+        style: 'cancel',
+        onPress: () => hapticFeedback.light(),
+      },
+      {
+        text: 'Deletar',
+        style: 'destructive',
+        onPress: async () => {
+          if (!(await ensureOnline())) return;
+          const success = await deleteReminder(reminder.id);
+          if (success) {
+            // ✅ SEM MODAL de confirmação após deletar
+            hapticFeedback.success();
+            console.log('✅ Lembrete removido com sucesso');
+          } else {
+            // ❌ Mantém alerta de ERRO
+            hapticFeedback.error();
+            Alert.alert('Erro', 'Não foi possível remover o lembrete');
+          }
         },
-        {
-          text: 'Deletar',
-          style: 'destructive',
-          onPress: async () => {
-            if (!(await ensureOnline())) return;
-            const success = await deleteReminder(reminder.id);
-            if (success) {
-              // ✅ SEM MODAL de confirmação após deletar
-              hapticFeedback.success();
-              console.log('✅ Lembrete removido com sucesso');
-            } else {
-              // ❌ Mantém alerta de ERRO
-              hapticFeedback.error();
-              Alert.alert('Erro', 'Não foi possível remover o lembrete');
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleToggleReminder = async (reminder: any) => {
     if (!(await ensureOnline())) return;
     hapticFeedback.light();
     const success = await toggleReminder(reminder.id, habitName);
-    
+
     if (success) {
       // ✅ SEM MODAL - Apenas feedback háptico
       hapticFeedback.success();
@@ -111,13 +108,13 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
   };
 
   const handleSaveEdit = async (
-    reminderId: string, 
-    time: string, 
+    reminderId: string,
+    time: string,
     sound: NotificationSound
   ): Promise<boolean> => {
     if (!(await ensureOnline())) return false;
     const success = await updateReminder(reminderId, habitName, { time, sound });
-    
+
     if (success) {
       // ✅ SEM MODAL - Apenas feedback háptico
       hapticFeedback.success();
@@ -139,24 +136,24 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
 
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
-      
+
       if (event.type === 'set' && date) {
         console.log('✅ Android: Horário confirmado:', date.toLocaleTimeString());
-        
+
         const hours = date.getHours();
         const minutes = date.getMinutes();
         const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        
+
         console.log('🕐 Horário a ser criado:', timeString);
-        
+
         // Atualizar estado para próxima vez
         setSelectedTime(date);
-        
+
         // Android: Adiciona o lembrete com o horário correto
         setTimeout(async () => {
           if (!(await ensureOnline())) return;
           const success = await createReminder(habitId, habitName, timeString);
-          
+
           if (success) {
             // ✅ SEM MODAL - Apenas feedback háptico
             hapticFeedback.success();
@@ -197,10 +194,13 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
           {reminders.map((reminder) => (
             <TouchableOpacity
               key={reminder.id}
-              style={[styles.reminderItem, { 
-                backgroundColor: colors.surface,
-                borderColor: colors.border 
-              }]}
+              style={[
+                styles.reminderItem,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={() => handleEditReminder(reminder)}
               activeOpacity={0.7}
             >
@@ -212,9 +212,14 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.reminderStatus, { 
-                    color: reminder.is_active ? colors.success : colors.textTertiary 
-                  }]}>
+                  <Text
+                    style={[
+                      styles.reminderStatus,
+                      {
+                        color: reminder.is_active ? colors.success : colors.textTertiary,
+                      },
+                    ]}
+                  >
                     {reminder.is_active ? 'Ativo' : 'Desativado'}
                   </Text>
                   <Icon name="chevronRight" size={14} color={colors.textTertiary} />
@@ -279,14 +284,19 @@ export function ReminderSetup({ habitId, habitName }: ReminderSetupProps) {
       </TouchableOpacity>
 
       {showTimePicker && (
-        <View style={[styles.pickerContainer, { 
-          backgroundColor: colors.surface,
-          borderColor: colors.border 
-        }]}>
+        <View
+          style={[
+            styles.pickerContainer,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
           <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>
             Selecione o horário
           </Text>
-          
+
           <DateTimePicker
             value={selectedTime}
             mode="time"

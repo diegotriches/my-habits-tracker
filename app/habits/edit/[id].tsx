@@ -19,7 +19,11 @@ import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
 import { HabitTypeIndicator } from '@/components/habits/HabitTypeIndicator';
-import { useEditHabitForm, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@/hooks/useEditHabitForm';
+import {
+  useEditHabitForm,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+} from '@/hooks/useEditHabitForm';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
 
@@ -30,20 +34,33 @@ export default function EditHabitScreen() {
   const {
     loading,
     saving,
-    name, setName,
-    description, setDescription,
+    name,
+    setName,
+    description,
+    setDescription,
     habitType,
-    selectedColor, setSelectedColor,
-    hasTarget, setHasTarget,
-    targetValue, setTargetValue,
-    targetUnit, setTargetUnit,
-    showTargetInline, setShowTargetInline,
-    frequencyType, setFrequencyType,
-    frequencyDays, setFrequencyDays,
-    hasFrequencyGoal, setHasFrequencyGoal,
-    frequencyGoalValue, setFrequencyGoalValue,
-    frequencyGoalPeriod, setFrequencyGoalPeriod,
-    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    selectedColor,
+    setSelectedColor,
+    hasTarget,
+    setHasTarget,
+    targetValue,
+    setTargetValue,
+    targetUnit,
+    setTargetUnit,
+    showTargetInline,
+    setShowTargetInline,
+    frequencyType,
+    setFrequencyType,
+    frequencyDays,
+    setFrequencyDays,
+    hasFrequencyGoal,
+    setHasFrequencyGoal,
+    frequencyGoalValue,
+    setFrequencyGoalValue,
+    frequencyGoalPeriod,
+    setFrequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    setFrequencyGoalCustomDays,
     showFrequencyModal,
     openFrequencyModal,
     cancelFrequencyModal,
@@ -65,10 +82,18 @@ export default function EditHabitScreen() {
   const isNegative = habitType === 'negative';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* HEADER */}
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.background, borderBottomColor: colors.border },
+          ]}
+        >
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancelar</Text>
           </TouchableOpacity>
@@ -98,8 +123,15 @@ export default function EditHabitScreen() {
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>Nome *</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder={isNegative ? "Ex: Não fumar..." : "Ex: Meditar, Ler..."}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
+              placeholder={isNegative ? 'Ex: Não fumar...' : 'Ex: Meditar, Ler...'}
               placeholderTextColor={colors.textTertiary}
               value={name}
               onChangeText={setName}
@@ -111,7 +143,15 @@ export default function EditHabitScreen() {
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.textPrimary }]}>Descrição (opcional)</Text>
             <TextInput
-              style={[styles.input, styles.textArea, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.textPrimary }]}
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="Adicione detalhes..."
               placeholderTextColor={colors.textTertiary}
               value={description}
@@ -126,7 +166,10 @@ export default function EditHabitScreen() {
           <View style={styles.section}>
             <CompactColorSelector
               selectedColor={selectedColor}
-              onColorSelect={(color) => { hapticFeedback.selection(); setSelectedColor(color); }}
+              onColorSelect={(color) => {
+                hapticFeedback.selection();
+                setSelectedColor(color);
+              }}
             />
           </View>
 
@@ -134,7 +177,10 @@ export default function EditHabitScreen() {
 
           {/* FREQUÊNCIA */}
           <TouchableOpacity
-            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.summaryRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={openFrequencyModal}
             activeOpacity={0.7}
           >
@@ -143,32 +189,65 @@ export default function EditHabitScreen() {
             </View>
             <View style={styles.summaryTextContainer}>
               <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Frequência</Text>
-              <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>{getFrequencySummary()}</Text>
+              <Text style={[styles.summaryValue, { color: colors.textSecondary }]}>
+                {getFrequencySummary()}
+              </Text>
             </View>
             <Icon name="chevronRight" size={18} color={colors.textTertiary} />
           </TouchableOpacity>
 
           {/* META NUMÉRICA — INLINE */}
           <TouchableOpacity
-            style={[styles.summaryRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => { hapticFeedback.light(); setShowTargetInline(v => !v); }}
+            style={[
+              styles.summaryRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => {
+              hapticFeedback.light();
+              setShowTargetInline((v) => !v);
+            }}
             activeOpacity={0.7}
           >
-            <View style={[styles.summaryIconCircle, { backgroundColor: hasTarget ? colors.successLight : colors.borderLight }]}>
-              <Icon name="target" size={18} color={hasTarget ? colors.success : colors.textTertiary} />
+            <View
+              style={[
+                styles.summaryIconCircle,
+                { backgroundColor: hasTarget ? colors.successLight : colors.borderLight },
+              ]}
+            >
+              <Icon
+                name="target"
+                size={18}
+                color={hasTarget ? colors.success : colors.textTertiary}
+              />
             </View>
             <View style={styles.summaryTextContainer}>
-              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>Meta Numérica</Text>
-              <Text style={[styles.summaryValue, { color: hasTarget ? colors.success : colors.textSecondary }]}>
+              <Text style={[styles.summaryLabel, { color: colors.textPrimary }]}>
+                Meta Numérica
+              </Text>
+              <Text
+                style={[
+                  styles.summaryValue,
+                  { color: hasTarget ? colors.success : colors.textSecondary },
+                ]}
+              >
                 {getTargetSummary()}
               </Text>
             </View>
-            <Icon name={showTargetInline ? "chevronUp" : "chevronRight"} size={18} color={colors.textTertiary} />
+            <Icon
+              name={showTargetInline ? 'chevronUp' : 'chevronRight'}
+              size={18}
+              color={colors.textTertiary}
+            />
           </TouchableOpacity>
 
           {/* Painel inline de meta */}
           {showTargetInline && (
-            <View style={[styles.inlinePanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.inlinePanel,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.toggleRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.label, { color: colors.textPrimary, marginBottom: 0 }]}>
@@ -180,7 +259,10 @@ export default function EditHabitScreen() {
                 </View>
                 <Switch
                   value={hasTarget}
-                  onValueChange={(v) => { hapticFeedback.selection(); setHasTarget(v); }}
+                  onValueChange={(v) => {
+                    hapticFeedback.selection();
+                    setHasTarget(v);
+                  }}
                   trackColor={{ false: colors.border, true: colors.primaryLight }}
                   thumbColor={hasTarget ? colors.primary : colors.surface}
                 />
@@ -198,10 +280,16 @@ export default function EditHabitScreen() {
           )}
 
           {/* DICA */}
-          <View style={[styles.tipCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
+          <View
+            style={[
+              styles.tipCard,
+              { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+            ]}
+          >
             <Icon name="bell" size={16} color={colors.primary} />
             <Text style={[styles.tipText, { color: colors.primary }]}>
-              <Text style={styles.tipBold}>Dica:</Text> Configure lembretes e alertas na página de detalhes do hábito!
+              <Text style={styles.tipBold}>Dica:</Text> Configure lembretes e alertas na página de
+              detalhes do hábito!
             </Text>
           </View>
 
@@ -239,8 +327,13 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   cancelButton: { fontSize: 16 },
@@ -249,22 +342,44 @@ const styles = StyleSheet.create({
   section: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
   helperText: { fontSize: 12, marginTop: 4 },
-  input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, borderWidth: 1 },
+  input: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    borderWidth: 1,
+  },
   textArea: { height: 70, textAlignVertical: 'top' },
   separator: { borderTopWidth: 1, marginVertical: 8, marginBottom: 16 },
   summaryRow: {
-    flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14,
-    borderWidth: 1, marginBottom: 10, gap: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 12,
   },
-  summaryIconCircle: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  summaryIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   summaryTextContainer: { flex: 1 },
   summaryLabel: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   summaryValue: { fontSize: 12, fontWeight: '500' },
   inlinePanel: { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: -4, marginBottom: 10 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   tipCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 12,
-    padding: 14, borderWidth: 1.5, marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1.5,
+    marginTop: 8,
   },
   tipText: { flex: 1, fontSize: 13, lineHeight: 19 },
   tipBold: { fontWeight: '700' },

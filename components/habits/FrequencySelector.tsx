@@ -51,7 +51,11 @@ export function FrequencySelector({
   const { colors } = useTheme();
 
   // Determinar modo ativo
-  const activeMode: FrequencyMode = hasFrequencyGoal ? 'goal' : frequencyType === 'weekly' ? 'weekly' : 'daily';
+  const activeMode: FrequencyMode = hasFrequencyGoal
+    ? 'goal'
+    : frequencyType === 'weekly'
+      ? 'weekly'
+      : 'daily';
 
   const handleModeChange = (mode: FrequencyMode) => {
     hapticFeedback.selection();
@@ -78,7 +82,7 @@ export function FrequencySelector({
 
   const toggleDay = (dayId: number) => {
     if (selectedDays.includes(dayId)) {
-      onDaysChange(selectedDays.filter(d => d !== dayId));
+      onDaysChange(selectedDays.filter((d) => d !== dayId));
     } else {
       onDaysChange([...selectedDays, dayId].sort());
     }
@@ -110,23 +114,30 @@ export function FrequencySelector({
 
   const getMaxForPeriod = (): number => {
     switch (frequencyGoalPeriod) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return frequencyGoalCustomDays || 9999;
+      case 'week':
+        return 7;
+      case 'month':
+        return 31;
+      case 'custom':
+        return frequencyGoalCustomDays || 9999;
     }
   };
 
   const getGoalPeriodLabel = (): string => {
     switch (frequencyGoalPeriod) {
-      case 'week': return 'semana';
-      case 'month': return 'mês';
-      case 'custom': return `${frequencyGoalCustomDays || '?'} dias`;
+      case 'week':
+        return 'semana';
+      case 'month':
+        return 'mês';
+      case 'custom':
+        return `${frequencyGoalCustomDays || '?'} dias`;
     }
   };
 
-  const isGoalValid = frequencyGoalValue > 0 
-    && frequencyGoalValue <= getMaxForPeriod()
-    && (frequencyGoalPeriod !== 'custom' || frequencyGoalCustomDays > 0);
+  const isGoalValid =
+    frequencyGoalValue > 0 &&
+    frequencyGoalValue <= getMaxForPeriod() &&
+    (frequencyGoalPeriod !== 'custom' || frequencyGoalCustomDays > 0);
 
   return (
     <View style={styles.container}>
@@ -137,16 +148,25 @@ export function FrequencySelector({
           style={[
             styles.modeButton,
             { borderColor: colors.border, backgroundColor: colors.surface },
-            activeMode === 'daily' && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+            activeMode === 'daily' && {
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.primary,
+            },
           ]}
           onPress={() => handleModeChange('daily')}
         >
-          <Icon name="calendar" size={16} color={activeMode === 'daily' ? colors.primary : colors.textSecondary} />
-          <Text style={[
-            styles.modeButtonText,
-            { color: colors.textSecondary },
-            activeMode === 'daily' && { color: colors.primary },
-          ]}>
+          <Icon
+            name="calendar"
+            size={16}
+            color={activeMode === 'daily' ? colors.primary : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.modeButtonText,
+              { color: colors.textSecondary },
+              activeMode === 'daily' && { color: colors.primary },
+            ]}
+          >
             Diário
           </Text>
         </TouchableOpacity>
@@ -156,16 +176,25 @@ export function FrequencySelector({
           style={[
             styles.modeButton,
             { borderColor: colors.border, backgroundColor: colors.surface },
-            activeMode === 'weekly' && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+            activeMode === 'weekly' && {
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.primary,
+            },
           ]}
           onPress={() => handleModeChange('weekly')}
         >
-          <Icon name="checkCircle" size={16} color={activeMode === 'weekly' ? colors.primary : colors.textSecondary} />
-          <Text style={[
-            styles.modeButtonText,
-            { color: colors.textSecondary },
-            activeMode === 'weekly' && { color: colors.primary },
-          ]}>
+          <Icon
+            name="checkCircle"
+            size={16}
+            color={activeMode === 'weekly' ? colors.primary : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.modeButtonText,
+              { color: colors.textSecondary },
+              activeMode === 'weekly' && { color: colors.primary },
+            ]}
+          >
             Semanal
           </Text>
         </TouchableOpacity>
@@ -175,16 +204,25 @@ export function FrequencySelector({
           style={[
             styles.modeButton,
             { borderColor: colors.border, backgroundColor: colors.surface },
-            activeMode === 'goal' && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+            activeMode === 'goal' && {
+              backgroundColor: colors.primaryLight,
+              borderColor: colors.primary,
+            },
           ]}
           onPress={() => handleModeChange('goal')}
         >
-          <Icon name="target" size={16} color={activeMode === 'goal' ? colors.primary : colors.textSecondary} />
-          <Text style={[
-            styles.modeButtonText,
-            { color: colors.textSecondary },
-            activeMode === 'goal' && { color: colors.primary },
-          ]}>
+          <Icon
+            name="target"
+            size={16}
+            color={activeMode === 'goal' ? colors.primary : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.modeButtonText,
+              { color: colors.textSecondary },
+              activeMode === 'goal' && { color: colors.primary },
+            ]}
+          >
             Meta
           </Text>
         </TouchableOpacity>
@@ -200,18 +238,23 @@ export function FrequencySelector({
                 style={[
                   styles.dayButton,
                   { backgroundColor: colors.surface, borderColor: colors.border },
-                  selectedDays.includes(day.id) && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  selectedDays.includes(day.id) && {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                  },
                 ]}
                 onPress={() => {
                   hapticFeedback.light();
                   toggleDay(day.id);
                 }}
               >
-                <Text style={[
-                  styles.dayButtonText,
-                  { color: colors.textSecondary },
-                  selectedDays.includes(day.id) && { color: colors.textInverse },
-                ]}>
+                <Text
+                  style={[
+                    styles.dayButtonText,
+                    { color: colors.textSecondary },
+                    selectedDays.includes(day.id) && { color: colors.textInverse },
+                  ]}
+                >
                   {day.label}
                 </Text>
               </TouchableOpacity>
@@ -220,22 +263,42 @@ export function FrequencySelector({
 
           <View style={styles.shortcuts}>
             <TouchableOpacity
-              style={[styles.shortcutButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => { hapticFeedback.light(); selectAllDays(); }}
+              style={[
+                styles.shortcutButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => {
+                hapticFeedback.light();
+                selectAllDays();
+              }}
             >
               <Text style={[styles.shortcutText, { color: colors.textSecondary }]}>Todos</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.shortcutButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => { hapticFeedback.light(); selectWeekdays(); }}
+              style={[
+                styles.shortcutButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => {
+                hapticFeedback.light();
+                selectWeekdays();
+              }}
             >
               <Text style={[styles.shortcutText, { color: colors.textSecondary }]}>Dias úteis</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.shortcutButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => { hapticFeedback.light(); selectWeekends(); }}
+              style={[
+                styles.shortcutButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => {
+                hapticFeedback.light();
+                selectWeekends();
+              }}
             >
-              <Text style={[styles.shortcutText, { color: colors.textSecondary }]}>Fins de semana</Text>
+              <Text style={[styles.shortcutText, { color: colors.textSecondary }]}>
+                Fins de semana
+              </Text>
             </TouchableOpacity>
           </View>
         </>
@@ -246,11 +309,11 @@ export function FrequencySelector({
         <View style={styles.goalContainer}>
           {/* Seletor de período */}
           <View style={styles.goalPeriodRow}>
-            {([
+            {[
               { key: 'week' as FrequencyGoalPeriod, label: 'Semana' },
               { key: 'month' as FrequencyGoalPeriod, label: 'Mês' },
               { key: 'custom' as FrequencyGoalPeriod, label: 'Personalizado' },
-            ]).map((option) => {
+            ].map((option) => {
               const isSelected = frequencyGoalPeriod === option.key;
               return (
                 <TouchableOpacity
@@ -258,18 +321,23 @@ export function FrequencySelector({
                   style={[
                     styles.goalPeriodOption,
                     { backgroundColor: colors.surface, borderColor: colors.border },
-                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                    isSelected && {
+                      borderColor: colors.primary,
+                      backgroundColor: colors.primaryLight,
+                    },
                   ]}
                   onPress={() => {
                     hapticFeedback.selection();
                     onFrequencyGoalPeriodChange(option.key);
                   }}
                 >
-                  <Text style={[
-                    styles.goalPeriodText,
-                    { color: colors.textSecondary },
-                    isSelected && { color: colors.primary, fontWeight: '600' },
-                  ]}>
+                  <Text
+                    style={[
+                      styles.goalPeriodText,
+                      { color: colors.textSecondary },
+                      isSelected && { color: colors.primary, fontWeight: '600' },
+                    ]}
+                  >
                     {option.label}
                   </Text>
                 </TouchableOpacity>
@@ -280,11 +348,14 @@ export function FrequencySelector({
           {/* Inputs de valor */}
           <View style={styles.goalInputRow}>
             <TextInput
-              style={[styles.goalValueInput, {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.textPrimary,
-              }]}
+              style={[
+                styles.goalValueInput,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="0"
               placeholderTextColor={colors.textTertiary}
               value={frequencyGoalValue > 0 ? frequencyGoalValue.toString() : ''}
@@ -300,11 +371,14 @@ export function FrequencySelector({
               <>
                 <Text style={[styles.goalInLabel, { color: colors.textSecondary }]}>em</Text>
                 <TextInput
-                  style={[styles.goalDaysInput, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.textPrimary,
-                  }]}
+                  style={[
+                    styles.goalDaysInput,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="0"
                   placeholderTextColor={colors.textTertiary}
                   value={frequencyGoalCustomDays > 0 ? frequencyGoalCustomDays.toString() : ''}
@@ -334,22 +408,25 @@ export function FrequencySelector({
       )}
 
       {/* ===== PREVIEW ===== */}
-      <View style={[styles.preview, { backgroundColor: colors.infoLight, borderLeftColor: colors.info }]}>
+      <View
+        style={[
+          styles.preview,
+          { backgroundColor: colors.infoLight, borderLeftColor: colors.info },
+        ]}
+      >
         <Text style={[styles.previewLabel, { color: colors.info }]}>Frequência:</Text>
         <Text style={[styles.previewText, { color: colors.info }]}>
           {activeMode === 'daily' && 'Todos os dias'}
-          {activeMode === 'weekly' && (
-            selectedDays.length === 7
+          {activeMode === 'weekly' &&
+            (selectedDays.length === 7
               ? 'Todos os dias'
               : selectedDays.length === 0
                 ? 'Nenhum dia selecionado'
-                : `${selectedDays.length} ${selectedDays.length === 1 ? 'dia' : 'dias'} por semana`
-          )}
-          {activeMode === 'goal' && (
-            isGoalValid
+                : `${selectedDays.length} ${selectedDays.length === 1 ? 'dia' : 'dias'} por semana`)}
+          {activeMode === 'goal' &&
+            (isGoalValid
               ? `${frequencyGoalValue} ${frequencyGoalValue === 1 ? 'vez' : 'vezes'} por ${getGoalPeriodLabel()}`
-              : 'Configure a meta acima'
-          )}
+              : 'Configure a meta acima')}
         </Text>
       </View>
     </View>

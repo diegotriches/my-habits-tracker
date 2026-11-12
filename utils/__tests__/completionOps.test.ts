@@ -2,7 +2,12 @@ import { applyPendingOps, completionDayFields, CompletionOp } from '../completio
 import { Completion } from '@/types/database';
 import { NOW, local } from './testHelpers';
 
-const completion = (habitId: string, day: string, value: number | null = null, time = '12:00'): Completion => ({
+const completion = (
+  habitId: string,
+  day: string,
+  value: number | null = null,
+  time = '12:00'
+): Completion => ({
   id: `${habitId}-${day}-${time}`,
   habit_id: habitId,
   completed_at: local(day, time).toISOString(),
@@ -11,7 +16,12 @@ const completion = (habitId: string, day: string, value: number | null = null, t
   created_at: local(day, time).toISOString(),
 });
 
-const op = (kind: CompletionOp['kind'], habitId: string, day: string, value: number | null = null): CompletionOp => ({
+const op = (
+  kind: CompletionOp['kind'],
+  habitId: string,
+  day: string,
+  value: number | null = null
+): CompletionOp => ({
   id: `op-${kind}-${habitId}-${day}`,
   userId: 'user-1',
   habitId,
@@ -30,18 +40,27 @@ describe('applyPendingOps', () => {
   });
 
   it('marcar um dia que já está concluído não duplica', () => {
-    const result = applyPendingOps([completion('h1', '2026-11-10')], [op('complete', 'h1', '2026-11-10')]);
+    const result = applyPendingOps(
+      [completion('h1', '2026-11-10')],
+      [op('complete', 'h1', '2026-11-10')]
+    );
     expect(result).toHaveLength(1);
   });
 
   it('com meta, a marcação pendente troca o valor do dia', () => {
-    const result = applyPendingOps([completion('h1', '2026-11-10', 2)], [op('complete', 'h1', '2026-11-10', 5)]);
+    const result = applyPendingOps(
+      [completion('h1', '2026-11-10', 2)],
+      [op('complete', 'h1', '2026-11-10', 5)]
+    );
     expect(result).toHaveLength(1);
     expect(result[0].value_achieved).toBe(5);
   });
 
   it('desmarcar remove todas as conclusões daquele dia (inclusive duplicatas)', () => {
-    const list = [completion('h1', '2026-11-10', null, '08:00'), completion('h1', '2026-11-10', null, '20:00')];
+    const list = [
+      completion('h1', '2026-11-10', null, '08:00'),
+      completion('h1', '2026-11-10', null, '20:00'),
+    ];
     expect(applyPendingOps(list, [op('uncomplete', 'h1', '2026-11-10')])).toHaveLength(0);
   });
 

@@ -13,18 +13,14 @@ interface IconProps {
 export function Icon({ name, size = 24, color, strokeWidth = 2 }: IconProps) {
   const { colors } = useTheme();
   const IconComponent = Icons[name];
-  
+
   if (!IconComponent) {
     console.warn(`Icon "${name}" not found`);
     return null;
   }
 
   return (
-    <IconComponent
-      size={size}
-      color={color || colors.textPrimary}
-      strokeWidth={strokeWidth}
-    />
+    <IconComponent size={size} color={color || colors.textPrimary} strokeWidth={strokeWidth} />
   );
 }
 

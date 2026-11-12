@@ -15,10 +15,7 @@ async function cleanupHabitNotifications(habitId: string): Promise<void> {
     await progressNotificationScheduler.disableProgressNotifications(habitId);
 
     const update: ReminderUpdate = { is_active: false, notification_ids: [] };
-    const { error } = await supabase
-      .from('reminders')
-      .update(update)
-      .eq('habit_id', habitId);
+    const { error } = await supabase.from('reminders').update(update).eq('habit_id', habitId);
 
     if (error) throw error;
   } catch (err) {
@@ -60,7 +57,7 @@ export const useHabits = () => {
       // Mostra o cache na hora (abre offline); a busca abaixo atualiza.
       const cached = await readCache<Habit[]>('habits', userId);
       if (cached) {
-        setHabits(prev => (prev.length > 0 ? prev : cached));
+        setHabits((prev) => (prev.length > 0 ? prev : cached));
         setLoading(false);
       }
 
@@ -73,7 +70,7 @@ export const useHabits = () => {
       if (fetchError) throw fetchError;
 
       loadedFromServerRef.current = true;
-      setHabits(data as Habit[] || []);
+      setHabits((data as Habit[]) || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
     } finally {
@@ -155,7 +152,7 @@ export const useHabits = () => {
         return { data: null, error: insertError.message };
       }
 
-      setHabits(prevHabits => [data as Habit, ...prevHabits]);
+      setHabits((prevHabits) => [data as Habit, ...prevHabits]);
 
       return { data, error: null };
     } catch (err) {
@@ -193,9 +190,7 @@ export const useHabits = () => {
         return { data: null, error: updateError.message };
       }
 
-      setHabits(prevHabits =>
-        prevHabits.map(h => h.id === habitId ? data as Habit : h)
-      );
+      setHabits((prevHabits) => prevHabits.map((h) => (h.id === habitId ? (data as Habit) : h)));
 
       return { data, error: null };
     } catch (err) {
@@ -221,7 +216,7 @@ export const useHabits = () => {
       // registros para que não voltem a ser agendados.
       await cleanupHabitNotifications(habitId);
 
-      setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
+      setHabits((prevHabits) => prevHabits.filter((h) => h.id !== habitId));
 
       return { error: null };
     } catch (err) {
@@ -244,10 +239,10 @@ export const useHabits = () => {
       if (isActive) {
         const { data } = await getHabit(habitId);
         if (data) {
-          setHabits(prevHabits => [data as Habit, ...prevHabits]);
+          setHabits((prevHabits) => [data as Habit, ...prevHabits]);
         }
       } else {
-        setHabits(prevHabits => prevHabits.filter(h => h.id !== habitId));
+        setHabits((prevHabits) => prevHabits.filter((h) => h.id !== habitId));
       }
 
       return { error: null };

@@ -69,7 +69,8 @@ export default function EditProfileScreen() {
 
     setSavingName(true);
     try {
-      const { error } = await supabase.from('profiles')
+      const { error } = await supabase
+        .from('profiles')
         .update({ display_name: trimmed })
         .eq('id', user.id);
 
@@ -138,11 +139,7 @@ export default function EditProfileScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
           <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Editar Perfil</Text>
@@ -163,7 +160,12 @@ export default function EditProfileScreen() {
           {/* Email (somente leitura) */}
           <View style={styles.fieldContainer}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>E-mail</Text>
-            <View style={[styles.readOnlyField, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.readOnlyField,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <Icon name="mail" size={18} color={colors.textTertiary} />
               <Text style={[styles.readOnlyText, { color: colors.textTertiary }]}>
                 {user?.email}
@@ -175,10 +177,12 @@ export default function EditProfileScreen() {
           {/* Nome */}
           <View style={styles.fieldContainer}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nome</Text>
-            <View style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <Icon name="profile" size={18} color={colors.textTertiary} />
               <TextInput
                 style={[styles.textInput, { color: colors.textPrimary }]}
@@ -205,10 +209,12 @@ export default function EditProfileScreen() {
             {savingName ? (
               <ActivityIndicator size={18} color="#FFFFFF" />
             ) : (
-              <Text style={[
-                styles.saveButtonText,
-                { color: nameChanged ? '#FFFFFF' : colors.textTertiary },
-              ]}>
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  { color: nameChanged ? '#FFFFFF' : colors.textTertiary },
+                ]}
+              >
                 Salvar Nome
               </Text>
             )}
@@ -217,17 +223,20 @@ export default function EditProfileScreen() {
 
         {/* Seção: Alterar Senha */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Alterar Senha
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Alterar Senha</Text>
 
           {/* Nova Senha */}
           <View style={styles.fieldContainer}>
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nova senha</Text>
-            <View style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: passwordError ? colors.danger : colors.border },
-            ]}>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: passwordError ? colors.danger : colors.border,
+                },
+              ]}
+            >
               <Icon name="lock" size={18} color={colors.textTertiary} />
               <TextInput
                 style={[styles.textInput, { color: colors.textPrimary }]}
@@ -256,11 +265,18 @@ export default function EditProfileScreen() {
 
           {/* Confirmar Senha */}
           <View style={styles.fieldContainer}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Confirmar nova senha</Text>
-            <View style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: passwordError ? colors.danger : colors.border },
-            ]}>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+              Confirmar nova senha
+            </Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: passwordError ? colors.danger : colors.border,
+                },
+              ]}
+            >
               <Icon name="lock" size={18} color={colors.textTertiary} />
               <TextInput
                 style={[styles.textInput, { color: colors.textPrimary }]}
@@ -308,10 +324,12 @@ export default function EditProfileScreen() {
             {savingPassword ? (
               <ActivityIndicator size={18} color="#FFFFFF" />
             ) : (
-              <Text style={[
-                styles.saveButtonText,
-                { color: newPassword.length >= 6 ? '#FFFFFF' : colors.textTertiary },
-              ]}>
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  { color: newPassword.length >= 6 ? '#FFFFFF' : colors.textTertiary },
+                ]}
+              >
                 Alterar Senha
               </Text>
             )}

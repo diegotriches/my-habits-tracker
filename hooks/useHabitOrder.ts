@@ -24,8 +24,8 @@ export function useHabitOrder(habitIds: string[]) {
       const savedOrder: string[] = JSON.parse(saved);
 
       // Mesclar: manter ordem salva para os que existem, adicionar novos no final
-      const existing = savedOrder.filter(id => ids.includes(id));
-      const newIds = ids.filter(id => !savedOrder.includes(id));
+      const existing = savedOrder.filter((id) => ids.includes(id));
+      const newIds = ids.filter((id) => !savedOrder.includes(id));
       const merged = [...existing, ...newIds];
 
       setOrderedIds(merged);
@@ -42,10 +42,13 @@ export function useHabitOrder(habitIds: string[]) {
     }
   }, []);
 
-  const updateOrder = useCallback((newOrder: string[]) => {
-    setOrderedIds(newOrder);
-    saveOrder(newOrder);
-  }, [saveOrder]);
+  const updateOrder = useCallback(
+    (newOrder: string[]) => {
+      setOrderedIds(newOrder);
+      saveOrder(newOrder);
+    },
+    [saveOrder]
+  );
 
   return { orderedIds, updateOrder };
 }

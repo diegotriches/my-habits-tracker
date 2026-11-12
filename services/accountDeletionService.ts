@@ -21,7 +21,7 @@ export async function deleteAccount(): Promise<void> {
   try {
     await notificationService.cancelAllNotifications();
     const pending = await exactAlarmService.getPendingCompletions();
-    await exactAlarmService.removePendingCompletions(pending.map(p => p.id));
+    await exactAlarmService.removePendingCompletions(pending.map((p) => p.id));
   } catch (cleanupError) {
     // A conta já foi excluída: falha na limpeza local não deve virar erro.
     console.warn('Erro ao limpar notificações locais:', cleanupError);

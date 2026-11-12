@@ -10,7 +10,11 @@ export const OFFLINE_ACTION_MESSAGE =
  */
 export function isNetworkError(error: unknown): boolean {
   const message =
-    typeof error === 'string' ? error : error instanceof Error ? error.message : (error as { message?: string })?.message;
+    typeof error === 'string'
+      ? error
+      : error instanceof Error
+        ? error.message
+        : (error as { message?: string })?.message;
   return !!message && /network request failed|failed to fetch|fetch failed/i.test(message);
 }
 

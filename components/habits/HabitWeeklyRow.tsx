@@ -76,7 +76,12 @@ export function HabitWeeklyRow({
           friction: 10,
         }).start();
 
-        const { weekStart: ws, canGoBack: back, canGoForward: fwd, onWeekChange: cb } = swipeRef.current;
+        const {
+          weekStart: ws,
+          canGoBack: back,
+          canGoForward: fwd,
+          onWeekChange: cb,
+        } = swipeRef.current;
 
         if (gs.dx > swipeThreshold && cb && back) {
           hapticFeedback.selection();
@@ -98,7 +103,7 @@ export function HabitWeeklyRow({
   ).current;
 
   const isCompletedOnDay = (date: Date): boolean => {
-    return completions.some(c => {
+    return completions.some((c) => {
       const completionDate = new Date(c.completed_at);
       return isSameDay(completionDate, date);
     });
@@ -114,7 +119,7 @@ export function HabitWeeklyRow({
   };
 
   const getCompletionForDay = (date: Date): Completion | undefined => {
-    return completions.find(c => {
+    return completions.find((c) => {
       const completionDate = new Date(c.completed_at);
       return isSameDay(completionDate, date);
     });
@@ -132,8 +137,12 @@ export function HabitWeeklyRow({
     return currentValue >= habit.target_value;
   };
 
-  const getWeeklyProgress = (): { completedDays: number; expectedDays: number; progress: number } => {
-    const completedDays = weekDays.filter(day => isCompletedOnDay(day)).length;
+  const getWeeklyProgress = (): {
+    completedDays: number;
+    expectedDays: number;
+    progress: number;
+  } => {
+    const completedDays = weekDays.filter((day) => isCompletedOnDay(day)).length;
     // Respeita a meta semanal (ex.: 3x por semana mostrava x/7).
     const expectedDays = getDaysPerWeek(habit);
     // Com meta semanal dá para passar dela (4/3): a barra para em 100%.
@@ -226,28 +235,14 @@ export function HabitWeeklyRow({
   const { completedDays, expectedDays, progress } = getWeeklyProgress();
 
   return (
-    <View
-      style={[
-        styles.container,
-        !isDueToday && { opacity: 0.6 },
-      ]}
-    >
+    <View style={[styles.container, !isDueToday && { opacity: 0.6 }]}>
       <View style={[styles.colorIndicator, { backgroundColor: habitColor }]} />
 
       <View style={styles.habitInfo}>
-        <TouchableOpacity
-          onPress={handleHabitPress}
-          activeOpacity={0.7}
-          style={styles.habitHeader}
-        >
+        <TouchableOpacity onPress={handleHabitPress} activeOpacity={0.7} style={styles.habitHeader}>
           <View style={styles.habitNameRow}>
-            {isNegative && (
-              <Icon name="xCircle" size={16} color={colors.warning} />
-            )}
-            <Text
-              style={[styles.habitName, { color: colors.textPrimary }]}
-              numberOfLines={1}
-            >
+            {isNegative && <Icon name="xCircle" size={16} color={colors.warning} />}
+            <Text style={[styles.habitName, { color: colors.textPrimary }]} numberOfLines={1}>
               {habit.name}
             </Text>
           </View>

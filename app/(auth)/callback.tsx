@@ -37,14 +37,14 @@ export default function AuthCallbackScreen() {
         accessToken = params.access_token as string;
         refreshToken = (params.refresh_token as string) || '';
       }
-      
+
       // Formato 2: Hash fragment (window.location.hash)
       if (!accessToken && typeof window !== 'undefined' && window.location?.hash) {
         console.log('🔍 Tentando extrair do hash...');
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         accessToken = hashParams.get('access_token');
         refreshToken = hashParams.get('refresh_token') || '';
-        
+
         if (accessToken) {
           console.log('✅ Tokens encontrados no hash');
         }
@@ -55,12 +55,12 @@ export default function AuthCallbackScreen() {
         console.log('🔍 Tentando extrair da URL completa...');
         const url = params.url as string;
         const hashIndex = url.indexOf('#');
-        
+
         if (hashIndex !== -1) {
           const hashParams = new URLSearchParams(url.substring(hashIndex + 1));
           accessToken = hashParams.get('access_token');
           refreshToken = hashParams.get('refresh_token') || '';
-          
+
           if (accessToken) {
             console.log('✅ Tokens encontrados na URL completa');
           }
@@ -77,25 +77,20 @@ export default function AuthCallbackScreen() {
 
       setMessage('Criando sessão...');
       await processTokens(accessToken, refreshToken || '');
-      
     } catch (err) {
       console.error('❌ Erro no callback OAuth:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao autenticar';
       setError(errorMessage);
       setStatus('error');
       setMessage('Erro na autenticação');
-      
+
       // Mostrar alert com o erro
-      Alert.alert(
-        'Erro no Login',
-        errorMessage,
-        [
-          {
-            text: 'Voltar ao Login',
-            onPress: () => router.replace('/(auth)/login'),
-          },
-        ]
-      );
+      Alert.alert('Erro no Login', errorMessage, [
+        {
+          text: 'Voltar ao Login',
+          onPress: () => router.replace('/(auth)/login'),
+        },
+      ]);
     }
   };
 
@@ -135,7 +130,6 @@ export default function AuthCallbackScreen() {
         console.log('🏠 Redirecionando para home...');
         router.replace('/(tabs)');
       }, 1000);
-
     } catch (err) {
       console.error('❌ Erro ao processar tokens:', err);
       throw err;
@@ -165,15 +159,13 @@ export default function AuthCallbackScreen() {
       console.log('📝 Perfil não existe, criando...');
 
       const displayName = email.split('@')[0] || 'Usuário';
-      
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          display_name: displayName,
-          level: 1,
-          total_points: 0,
-        } as any);
+
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: userId,
+        display_name: displayName,
+        level: 1,
+        total_points: 0,
+      } as any);
 
       if (insertError) {
         // Pode ser erro de conflito se o trigger já criou
@@ -210,9 +202,7 @@ export default function AuthCallbackScreen() {
         {status === 'success' && (
           <>
             <Text style={[styles.emoji, { marginBottom: 16 }]}>✅</Text>
-            <Text style={[styles.title, { color: colors.success }]}>
-              Login realizado!
-            </Text>
+            <Text style={[styles.title, { color: colors.success }]}>Login realizado!</Text>
             <Text style={[styles.message, { color: colors.textSecondary }]}>
               Redirecionando para o app...
             </Text>
@@ -222,12 +212,8 @@ export default function AuthCallbackScreen() {
         {status === 'error' && (
           <>
             <Text style={[styles.emoji, { marginBottom: 16 }]}>❌</Text>
-            <Text style={[styles.title, { color: colors.danger }]}>
-              Erro na autenticação
-            </Text>
-            <Text style={[styles.message, { color: colors.textSecondary }]}>
-              {error}
-            </Text>
+            <Text style={[styles.title, { color: colors.danger }]}>Erro na autenticação</Text>
+            <Text style={[styles.message, { color: colors.textSecondary }]}>{error}</Text>
             <Text style={[styles.redirect, { color: colors.textTertiary }]}>
               Toque em “Voltar ao Login” no alerta
             </Text>

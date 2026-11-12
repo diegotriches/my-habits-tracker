@@ -40,7 +40,6 @@ export interface ScheduleReminderOptions {
 }
 
 class ExactAlarmService {
-
   /**
    * Agenda lembretes semanais usando AlarmManager.
    */
@@ -50,7 +49,11 @@ class ExactAlarmService {
     time: string,
     daysOfWeek: number[],
     reminderId: string,
-    { sound = 'default', hasTarget = false, minLeadMs = 2 * 60 * 1000 }: ScheduleReminderOptions = {}
+    {
+      sound = 'default',
+      hasTarget = false,
+      minLeadMs = 2 * 60 * 1000,
+    }: ScheduleReminderOptions = {}
   ): Promise<string[]> {
     if (Platform.OS !== 'android') return [];
 
@@ -236,7 +239,12 @@ class ExactAlarmService {
   /**
    * Calcula próxima ocorrência de um dia/horário
    */
-  private getNextOccurrence(dayOfWeek: number, hours: number, minutes: number, minLeadMs: number): Date {
+  private getNextOccurrence(
+    dayOfWeek: number,
+    hours: number,
+    minutes: number,
+    minLeadMs: number
+  ): Date {
     const now = new Date();
     const result = new Date();
 

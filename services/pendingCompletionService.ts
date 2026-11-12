@@ -114,7 +114,7 @@ async function drainNativeQueue(): Promise<void> {
 
     console.log(
       `Fila da notificacao: ${pending.length} item(ns), ${changedHabits.size} gravado(s), ` +
-      `${pending.length - processed.length} para tentar depois`
+        `${pending.length - processed.length} para tentar depois`
     );
 
     if (changedHabits.size > 0) {

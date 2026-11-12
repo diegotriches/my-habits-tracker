@@ -66,17 +66,23 @@ export default function ProfileScreen() {
 
   const getThemeLabel = (): string => {
     switch (themeMode) {
-      case 'light': return 'Claro';
-      case 'dark': return 'Escuro';
-      case 'system': return 'Automático';
+      case 'light':
+        return 'Claro';
+      case 'dark':
+        return 'Escuro';
+      case 'system':
+        return 'Automático';
     }
   };
 
   const getThemeIcon = (): IconName => {
     switch (themeMode) {
-      case 'light': return 'sun';
-      case 'dark': return 'moon';
-      case 'system': return 'palette';
+      case 'light':
+        return 'sun';
+      case 'dark':
+        return 'moon';
+      case 'system':
+        return 'palette';
     }
   };
 
@@ -99,7 +105,12 @@ export default function ProfileScreen() {
   const themeOptions: { mode: ThemeMode; icon: IconName; label: string; description: string }[] = [
     { mode: 'light', icon: 'sun', label: 'Claro', description: 'Tema claro padrão' },
     { mode: 'dark', icon: 'moon', label: 'Escuro', description: 'Ideal para ambientes escuros' },
-    { mode: 'system', icon: 'palette', label: 'Automático', description: 'Segue as configurações do sistema' },
+    {
+      mode: 'system',
+      icon: 'palette',
+      label: 'Automático',
+      description: 'Segue as configurações do sistema',
+    },
   ];
 
   return (
@@ -115,12 +126,13 @@ export default function ProfileScreen() {
         }
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-            activeOpacity={0.7}
-          >
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.background, borderBottomColor: colors.border },
+          ]}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
             <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Perfil</Text>
@@ -133,7 +145,10 @@ export default function ProfileScreen() {
         {/* Botão Editar Perfil */}
         <View style={styles.editProfileContainer}>
           <TouchableOpacity
-            style={[styles.editProfileButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[
+              styles.editProfileButton,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={() => router.push('/settings/edit-profile' as any)}
             activeOpacity={0.7}
           >
@@ -144,9 +159,7 @@ export default function ProfileScreen() {
 
         {/* Informações da Conta */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Conta
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Conta</Text>
           <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <View style={styles.infoLeft}>
@@ -162,9 +175,7 @@ export default function ProfileScreen() {
 
         {/* Configurações */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Configurações
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Configurações</Text>
 
           {/* Aparência */}
           <TouchableOpacity
@@ -175,7 +186,9 @@ export default function ProfileScreen() {
               <Icon name={getThemeIcon()} size={20} color={colors.textSecondary} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.settingText, { color: colors.textPrimary }]}>Aparência</Text>
-                <Text style={[styles.settingSubtext, { color: colors.textTertiary }]}>{getThemeLabel()}</Text>
+                <Text style={[styles.settingSubtext, { color: colors.textTertiary }]}>
+                  {getThemeLabel()}
+                </Text>
               </View>
             </View>
             <Icon name="chevronRight" size={20} color={colors.textTertiary} />
@@ -200,7 +213,9 @@ export default function ProfileScreen() {
           >
             <View style={styles.settingLeft}>
               <Icon name="shield" size={20} color={colors.textSecondary} />
-              <Text style={[styles.settingText, { color: colors.textPrimary }]}>Dados e Privacidade</Text>
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>
+                Dados e Privacidade
+              </Text>
             </View>
             <Icon name="chevronRight" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -237,7 +252,10 @@ export default function ProfileScreen() {
         {/* Ações */}
         <View style={styles.section}>
           <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.danger }]}
+            style={[
+              styles.logoutButton,
+              { backgroundColor: colors.surface, borderColor: colors.danger },
+            ]}
             onPress={handleLogout}
           >
             <Icon name="logout" size={20} color={colors.danger} />
@@ -298,15 +316,20 @@ export default function ProfileScreen() {
                     style={[
                       styles.themeOption,
                       { backgroundColor: colors.surface, borderColor: colors.border },
-                      isActive && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+                      isActive && {
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primaryLight,
+                      },
                     ]}
                     onPress={() => handleThemeChange(option.mode)}
                     activeOpacity={0.7}
                   >
-                    <View style={[
-                      styles.themeIconCircle,
-                      { backgroundColor: isActive ? colors.primary + '20' : colors.borderLight },
-                    ]}>
+                    <View
+                      style={[
+                        styles.themeIconCircle,
+                        { backgroundColor: isActive ? colors.primary + '20' : colors.borderLight },
+                      ]}
+                    >
                       <Icon
                         name={option.icon}
                         size={22}
@@ -314,19 +337,19 @@ export default function ProfileScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[
-                        styles.themeLabel,
-                        { color: isActive ? colors.primary : colors.textPrimary },
-                      ]}>
+                      <Text
+                        style={[
+                          styles.themeLabel,
+                          { color: isActive ? colors.primary : colors.textPrimary },
+                        ]}
+                      >
                         {option.label}
                       </Text>
                       <Text style={[styles.themeDescription, { color: colors.textTertiary }]}>
                         {option.description}
                       </Text>
                     </View>
-                    {isActive && (
-                      <Icon name="check" size={20} color={colors.primary} />
-                    )}
+                    {isActive && <Icon name="check" size={20} color={colors.primary} />}
                   </TouchableOpacity>
                 );
               })}

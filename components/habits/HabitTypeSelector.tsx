@@ -29,9 +29,20 @@ export const HabitTypeSelector = React.memo(function HabitTypeSelector({
         style={[styles.habitTypeOption, habitType === 'positive' && styles.habitTypeOptionPositive]}
         onPress={() => handleSelect('positive')}
       >
-        <Icon name="check" size={20} color={habitType === 'positive' ? colors.success : colors.textSecondary} />
+        <Icon
+          name="check"
+          size={20}
+          color={habitType === 'positive' ? colors.success : colors.textSecondary}
+        />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.habitTypeLabel, habitType === 'positive' && styles.habitTypeLabelPositive]}>Positivo</Text>
+          <Text
+            style={[
+              styles.habitTypeLabel,
+              habitType === 'positive' && styles.habitTypeLabelPositive,
+            ]}
+          >
+            Positivo
+          </Text>
           <Text style={styles.habitTypeDescription}>Criar novo hábito</Text>
         </View>
       </TouchableOpacity>
@@ -39,9 +50,20 @@ export const HabitTypeSelector = React.memo(function HabitTypeSelector({
         style={[styles.habitTypeOption, habitType === 'negative' && styles.habitTypeOptionNegative]}
         onPress={() => handleSelect('negative')}
       >
-        <Icon name="xCircle" size={20} color={habitType === 'negative' ? colors.warning : colors.textSecondary} />
+        <Icon
+          name="xCircle"
+          size={20}
+          color={habitType === 'negative' ? colors.warning : colors.textSecondary}
+        />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.habitTypeLabel, habitType === 'negative' && styles.habitTypeLabelNegative]}>Negativo</Text>
+          <Text
+            style={[
+              styles.habitTypeLabel,
+              habitType === 'negative' && styles.habitTypeLabelNegative,
+            ]}
+          >
+            Negativo
+          </Text>
           <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
         </View>
       </TouchableOpacity>

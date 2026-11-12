@@ -13,12 +13,8 @@ export interface ProgressStatus {
   isCompleted: boolean;
 }
 
-export type ProgressMessageType = 
-  | 'completed' 
-  | 'high_progress' 
-  | 'moderate_progress' 
-  | 'low_progress' 
-  | 'no_progress';
+export type ProgressMessageType =
+  'completed' | 'high_progress' | 'moderate_progress' | 'low_progress' | 'no_progress';
 
 export type NotificationPeriod = 'morning' | 'afternoon' | 'evening';
 
@@ -174,9 +170,7 @@ class ProgressCheckerService {
 
     // NOITE — Urgência final
     if (period === 'evening') {
-      const remaining = targetValue && currentValue < targetValue 
-        ? targetValue - currentValue 
-        : 0;
+      const remaining = targetValue && currentValue < targetValue ? targetValue - currentValue : 0;
 
       if (percentage === 0) {
         return {
@@ -253,10 +247,12 @@ class ProgressCheckerService {
     try {
       const { data: configs, error: configError } = await supabase
         .from('habit_progress_notifications')
-        .select(`
+        .select(
+          `
           *,
           habits!inner (*)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .eq('enabled', true)
         .eq(`${period}_enabled`, true);

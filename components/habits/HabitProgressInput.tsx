@@ -94,12 +94,7 @@ export function HabitProgressInput({
   const percentage = getProgressPercentage();
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable style={styles.overlay} onPress={onCancel}>
         <Animated.View
           style={[
@@ -113,19 +108,21 @@ export function HabitProgressInput({
               <Text style={[styles.title, { color: colors.textPrimary }]}>
                 {currentValue > 0 ? 'Atualizar Progresso' : 'Registrar Progresso'}
               </Text>
-              <Text style={[styles.habitName, { color: colors.textSecondary }]}>
-                {habitName}
-              </Text>
+              <Text style={[styles.habitName, { color: colors.textSecondary }]}>{habitName}</Text>
             </View>
 
             {/* Content */}
             <View style={styles.content}>
-
               {/* Input — pré-preenchido com valor atual */}
-              <View style={[styles.inputContainer, {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              }]}>
+              <View
+                style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <TextInput
                   style={[styles.input, { color: colors.textPrimary }]}
                   placeholder="0"
@@ -137,16 +134,19 @@ export function HabitProgressInput({
                   autoFocus
                   selectTextOnFocus
                 />
-                <Text style={[styles.unit, { color: colors.textSecondary }]}>
-                  {targetUnit}
-                </Text>
+                <Text style={[styles.unit, { color: colors.textSecondary }]}>{targetUnit}</Text>
               </View>
 
               {/* Meta do dia */}
-              <View style={[styles.targetInfo, {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              }]}>
+              <View
+                style={[
+                  styles.targetInfo,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
                 <Text style={[styles.targetLabel, { color: colors.textSecondary }]}>
                   Meta do dia:
                 </Text>
@@ -192,9 +192,7 @@ export function HabitProgressInput({
                 style={[styles.cancelButton, { backgroundColor: colors.surface }]}
                 onPress={onCancel}
               >
-                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>
-                  Cancelar
-                </Text>
+                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -206,11 +204,13 @@ export function HabitProgressInput({
                 onPress={handleConfirm}
                 disabled={!isValid()}
               >
-                <Text style={[
-                  styles.confirmText,
-                  { color: colors.textInverse },
-                  !isValid() && { color: colors.textDisabled },
-                ]}>
+                <Text
+                  style={[
+                    styles.confirmText,
+                    { color: colors.textInverse },
+                    !isValid() && { color: colors.textDisabled },
+                  ]}
+                >
                   Confirmar
                 </Text>
               </TouchableOpacity>

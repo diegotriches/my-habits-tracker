@@ -46,7 +46,7 @@ function RootLayoutNav() {
       if (oauthReload === 'true') {
         setIsOAuthReloading(true);
         await AsyncStorage.removeItem('oauth_reload_in_progress');
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         setIsOAuthReloading(false);
       }
     };
@@ -82,12 +82,14 @@ function RootLayoutNav() {
           if (!accessToken) return;
 
           const { supabase } = require('@/services/supabase');
-          supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-          }).catch((err: any) => console.error('setSession error:', err));
+          supabase.auth
+            .setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            })
+            .catch((err: any) => console.error('setSession error:', err));
 
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise((resolve) => setTimeout(resolve, 3000));
           await AsyncStorage.removeItem(processedKey);
           globalOAuthProcessing = false;
           await AsyncStorage.setItem('oauth_reload_in_progress', 'true');
@@ -105,7 +107,9 @@ function RootLayoutNav() {
       }
     };
 
-    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url); });
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
     const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
     return () => subscription.remove();
   }, []);
@@ -124,8 +128,8 @@ function RootLayoutNav() {
     const loadingMessage = isProcessingOAuth
       ? 'Autenticando...'
       : isOAuthReloading
-      ? 'Carregando sua conta...'
-      : 'Carregando...';
+        ? 'Carregando sua conta...'
+        : 'Carregando...';
 
     return (
       <View style={styles.loadingContainer}>

@@ -8,7 +8,9 @@ export const NOW = new Date('2026-11-11T15:00:00');
 export const local = (day: string, time = '12:00') => new Date(`${day}T${time}:00`);
 
 /** Conclusão em um dia local (por padrão ao meio-dia). */
-export const doneAt = (day: string, time = '12:00') => ({ completed_at: local(day, time).toISOString() });
+export const doneAt = (day: string, time = '12:00') => ({
+  completed_at: local(day, time).toISOString(),
+});
 
 export function makeHabit(overrides: Partial<Habit> = {}): Habit {
   return {

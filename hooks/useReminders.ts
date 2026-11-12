@@ -171,10 +171,12 @@ export function useReminders(habitId?: string) {
       if (!reminder) throw new Error('Lembrete não encontrado');
 
       const timeChanged = updates.time !== undefined && updates.time !== reminder.time;
-      const daysChanged = updates.days_of_week !== undefined && 
-                          JSON.stringify(updates.days_of_week) !== JSON.stringify(reminder.days_of_week);
+      const daysChanged =
+        updates.days_of_week !== undefined &&
+        JSON.stringify(updates.days_of_week) !== JSON.stringify(reminder.days_of_week);
       const soundChanged = updates.sound !== undefined && updates.sound !== reminder.sound;
-      const statusChanged = updates.is_active !== undefined && updates.is_active !== reminder.is_active;
+      const statusChanged =
+        updates.is_active !== undefined && updates.is_active !== reminder.is_active;
 
       const needsReschedule = timeChanged || daysChanged || soundChanged;
 
@@ -183,7 +185,7 @@ export function useReminders(habitId?: string) {
         if (reminder.notification_ids && reminder.notification_ids.length > 0) {
           await notificationService.cancelNotifications(reminder.notification_ids);
         }
-        
+
         await remindersTable()
           .update({ is_active: false, notification_ids: [] })
           .eq('id', reminderId);
@@ -237,9 +239,7 @@ export function useReminders(habitId?: string) {
 
         setReminders((prev) =>
           prev.map((r) =>
-            r.id === reminderId
-              ? { ...updatedReminder, notification_ids: newNotificationIds }
-              : r
+            r.id === reminderId ? { ...updatedReminder, notification_ids: newNotificationIds } : r
           )
         );
 
@@ -247,17 +247,11 @@ export function useReminders(habitId?: string) {
         return true;
       }
 
-      const { error } = await remindersTable()
-        .update(updates)
-        .eq('id', reminderId);
+      const { error } = await remindersTable().update(updates).eq('id', reminderId);
 
       if (error) throw error;
 
-      setReminders((prev) =>
-        prev.map((r) =>
-          r.id === reminderId ? { ...r, ...updates } : r
-        )
-      );
+      setReminders((prev) => prev.map((r) => (r.id === reminderId ? { ...r, ...updates } : r)));
 
       console.log('✅ Lembrete atualizado');
       return true;
@@ -296,10 +290,7 @@ export function useReminders(habitId?: string) {
   /**
    * Toggle ativar/desativar
    */
-  const toggleReminder = async (
-    reminderId: string,
-    habitName: string
-  ): Promise<boolean> => {
+  const toggleReminder = async (reminderId: string, habitName: string): Promise<boolean> => {
     const reminder = reminders.find((r) => r.id === reminderId);
     if (!reminder) return false;
 

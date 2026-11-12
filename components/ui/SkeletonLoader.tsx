@@ -38,10 +38,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ count = 3 }) => 
       {Array.from({ length: count }).map((_, index) => (
         <Animated.View
           key={index}
-          style={[
-            styles.skeletonCard,
-            { backgroundColor: colors.surface, opacity }
-          ]}
+          style={[styles.skeletonCard, { backgroundColor: colors.surface, opacity }]}
         >
           <View style={styles.skeletonHeader}>
             <View style={[styles.skeletonCircle, { backgroundColor: colors.border }]} />

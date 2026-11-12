@@ -66,11 +66,9 @@ export default function SignupScreen() {
       if (error) {
         Alert.alert('Erro no Cadastro', error.message);
       } else {
-        Alert.alert(
-          'Sucesso!',
-          'Conta criada com sucesso! Você já pode começar a usar o app.',
-          [{ text: 'Começar', onPress: () => router.replace('/(tabs)') }]
-        );
+        Alert.alert('Sucesso!', 'Conta criada com sucesso! Você já pode começar a usar o app.', [
+          { text: 'Começar', onPress: () => router.replace('/(tabs)') },
+        ]);
       }
     } catch (error) {
       Alert.alert('Erro', 'Ocorreu um erro inesperado');
@@ -115,22 +113,14 @@ export default function SignupScreen() {
           <View style={[styles.logoCircle, { backgroundColor: colors.primaryLight }]}>
             <Icon name="target" size={48} color={colors.primary} />
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            My Habits Tracker
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Crie sua conta
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>My Habits Tracker</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Crie sua conta</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Google Sign In Button */}
-          <GoogleSignInButton
-            onPress={handleGoogleSignIn}
-            loading={loading}
-            disabled={loading}
-          />
+          <GoogleSignInButton onPress={handleGoogleSignIn} loading={loading} disabled={loading} />
 
           {/* Divider */}
           <View style={styles.divider}>
@@ -145,11 +135,14 @@ export default function SignupScreen() {
               <Icon name="mail" size={20} color={colors.textTertiary} />
             </View>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.textPrimary 
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="Email"
               placeholderTextColor={colors.textTertiary}
               value={email}
@@ -166,11 +159,14 @@ export default function SignupScreen() {
               <Icon name="lock" size={20} color={colors.textTertiary} />
             </View>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.textPrimary 
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="Senha (mínimo 6 caracteres)"
               placeholderTextColor={colors.textTertiary}
               value={password}
@@ -182,11 +178,7 @@ export default function SignupScreen() {
               style={styles.eyeButton}
               onPress={() => setShowPassword(!showPassword)}
             >
-              <Icon 
-                name={showPassword ? "eye" : "eyeOff"} 
-                size={20} 
-                color={colors.textTertiary} 
-              />
+              <Icon name={showPassword ? 'eye' : 'eyeOff'} size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
 
@@ -196,11 +188,14 @@ export default function SignupScreen() {
               <Icon name="lock" size={20} color={colors.textTertiary} />
             </View>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                color: colors.textPrimary 
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  color: colors.textPrimary,
+                },
+              ]}
               placeholder="Confirmar senha"
               placeholderTextColor={colors.textTertiary}
               value={confirmPassword}
@@ -212,10 +207,10 @@ export default function SignupScreen() {
               style={styles.eyeButton}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             >
-              <Icon 
-                name={showConfirmPassword ? "eye" : "eyeOff"} 
-                size={20} 
-                color={colors.textTertiary} 
+              <Icon
+                name={showConfirmPassword ? 'eye' : 'eyeOff'}
+                size={20}
+                color={colors.textTertiary}
               />
             </TouchableOpacity>
           </View>
@@ -230,29 +225,17 @@ export default function SignupScreen() {
               <ActivityIndicator color={colors.textInverse} />
             ) : (
               <>
-                <Icon 
-                  name="userPlus" 
-                  size={20} 
-                  color={colors.textInverse} 
-                />
-                <Text style={[styles.buttonText, { color: colors.textInverse }]}>
-                  Cadastrar
-                </Text>
+                <Icon name="userPlus" size={20} color={colors.textInverse} />
+                <Text style={[styles.buttonText, { color: colors.textInverse }]}>Cadastrar</Text>
               </>
             )}
           </TouchableOpacity>
 
           {/* Voltar para Login */}
-          <TouchableOpacity
-            style={styles.toggleButton}
-            onPress={goToLogin}
-            disabled={loading}
-          >
+          <TouchableOpacity style={styles.toggleButton} onPress={goToLogin} disabled={loading}>
             <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
               Já tem conta?{' '}
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                Faça login
-              </Text>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>Faça login</Text>
             </Text>
           </TouchableOpacity>
         </View>

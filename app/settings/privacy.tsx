@@ -5,13 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -23,17 +17,20 @@ export default function PrivacySettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { 
-        backgroundColor: colors.background, 
-        borderBottomColor: colors.border,
-        paddingTop: insets.top + 16,
-      }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+            paddingTop: insets.top + 16,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <Icon name="chevronLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Dados e Privacidade
-        </Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Dados e Privacidade</Text>
         <View style={styles.headerButton} />
       </View>
 
@@ -42,12 +39,11 @@ export default function PrivacySettingsScreen() {
         <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           <View style={styles.infoHeader}>
             <Icon name="shield" size={20} color={colors.primary} />
-            <Text style={[styles.infoTitle, { color: colors.textPrimary }]}>
-              Seus Dados
-            </Text>
+            <Text style={[styles.infoTitle, { color: colors.textPrimary }]}>Seus Dados</Text>
           </View>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Seus dados são armazenados de forma segura e utilizados exclusivamente para o funcionamento do aplicativo. Não compartilhamos suas informações com terceiros.
+            Seus dados são armazenados de forma segura e utilizados exclusivamente para o
+            funcionamento do aplicativo. Não compartilhamos suas informações com terceiros.
           </Text>
 
           <View style={[styles.dataItem, { borderTopColor: colors.border }]}>
@@ -63,7 +59,9 @@ export default function PrivacySettingsScreen() {
           <View style={[styles.dataItem, { borderTopColor: colors.border }]}>
             <View style={styles.dataLeft}>
               <Icon name="activity" size={16} color={colors.textSecondary} />
-              <Text style={[styles.dataLabel, { color: colors.textSecondary }]}>Dados coletados</Text>
+              <Text style={[styles.dataLabel, { color: colors.textSecondary }]}>
+                Dados coletados
+              </Text>
             </View>
             <Text style={[styles.dataValue, { color: colors.textPrimary }]}>
               Hábitos, completions, streaks
@@ -75,9 +73,7 @@ export default function PrivacySettingsScreen() {
               <Icon name="lock" size={16} color={colors.textSecondary} />
               <Text style={[styles.dataLabel, { color: colors.textSecondary }]}>Criptografia</Text>
             </View>
-            <Text style={[styles.dataValue, { color: colors.success }]}>
-              Ativa (TLS/SSL)
-            </Text>
+            <Text style={[styles.dataValue, { color: colors.success }]}>Ativa (TLS/SSL)</Text>
           </View>
         </View>
 
@@ -131,13 +127,16 @@ export default function PrivacySettingsScreen() {
         <DataTransferCard />
 
         {/* Zona de Perigo */}
-        <View style={[styles.dangerZone, { backgroundColor: colors.surface, borderColor: '#fee2e2' }]}>
+        <View
+          style={[styles.dangerZone, { backgroundColor: colors.surface, borderColor: '#fee2e2' }]}
+        >
           <View style={styles.dangerZoneHeader}>
             <Icon name="alertTriangle" size={18} color="#ef4444" />
             <Text style={styles.dangerZoneTitle}>Zona de Perigo</Text>
           </View>
           <Text style={[styles.dangerZoneDescription, { color: colors.textSecondary }]}>
-            A exclusão da conta é permanente e não pode ser desfeita. Todos os seus dados serão apagados, incluindo hábitos, conclusões, streaks e lembretes.
+            A exclusão da conta é permanente e não pode ser desfeita. Todos os seus dados serão
+            apagados, incluindo hábitos, conclusões, streaks e lembretes.
           </Text>
           <DeleteAccountButton />
         </View>

@@ -9,7 +9,14 @@ import { progressNotificationScheduler } from '@/services/progressNotificationSc
 import { supabase } from '@/services/supabase';
 import { FrequencyGoalPeriod, Reminder } from '@/types/database';
 import { getScheduledWeekDays } from '@/utils/habitHelpers';
-import { HABIT_COLORS, MAX_REMINDERS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
+import {
+  HABIT_COLORS,
+  MAX_REMINDERS,
+  MIN_NAME_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  getAllTargetUnits,
+} from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
@@ -83,7 +90,8 @@ export function useCreateHabitForm() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Notificações de progresso
-  const [progressNotificationConfig, setProgressNotificationConfig] = useState<ProgressNotificationConfig>(DEFAULT_PROGRESS_CONFIG);
+  const [progressNotificationConfig, setProgressNotificationConfig] =
+    useState<ProgressNotificationConfig>(DEFAULT_PROGRESS_CONFIG);
 
   // Modais
   const [showFrequencyModal, setShowFrequencyModal] = useState(false);
@@ -118,19 +126,26 @@ export function useCreateHabitForm() {
 
   const getMaxForPeriod = useCallback((): number => {
     switch (frequencyGoalPeriod) {
-      case 'week': return 7;
-      case 'month': return 31;
-      case 'custom': return frequencyGoalCustomDays || 9999;
-      default: return 9999;
+      case 'week':
+        return 7;
+      case 'month':
+        return 31;
+      case 'custom':
+        return frequencyGoalCustomDays || 9999;
+      default:
+        return 9999;
     }
   }, [frequencyGoalPeriod, frequencyGoalCustomDays]);
 
   const validateForm = useCallback((): string | null => {
     const trimmedName = name.trim();
     if (!trimmedName) return 'Digite um nome para o hábito';
-    if (trimmedName.length < MIN_NAME_LENGTH) return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
-    if (trimmedName.length > MAX_NAME_LENGTH) return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
-    if (description.trim().length > MAX_DESCRIPTION_LENGTH) return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
+    if (trimmedName.length < MIN_NAME_LENGTH)
+      return `O nome deve ter pelo menos ${MIN_NAME_LENGTH} caracteres`;
+    if (trimmedName.length > MAX_NAME_LENGTH)
+      return `O nome deve ter no máximo ${MAX_NAME_LENGTH} caracteres`;
+    if (description.trim().length > MAX_DESCRIPTION_LENGTH)
+      return `A descrição deve ter no máximo ${MAX_DESCRIPTION_LENGTH} caracteres`;
 
     if (hasTarget) {
       const value = parseFloat(targetValue);
@@ -142,15 +157,30 @@ export function useCreateHabitForm() {
 
     if (hasFrequencyGoal) {
       if (frequencyGoalValue <= 0) return 'Digite quantas vezes para a meta de frequência';
-      if (frequencyGoalValue > getMaxForPeriod()) return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
-      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0) return 'Digite o número de dias para a meta personalizada';
+      if (frequencyGoalValue > getMaxForPeriod())
+        return `A meta não pode exceder ${getMaxForPeriod()} vezes neste período`;
+      if (frequencyGoalPeriod === 'custom' && frequencyGoalCustomDays <= 0)
+        return 'Digite o número de dias para a meta personalizada';
     }
 
     if (!hasFrequencyGoal && frequencyType === 'weekly' && frequencyDays.length === 0)
       return 'Selecione pelo menos um dia da semana';
 
     return null;
-  }, [name, description, hasTarget, targetValue, targetUnit, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays, frequencyType, frequencyDays, getMaxForPeriod]);
+  }, [
+    name,
+    description,
+    hasTarget,
+    targetValue,
+    targetUnit,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    frequencyType,
+    frequencyDays,
+    getMaxForPeriod,
+  ]);
 
   const formatTime = useCallback((date: Date) => {
     const hours = date.getHours().toString().padStart(2, '0');
@@ -162,20 +192,32 @@ export function useCreateHabitForm() {
 
   const getFrequencySummary = useCallback((): string => {
     if (hasFrequencyGoal) {
-      const periodLabel = frequencyGoalPeriod === 'week' ? 'semana'
-        : frequencyGoalPeriod === 'month' ? 'mês'
-        : `${frequencyGoalCustomDays || '?'} dias`;
-      return frequencyGoalValue > 0 ? `${frequencyGoalValue}x por ${periodLabel}` : 'Meta personalizada';
+      const periodLabel =
+        frequencyGoalPeriod === 'week'
+          ? 'semana'
+          : frequencyGoalPeriod === 'month'
+            ? 'mês'
+            : `${frequencyGoalCustomDays || '?'} dias`;
+      return frequencyGoalValue > 0
+        ? `${frequencyGoalValue}x por ${periodLabel}`
+        : 'Meta personalizada';
     }
     if (frequencyType === 'weekly') {
       if (frequencyDays.length === 7) return 'Todos os dias';
       if (frequencyDays.length === 0) return 'Nenhum dia';
       const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      if (frequencyDays.length <= 3) return frequencyDays.map(d => dayLabels[d]).join(', ');
+      if (frequencyDays.length <= 3) return frequencyDays.map((d) => dayLabels[d]).join(', ');
       return `${frequencyDays.length} dias/semana`;
     }
     return 'Todos os dias';
-  }, [hasFrequencyGoal, frequencyGoalPeriod, frequencyGoalCustomDays, frequencyGoalValue, frequencyType, frequencyDays]);
+  }, [
+    hasFrequencyGoal,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    frequencyGoalValue,
+    frequencyType,
+    frequencyDays,
+  ]);
 
   const getTargetSummary = useCallback((): string => {
     if (!hasTarget) return 'Desativada';
@@ -185,7 +227,8 @@ export function useCreateHabitForm() {
 
   const getRemindersSummary = useCallback((): string => {
     const parts: string[] = [];
-    if (reminders.length > 0) parts.push(`${reminders.length} ${reminders.length === 1 ? 'lembrete' : 'lembretes'}`);
+    if (reminders.length > 0)
+      parts.push(`${reminders.length} ${reminders.length === 1 ? 'lembrete' : 'lembretes'}`);
     if (progressNotificationConfig.enabled) parts.push('progresso ativo');
     return parts.length > 0 ? parts.join(' · ') : 'Nenhum configurado';
   }, [reminders, progressNotificationConfig]);
@@ -194,12 +237,23 @@ export function useCreateHabitForm() {
 
   const openFrequencyModal = useCallback(() => {
     frequencySnapshot.current = {
-      frequencyType, frequencyDays: [...frequencyDays],
-      hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays,
+      frequencyType,
+      frequencyDays: [...frequencyDays],
+      hasFrequencyGoal,
+      frequencyGoalValue,
+      frequencyGoalPeriod,
+      frequencyGoalCustomDays,
     };
     hapticFeedback.light();
     setShowFrequencyModal(true);
-  }, [frequencyType, frequencyDays, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays]);
+  }, [
+    frequencyType,
+    frequencyDays,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+  ]);
 
   const cancelFrequencyModal = useCallback(() => {
     if (frequencySnapshot.current) {
@@ -221,7 +275,7 @@ export function useCreateHabitForm() {
 
   const openRemindersModal = useCallback(() => {
     remindersSnapshot.current = {
-      reminders: reminders.map(r => ({ ...r })),
+      reminders: reminders.map((r) => ({ ...r })),
       progressNotificationConfig: { ...progressNotificationConfig },
     };
     hapticFeedback.light();
@@ -252,7 +306,7 @@ export function useCreateHabitForm() {
       return;
     }
     const timeString = formatTime(currentTime);
-    const exists = reminders.some(r => formatTime(r.time) === timeString);
+    const exists = reminders.some((r) => formatTime(r.time) === timeString);
     if (exists) {
       hapticFeedback.warning();
       setErrorMessage('Já existe um lembrete neste horário');
@@ -262,40 +316,60 @@ export function useCreateHabitForm() {
     const t = new Date();
     t.setHours(currentTime.getHours());
     t.setMinutes(currentTime.getMinutes());
-    t.setSeconds(0); t.setMilliseconds(0);
+    t.setSeconds(0);
+    t.setMilliseconds(0);
     hapticFeedback.success();
-    setReminders(prev => [...prev, { id: Math.random().toString(), time: t }]);
+    setReminders((prev) => [...prev, { id: Math.random().toString(), time: t }]);
     setShowTimePicker(false);
     setCurrentTime(new Date());
   }, [reminders, currentTime, formatTime]);
 
   const handleRemoveReminder = useCallback((id: string) => {
     hapticFeedback.medium();
-    setReminders(prev => prev.filter(r => r.id !== id));
+    setReminders((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  const onTimeChange = useCallback((event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-      if (event.type === 'set' && date) {
-        setCurrentTime(date);
-        setTimeout(() => {
-          const timeString = formatTime(date);
-          setReminders(prev => {
-            const exists = prev.some(r => formatTime(r.time) === timeString);
-            if (exists) { hapticFeedback.warning(); setErrorMessage('Já existe um lembrete neste horário'); setShowErrorToast(true); return prev; }
-            if (prev.length >= MAX_REMINDERS) { hapticFeedback.error(); setErrorMessage(`Máximo ${MAX_REMINDERS} lembretes`); setShowErrorToast(true); return prev; }
-            const t = new Date(); t.setHours(date.getHours()); t.setMinutes(date.getMinutes()); t.setSeconds(0); t.setMilliseconds(0);
-            hapticFeedback.success();
-            return [...prev, { id: Math.random().toString(), time: t }];
-          });
-          setCurrentTime(new Date());
-        }, 100);
-      } else { hapticFeedback.light(); }
-    } else {
-      if (date) setCurrentTime(date);
-    }
-  }, [formatTime]);
+  const onTimeChange = useCallback(
+    (event: DateTimePickerEvent, date?: Date) => {
+      if (Platform.OS === 'android') {
+        setShowTimePicker(false);
+        if (event.type === 'set' && date) {
+          setCurrentTime(date);
+          setTimeout(() => {
+            const timeString = formatTime(date);
+            setReminders((prev) => {
+              const exists = prev.some((r) => formatTime(r.time) === timeString);
+              if (exists) {
+                hapticFeedback.warning();
+                setErrorMessage('Já existe um lembrete neste horário');
+                setShowErrorToast(true);
+                return prev;
+              }
+              if (prev.length >= MAX_REMINDERS) {
+                hapticFeedback.error();
+                setErrorMessage(`Máximo ${MAX_REMINDERS} lembretes`);
+                setShowErrorToast(true);
+                return prev;
+              }
+              const t = new Date();
+              t.setHours(date.getHours());
+              t.setMinutes(date.getMinutes());
+              t.setSeconds(0);
+              t.setMilliseconds(0);
+              hapticFeedback.success();
+              return [...prev, { id: Math.random().toString(), time: t }];
+            });
+            setCurrentTime(new Date());
+          }, 100);
+        } else {
+          hapticFeedback.light();
+        }
+      } else {
+        if (date) setCurrentTime(date);
+      }
+    },
+    [formatTime]
+  );
 
   // ===== SUBMIT =====
 
@@ -329,7 +403,8 @@ export function useCreateHabitForm() {
       target_unit: hasTarget ? targetUnit.trim() : null,
       frequency_goal_value: hasFrequencyGoal ? frequencyGoalValue : null,
       frequency_goal_period: hasFrequencyGoal ? frequencyGoalPeriod : null,
-      frequency_goal_custom_days: hasFrequencyGoal && frequencyGoalPeriod === 'custom' ? frequencyGoalCustomDays : null,
+      frequency_goal_custom_days:
+        hasFrequencyGoal && frequencyGoalPeriod === 'custom' ? frequencyGoalCustomDays : null,
       color: selectedColor,
       icon: habitType === 'negative' ? 'xCircle' : 'star',
     };
@@ -359,7 +434,9 @@ export function useCreateHabitForm() {
           // compõe o id do alarme nativo e precisa ser único por lembrete.
           const { data: created, error: insertError } = await remindersTable()
             .insert({
-              habit_id: habit.id, time: timeString, days_of_week: daysOfWeek,
+              habit_id: habit.id,
+              time: timeString,
+              days_of_week: daysOfWeek,
               is_active: true,
             })
             .select('id')
@@ -368,22 +445,31 @@ export function useCreateHabitForm() {
 
           const reminderId = (created as Pick<Reminder, 'id'>).id;
           const notificationIds = await notificationService.scheduleWeeklyReminder(
-            habit.id, habit.name, timeString, daysOfWeek, reminderId,
-            'default', { hasTarget: habit.has_target }
+            habit.id,
+            habit.name,
+            timeString,
+            daysOfWeek,
+            reminderId,
+            'default',
+            { hasTarget: habit.has_target }
           );
           if (notificationIds.length > 0) {
             await remindersTable()
               .update({ notification_ids: notificationIds })
               .eq('id', reminderId);
           }
-        } catch (e) { console.error('Erro ao criar lembrete:', e); }
+        } catch (e) {
+          console.error('Erro ao criar lembrete:', e);
+        }
       }
     }
 
     if (progressNotificationConfig.enabled) {
       try {
         await supabase.from('habit_progress_notifications').insert({
-          habit_id: habit.id, user_id: user.id, enabled: true,
+          habit_id: habit.id,
+          user_id: user.id,
+          enabled: true,
           morning_enabled: progressNotificationConfig.morningEnabled,
           morning_time: progressNotificationConfig.morningTime,
           afternoon_enabled: progressNotificationConfig.afternoonEnabled,
@@ -392,11 +478,15 @@ export function useCreateHabitForm() {
           evening_time: progressNotificationConfig.eveningTime,
         });
         await progressNotificationScheduler.scheduleProgressNotifications(habit.id, user.id);
-      } catch (e) { console.warn('Erro ao criar notificações de progresso:', e); }
+      } catch (e) {
+        console.warn('Erro ao criar notificações de progresso:', e);
+      }
     } else {
       try {
         await progressNotificationScheduler.createDefaultSettings(habit.id, user.id);
-      } catch (e) { console.warn('Erro ao criar configuração padrão:', e); }
+      } catch (e) {
+        console.warn('Erro ao criar configuração padrão:', e);
+      }
     }
 
     setLoading(false);
@@ -408,7 +498,27 @@ export function useCreateHabitForm() {
       // Depois de sair do formulário, para o aviso não cobrir a tela.
       if (createdReminders) void maybePromptAfterFirstReminder();
     }, 1500);
-  }, [validateForm, user?.id, name, description, habitType, frequencyType, frequencyDays, hasTarget, targetValue, targetUnit, hasFrequencyGoal, frequencyGoalValue, frequencyGoalPeriod, frequencyGoalCustomDays, selectedColor, createHabit, reminders, formatTime, progressNotificationConfig]);
+  }, [
+    validateForm,
+    user?.id,
+    name,
+    description,
+    habitType,
+    frequencyType,
+    frequencyDays,
+    hasTarget,
+    targetValue,
+    targetUnit,
+    hasFrequencyGoal,
+    frequencyGoalValue,
+    frequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    selectedColor,
+    createHabit,
+    reminders,
+    formatTime,
+    progressNotificationConfig,
+  ]);
 
   const handleCancel = useCallback(() => {
     hapticFeedback.light();
@@ -432,26 +542,43 @@ export function useCreateHabitForm() {
 
   return {
     loading,
-    name, setName,
-    description, setDescription,
-    habitType, setHabitType,
-    selectedColor, setSelectedColor,
-    hasTarget, setHasTarget,
-    targetValue, setTargetValue,
-    targetUnit, setTargetUnit,
-    showTargetInline, setShowTargetInline,
-    frequencyType, setFrequencyType,
-    frequencyDays, setFrequencyDays,
-    hasFrequencyGoal, setHasFrequencyGoal,
-    frequencyGoalValue, setFrequencyGoalValue,
-    frequencyGoalPeriod, setFrequencyGoalPeriod,
-    frequencyGoalCustomDays, setFrequencyGoalCustomDays,
+    name,
+    setName,
+    description,
+    setDescription,
+    habitType,
+    setHabitType,
+    selectedColor,
+    setSelectedColor,
+    hasTarget,
+    setHasTarget,
+    targetValue,
+    setTargetValue,
+    targetUnit,
+    setTargetUnit,
+    showTargetInline,
+    setShowTargetInline,
+    frequencyType,
+    setFrequencyType,
+    frequencyDays,
+    setFrequencyDays,
+    hasFrequencyGoal,
+    setHasFrequencyGoal,
+    frequencyGoalValue,
+    setFrequencyGoalValue,
+    frequencyGoalPeriod,
+    setFrequencyGoalPeriod,
+    frequencyGoalCustomDays,
+    setFrequencyGoalCustomDays,
     hasPermission,
     requestNotificationPermission,
     reminders,
-    showTimePicker, setShowTimePicker,
-    currentTime, setCurrentTime,
-    progressNotificationConfig, setProgressNotificationConfig,
+    showTimePicker,
+    setShowTimePicker,
+    currentTime,
+    setCurrentTime,
+    progressNotificationConfig,
+    setProgressNotificationConfig,
     showFrequencyModal,
     openFrequencyModal,
     cancelFrequencyModal,
@@ -473,8 +600,10 @@ export function useCreateHabitForm() {
     showCancelConfirm,
     confirmDiscard,
     dismissDiscardConfirm,
-    showSuccessToast, setShowSuccessToast,
-    showErrorToast, setShowErrorToast,
+    showSuccessToast,
+    setShowSuccessToast,
+    showErrorToast,
+    setShowErrorToast,
     errorMessage,
   };
 }

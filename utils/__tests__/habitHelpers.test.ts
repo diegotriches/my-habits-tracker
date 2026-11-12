@@ -1,22 +1,35 @@
-import { formatSelectedDays, getDaysPerWeek, getScheduledWeekDays, shouldHabitAppearOnDate } from '../habitHelpers';
+import {
+  formatSelectedDays,
+  getDaysPerWeek,
+  getScheduledWeekDays,
+  shouldHabitAppearOnDate,
+} from '../habitHelpers';
 import { local, makeHabit } from './testHelpers';
 
 describe('getDaysPerWeek', () => {
   it('meta semanal define o esperado da semana (ex.: 3x por semana)', () => {
-    expect(getDaysPerWeek(makeHabit({ frequency_goal_value: 3, frequency_goal_period: 'week' }))).toBe(3);
+    expect(
+      getDaysPerWeek(makeHabit({ frequency_goal_value: 3, frequency_goal_period: 'week' }))
+    ).toBe(3);
   });
 
   it('meta semanal acima de 7 é limitada a 7', () => {
-    expect(getDaysPerWeek(makeHabit({ frequency_goal_value: 10, frequency_goal_period: 'week' }))).toBe(7);
+    expect(
+      getDaysPerWeek(makeHabit({ frequency_goal_value: 10, frequency_goal_period: 'week' }))
+    ).toBe(7);
   });
 
   it('meta mensal não vale para a semana', () => {
-    expect(getDaysPerWeek(makeHabit({ frequency_goal_value: 3, frequency_goal_period: 'month' }))).toBe(7);
+    expect(
+      getDaysPerWeek(makeHabit({ frequency_goal_value: 3, frequency_goal_period: 'month' }))
+    ).toBe(7);
   });
 
   it('diário: 7; dias específicos: quantidade de dias', () => {
     expect(getDaysPerWeek(makeHabit())).toBe(7);
-    expect(getDaysPerWeek(makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] }))).toBe(3);
+    expect(getDaysPerWeek(makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] }))).toBe(
+      3
+    );
   });
 });
 
@@ -46,7 +59,11 @@ describe('agenda do hábito', () => {
   });
 
   it('dias dos lembretes: os programados, em ordem; sem programação, todos', () => {
-    expect(getScheduledWeekDays({ frequency_type: 'weekly', frequency_days: [3, 1] })).toEqual([1, 3]);
-    expect(getScheduledWeekDays({ frequency_type: 'daily', frequency_days: null })).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(getScheduledWeekDays({ frequency_type: 'weekly', frequency_days: [3, 1] })).toEqual([
+      1, 3,
+    ]);
+    expect(getScheduledWeekDays({ frequency_type: 'daily', frequency_days: null })).toEqual([
+      0, 1, 2, 3, 4, 5, 6,
+    ]);
   });
 });

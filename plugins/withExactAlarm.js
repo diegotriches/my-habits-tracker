@@ -1,5 +1,9 @@
 // plugins/withExactAlarm.js
-const { withAppBuildGradle, withMainApplication, withAndroidManifest } = require('@expo/config-plugins');
+const {
+  withAppBuildGradle,
+  withMainApplication,
+  withAndroidManifest,
+} = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -57,7 +61,8 @@ function withMainApplicationPackage(config) {
     if (!contents.includes('add(ExactAlarmPackage())')) {
       contents = contents.replace(
         /(PackageList\(this\)\.packages\.apply\s*\{)([\s\S]*?)(\})/,
-        (match, open, body, close) => `${open}${body}  add(ExactAlarmPackage())\n              ${close}`
+        (match, open, body, close) =>
+          `${open}${body}  add(ExactAlarmPackage())\n              ${close}`
       );
       console.log('[withExactAlarm] add(ExactAlarmPackage()) inserido');
     }
@@ -91,14 +96,20 @@ function withAlarmManifest(config) {
 
     if (!app.receiver.some((r) => r.$['android:name'] === '.AlarmReceiver')) {
       app.receiver.push({
-        $: { 'android:name': '.AlarmReceiver', 'android:enabled': 'true', 'android:exported': 'false' },
-        'intent-filter': [{
-          action: [
-            { $: { 'android:name': `${PACKAGE_NAME}.EXACT_ALARM` } },
-            { $: { 'android:name': `${PACKAGE_NAME}.ACTION_SNOOZE` } },
-            { $: { 'android:name': `${PACKAGE_NAME}.ACTION_COMPLETE` } },
-          ],
-        }],
+        $: {
+          'android:name': '.AlarmReceiver',
+          'android:enabled': 'true',
+          'android:exported': 'false',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': `${PACKAGE_NAME}.EXACT_ALARM` } },
+              { $: { 'android:name': `${PACKAGE_NAME}.ACTION_SNOOZE` } },
+              { $: { 'android:name': `${PACKAGE_NAME}.ACTION_COMPLETE` } },
+            ],
+          },
+        ],
       });
       console.log('[withExactAlarm] AlarmReceiver adicionado');
     }
@@ -109,13 +120,19 @@ function withAlarmManifest(config) {
     // MY_PACKAGE_REPLACED são broadcasts do sistema (fonte externa ao app).
     if (!app.receiver.some((r) => r.$['android:name'] === '.BootReceiver')) {
       app.receiver.push({
-        $: { 'android:name': '.BootReceiver', 'android:enabled': 'true', 'android:exported': 'true' },
-        'intent-filter': [{
-          action: [
-            { $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } },
-            { $: { 'android:name': 'android.intent.action.MY_PACKAGE_REPLACED' } },
-          ],
-        }],
+        $: {
+          'android:name': '.BootReceiver',
+          'android:enabled': 'true',
+          'android:exported': 'true',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } },
+              { $: { 'android:name': 'android.intent.action.MY_PACKAGE_REPLACED' } },
+            ],
+          },
+        ],
       });
       console.log('[withExactAlarm] BootReceiver adicionado');
     }

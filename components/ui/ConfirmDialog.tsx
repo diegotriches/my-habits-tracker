@@ -42,7 +42,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     if (visible) {
       // Haptic feedback ao abrir dialog
       hapticFeedback.warning();
-      
+
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -78,18 +78,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={onCancel}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
       <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
-        <TouchableOpacity
-          style={styles.overlayTouch}
-          activeOpacity={1}
-          onPress={onCancel}
-        />
+        <TouchableOpacity style={styles.overlayTouch} activeOpacity={1} onPress={onCancel} />
 
         <Animated.View
           style={[
@@ -100,19 +91,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             },
           ]}
         >
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {title}
-          </Text>
-          <Text style={[styles.message, { color: colors.textSecondary }]}>
-            {message}
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+          <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: colors.surfaceElevated },
-              ]}
+              style={[styles.button, { backgroundColor: colors.surfaceElevated }]}
               onPress={handleCancel}
             >
               <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
@@ -124,8 +108,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               style={[
                 styles.button,
                 {
-                  backgroundColor:
-                    confirmColor === 'danger' ? colors.danger : colors.primary,
+                  backgroundColor: confirmColor === 'danger' ? colors.danger : colors.primary,
                 },
               ]}
               onPress={handleConfirm}

@@ -67,7 +67,7 @@ export default function HomeScreen() {
     if (previousDay === today) return;
     previousDayRef.current = today;
     const previousWeekStart = startOfWeek(parseISO(previousDay), { weekStartsOn: 0 });
-    setSelectedWeekStart(current =>
+    setSelectedWeekStart((current) =>
       isSameDay(current, previousWeekStart) ? startOfWeek(new Date(), { weekStartsOn: 0 }) : current
     );
   }, [today]);
@@ -75,21 +75,25 @@ export default function HomeScreen() {
   const { fetchStreaks, getStreak, checkExpiredStreaks } = useStreaks();
   const { profile, refetch: refetchProfile } = useProfile();
   const connectivity = useConnectivity();
-  const {
-    isVisible: showConfetti,
-    celebrate,
-    closeCelebration,
-  } = useCelebration();
+  const { isVisible: showConfetti, celebrate, closeCelebration } = useCelebration();
 
   // Ordem arrastável — memoizado para não recalcular a cada render,
   // só quando a lista de hábitos de fato mudar.
-  const habitIds = useMemo(() => habits.map(h => h.id), [habits]);
+  const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
   const { orderedIds, updateOrder } = useHabitOrder(habitIds);
 
   const {
-    showSuccessToast, setShowSuccessToast, successMessage,
-    showUncompleteConfirm, handleConfirmUncomplete, cancelUncomplete,
-    showProgressModal, selectedHabit, progressCurrentValue, handleConfirmProgress, cancelProgress,
+    showSuccessToast,
+    setShowSuccessToast,
+    successMessage,
+    showUncompleteConfirm,
+    handleConfirmUncomplete,
+    cancelUncomplete,
+    showProgressModal,
+    selectedHabit,
+    progressCurrentValue,
+    handleConfirmProgress,
+    cancelProgress,
     handleDayPress,
   } = useHabitCompletionActions({
     userId: user?.id,
@@ -115,7 +119,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (habits.length > 0) {
-      const ids = habits.map(h => h.id);
+      const ids = habits.map((h) => h.id);
       fetchStreaks(ids);
       checkExpiredStreaks(habits);
     }
@@ -131,7 +135,10 @@ export default function HomeScreen() {
   }, [selectedWeekStart]);
 
   const handleCreateHabit = useCallback(() => router.push('/habits/create' as any), []);
-  const handleHabitPress = useCallback((habitId: string) => router.push(`/habits/${habitId}` as any), []);
+  const handleHabitPress = useCallback(
+    (habitId: string) => router.push(`/habits/${habitId}` as any),
+    []
+  );
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([
@@ -143,7 +150,9 @@ export default function HomeScreen() {
 
   // Depois de importar um backup, hábitos e marcações mudam de uma vez.
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener(DATA_IMPORTED_EVENT, () => { void handleRefresh(); });
+    const subscription = DeviceEventEmitter.addListener(DATA_IMPORTED_EVENT, () => {
+      void handleRefresh();
+    });
     return () => subscription.remove();
   }, [handleRefresh]);
 
@@ -159,33 +168,50 @@ export default function HomeScreen() {
       DeviceEventEmitter.addListener(COMPLETIONS_SYNCED_EVENT, refresh),
       DeviceEventEmitter.addListener(OUTBOX_SYNCED_EVENT, refresh),
     ];
-    return () => subscriptions.forEach(s => s.remove());
+    return () => subscriptions.forEach((s) => s.remove());
   }, [refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
 
-  const renderHabit = useCallback((item: Habit) => {
-    const isDueToday = isHabitDueToday(item);
-    return (
-      <HabitWeeklyRow
-        habit={item}
-        streak={getStreak(item.id)}
-        completions={weeklyCompletions.filter(c => c.habit_id === item.id)}
-        onDayPress={handleDayPress}
-        onHabitPress={handleHabitPress}
-        isDueToday={isDueToday}
-        weekStart={selectedWeekStart}
-        onWeekChange={handleWeekChange}
-      />
-    );
-    // `today` recalcula isDueToday e o destaque do dia na virada do dia.
-  }, [getStreak, weeklyCompletions, handleDayPress, handleHabitPress, selectedWeekStart, handleWeekChange, today]);
+  const renderHabit = useCallback(
+    (item: Habit) => {
+      const isDueToday = isHabitDueToday(item);
+      return (
+        <HabitWeeklyRow
+          habit={item}
+          streak={getStreak(item.id)}
+          completions={weeklyCompletions.filter((c) => c.habit_id === item.id)}
+          onDayPress={handleDayPress}
+          onHabitPress={handleHabitPress}
+          isDueToday={isDueToday}
+          weekStart={selectedWeekStart}
+          onWeekChange={handleWeekChange}
+        />
+      );
+      // `today` recalcula isDueToday e o destaque do dia na virada do dia.
+    },
+    [
+      getStreak,
+      weeklyCompletions,
+      handleDayPress,
+      handleHabitPress,
+      selectedWeekStart,
+      handleWeekChange,
+      today,
+    ]
+  );
 
   if (habitsLoading && habits.length === 0) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            { backgroundColor: colors.background, borderBottomColor: colors.border },
+          ]}
+        >
           <View>
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              {getGreeting()}{firstName ? `, ${firstName}!` : '!'}
+              {getGreeting()}
+              {firstName ? `, ${firstName}!` : '!'}
             </Text>
             <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
           </View>
@@ -200,7 +226,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-
       <Confetti visible={showConfetti} onComplete={closeCelebration} particleCount={60} />
 
       <SuccessToast
@@ -233,10 +258,16 @@ export default function HomeScreen() {
         />
       )}
 
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
         <View>
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-            {getGreeting()}{firstName ? `, ${firstName}!` : '!'}
+            {getGreeting()}
+            {firstName ? `, ${firstName}!` : '!'}
           </Text>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Meus Hábitos</Text>
         </View>
@@ -247,7 +278,10 @@ export default function HomeScreen() {
           activeOpacity={0.7}
         >
           {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={[styles.avatar, { borderColor: colors.primary }]} />
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={[styles.avatar, { borderColor: colors.primary }]}
+            />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
               <Text style={styles.avatarInitial}>
@@ -258,7 +292,10 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <OfflineStatusBanner isOffline={connectivity.isOffline} pendingCount={connectivity.pendingCount} />
+      <OfflineStatusBanner
+        isOffline={connectivity.isOffline}
+        pendingCount={connectivity.pendingCount}
+      />
 
       {habits.length === 0 ? (
         <EmptyState
@@ -289,10 +326,7 @@ export default function HomeScreen() {
                   {todayFormatted}
                 </Text>
               </View>
-              <WeekNavigator
-                weekStart={selectedWeekStart}
-                onWeekChange={handleWeekChange}
-              />
+              <WeekNavigator weekStart={selectedWeekStart} onWeekChange={handleWeekChange} />
             </View>
           }
           contentContainerStyle={styles.listContent}
@@ -326,18 +360,29 @@ const styles = StyleSheet.create({
   avatarButton: { padding: 2 },
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2 },
   avatarPlaceholder: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   todayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   todayText: { fontSize: 13, fontWeight: '500' },
   fab: {
-    position: 'absolute', bottom: 70, right: 20,
-    width: 56, height: 56, borderRadius: 28,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    position: 'absolute',
+    bottom: 70,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   listContent: { padding: 20, paddingBottom: 120 },
 });

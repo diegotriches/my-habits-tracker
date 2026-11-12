@@ -36,12 +36,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <Text style={styles.iconEmoji}>{iconEmoji}</Text>
       )}
 
-      <Text style={[styles.title, { color: colors.textPrimary }]}>
-        {title}
-      </Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        {subtitle}
-      </Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
 
       {buttonText && onButtonPress && (
         <TouchableOpacity

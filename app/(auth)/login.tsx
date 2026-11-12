@@ -139,22 +139,14 @@ export default function LoginScreen() {
           <View style={[styles.logoCircle, { backgroundColor: colors.primaryLight }]}>
             <Icon name="target" size={48} color={colors.primary} />
           </View>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            My Habits Tracker
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Entre na sua conta
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>My Habits Tracker</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Entre na sua conta</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Google Sign In Button */}
-          <GoogleSignInButton
-            onPress={handleGoogleSignIn}
-            loading={loading}
-            disabled={loading}
-          />
+          <GoogleSignInButton onPress={handleGoogleSignIn} loading={loading} disabled={loading} />
 
           {/* Divider */}
           <View style={styles.divider}>
@@ -178,11 +170,14 @@ export default function LoginScreen() {
                   <Icon name="mail" size={20} color={colors.textTertiary} />
                 </View>
                 <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.textPrimary,
-                  }]}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="Email"
                   placeholderTextColor={colors.textTertiary}
                   value={forgotEmail}
@@ -225,11 +220,14 @@ export default function LoginScreen() {
                   <Icon name="mail" size={20} color={colors.textTertiary} />
                 </View>
                 <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.textPrimary,
-                  }]}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="Email"
                   placeholderTextColor={colors.textTertiary}
                   value={email}
@@ -246,11 +244,14 @@ export default function LoginScreen() {
                   <Icon name="lock" size={20} color={colors.textTertiary} />
                 </View>
                 <TextInput
-                  style={[styles.input, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.textPrimary,
-                  }]}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                    },
+                  ]}
                   placeholder="Senha"
                   placeholderTextColor={colors.textTertiary}
                   value={password}
@@ -263,7 +264,7 @@ export default function LoginScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                 >
                   <Icon
-                    name={showPassword ? "eye" : "eyeOff"}
+                    name={showPassword ? 'eye' : 'eyeOff'}
                     size={20}
                     color={colors.textTertiary}
                   />
@@ -293,29 +294,17 @@ export default function LoginScreen() {
                   <ActivityIndicator color={colors.textInverse} />
                 ) : (
                   <>
-                    <Icon
-                      name="login"
-                      size={20}
-                      color={colors.textInverse}
-                    />
-                    <Text style={[styles.buttonText, { color: colors.textInverse }]}>
-                      Entrar
-                    </Text>
+                    <Icon name="login" size={20} color={colors.textInverse} />
+                    <Text style={[styles.buttonText, { color: colors.textInverse }]}>Entrar</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               {/* Ir para Cadastro */}
-              <TouchableOpacity
-                style={styles.toggleButton}
-                onPress={goToSignup}
-                disabled={loading}
-              >
+              <TouchableOpacity style={styles.toggleButton} onPress={goToSignup} disabled={loading}>
                 <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
                   Não tem conta?{' '}
-                  <Text style={{ color: colors.primary, fontWeight: '600' }}>
-                    Cadastre-se
-                  </Text>
+                  <Text style={{ color: colors.primary, fontWeight: '600' }}>Cadastre-se</Text>
                 </Text>
               </TouchableOpacity>
             </>

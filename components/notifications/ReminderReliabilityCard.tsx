@@ -24,7 +24,9 @@ interface RowProps {
 const Row = React.memo(function Row({ ok, title, okText, problemText, onFix }: RowProps) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+    <View
+      style={[styles.row, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
+    >
       <Icon
         name={ok ? 'checkCircle' : 'alertTriangle'}
         size={20}
@@ -32,7 +34,9 @@ const Row = React.memo(function Row({ ok, title, okText, problemText, onFix }: R
       />
       <View style={styles.rowText}>
         <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{title}</Text>
-        <Text style={[styles.rowHelper, { color: colors.textSecondary }]}>{ok ? okText : problemText}</Text>
+        <Text style={[styles.rowHelper, { color: colors.textSecondary }]}>
+          {ok ? okText : problemText}
+        </Text>
       </View>
       {!ok && (
         <TouchableOpacity
@@ -61,7 +65,12 @@ export const ReminderReliabilityCard = React.memo(function ReminderReliabilityCa
 
   return (
     <View>
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+      <Text
+        style={[
+          styles.sectionTitle,
+          { color: colors.textSecondary, backgroundColor: colors.surface },
+        ]}
+      >
         Lembretes confiáveis
       </Text>
 
@@ -81,7 +90,12 @@ export const ReminderReliabilityCard = React.memo(function ReminderReliabilityCa
       />
 
       {manufacturerTip && (
-        <View style={[styles.tip, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.tip,
+            { backgroundColor: colors.background, borderBottomColor: colors.border },
+          ]}
+        >
           <Icon name="lightbulb" size={18} color={colors.textSecondary} />
           <Text style={[styles.tipText, { color: colors.textSecondary }]}>{manufacturerTip}</Text>
         </View>

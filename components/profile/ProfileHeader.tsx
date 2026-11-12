@@ -82,9 +82,7 @@ export default function ProfileHeader({ profile, onAvatarUpdated }: ProfileHeade
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 

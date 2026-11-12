@@ -57,11 +57,13 @@ Se a build local falhar com `OutOfMemoryError: Metaspace`, aumente a memória do
 ## Configuração do ambiente
 
 1. Instale as dependências:
+
    ```bash
    npm install
    ```
 
 2. Crie um `.env.local` na raiz com as credenciais do Supabase:
+
    ```
    EXPO_PUBLIC_SUPABASE_URL=...
    EXPO_PUBLIC_SUPABASE_ANON_KEY=...
@@ -78,11 +80,13 @@ Se a build local falhar com `OutOfMemoryError: Metaspace`, aumente a memória do
 ## Rodando o projeto
 
 Se já existe uma build de desenvolvedor instalada no celular/emulador:
+
 ```bash
 npx expo start --dev-client
 ```
 
 Se precisar gerar/instalar a build de desenvolvedor pela primeira vez (ou depois de mudanças nativas):
+
 ```bash
 npx expo run:android
 ```
@@ -104,20 +108,22 @@ Jest com o preset `jest-expo`. Os testes ficam em `__tests__/` (`*.test.ts`) e c
 
 O projeto usa três profiles no `eas.json`:
 
-| Profile | Uso |
-|---|---|
-| `development` | Build com dev client embutido, para desenvolvimento local com hot reload |
-| `preview` | Build de teste (APK), canal `preview` — use este para validar mudanças antes de produção |
-| `production` | Build final, canal `production`, incrementa `versionCode` automaticamente |
+| Profile       | Uso                                                                                      |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| `development` | Build com dev client embutido, para desenvolvimento local com hot reload                 |
+| `preview`     | Build de teste (APK), canal `preview` — use este para validar mudanças antes de produção |
+| `production`  | Build final, canal `production`, incrementa `versionCode` automaticamente                |
 
 ```bash
 eas build --platform android --profile preview
 ```
 
 Para mudanças **só em JS/TSX** (sem tocar em `plugins/`, `app.json` nativo, ou dependências nativas), não é preciso gerar build novo — publique via OTA:
+
 ```bash
 eas update --branch preview --platform android --message "descrição da mudança"
 ```
+
 > Use sempre `--platform android` — o export da versão Web está atualmente quebrado (ver [Problemas conhecidos](#problemas-conhecidos)).
 
 > O `runtimeVersion` usa a política **`fingerprint`**: o Expo calcula a versão a partir do código nativo, e um OTA só chega às builds com o mesmo nativo. Depois de qualquer mudança nativa, **gere e distribua a build nova antes de publicar OTAs** — eles não chegam às builds antigas (que quebrariam ao carregar um JS que importa módulos nativos que elas não têm). O `android/` local não entra no cálculo (o `@expo/fingerprint` o trata como gerado, por estar no `.gitignore`); para conferir a versão: `npx expo-updates runtimeversion:resolve --platform android`.
@@ -206,5 +212,5 @@ O app hoje é um projeto de portfólio, sem publicação prevista. Se isso mudar
 ## Contribuindo
 
 - Branches: `refactor/`, `fix/`, `feat/` como prefixo (ex: `refactor/habit-details-screen`)
-- Commits seguem o padrão `tipo: descrição curta` (`feat`, `fix`, `refactor`, `chore`) com corpo explicando o *porquê*, não só o *o quê* — especialmente quando a mudança corrige um bug real, não só reorganiza código
+- Commits seguem o padrão `tipo: descrição curta` (`feat`, `fix`, `refactor`, `chore`) com corpo explicando o _porquê_, não só o _o quê_ — especialmente quando a mudança corrige um bug real, não só reorganiza código
 - Antes de abrir PR com mudanças nativas (`plugins/`, `app.json`), rode `npx expo prebuild --clean` e confirme que builda

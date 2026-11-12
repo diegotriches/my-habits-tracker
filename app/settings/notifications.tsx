@@ -154,14 +154,24 @@ export default function NotificationSettingsScreen() {
     );
   }
 
-  const selectedSound = SOUND_OPTIONS.find(s => s.value === settings.default_sound) || SOUND_OPTIONS[0];
-  const selectedSnooze = SNOOZE_OPTIONS.find(s => s.value === settings.default_snooze_minutes) || SNOOZE_OPTIONS[1];
+  const selectedSound =
+    SOUND_OPTIONS.find((s) => s.value === settings.default_sound) || SOUND_OPTIONS[0];
+  const selectedSnooze =
+    SNOOZE_OPTIONS.find((s) => s.value === settings.default_snooze_minutes) || SNOOZE_OPTIONS[1];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+        >
           <Icon name="chevronLeft" size={20} color={colors.primary} />
           <Text style={[styles.backButton, { color: colors.primary }]}>Voltar</Text>
         </TouchableOpacity>
@@ -174,7 +184,11 @@ export default function NotificationSettingsScreen() {
         <View style={[styles.section, { backgroundColor: colors.background }]}>
           <View style={styles.masterToggle}>
             <View style={styles.masterToggleLeft}>
-              <Icon name="bell" size={32} color={settings.enabled ? colors.primary : colors.textTertiary} />
+              <Icon
+                name="bell"
+                size={32}
+                color={settings.enabled ? colors.primary : colors.textTertiary}
+              />
               <View>
                 <Text style={[styles.masterToggleTitle, { color: colors.textPrimary }]}>
                   Ativar Notificações
@@ -186,7 +200,9 @@ export default function NotificationSettingsScreen() {
             </View>
             <Switch
               value={settings.enabled}
-              onValueChange={() => { void toggleEnabled(); }}
+              onValueChange={() => {
+                void toggleEnabled();
+              }}
               trackColor={{ false: colors.border, true: colors.primaryLight }}
               thumbColor={settings.enabled ? colors.primary : colors.surface}
             />
@@ -204,50 +220,73 @@ export default function NotificationSettingsScreen() {
         )}
 
         {/* Configurações Gerais */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.textSecondary, backgroundColor: colors.surface },
+          ]}
+        >
           Configurações Gerais
         </Text>
 
         {/* Som Padrão */}
         <TouchableOpacity
-          style={[styles.settingItem, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
           onPress={() => setShowSoundPicker(!showSoundPicker)}
           disabled={!settings.enabled}
         >
           <View style={styles.settingLeft}>
-            <Icon name="sound" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
-            <Text style={[
-              styles.settingText,
-              { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-            ]}>
+            <Icon
+              name="sound"
+              size={20}
+              color={settings.enabled ? colors.textSecondary : colors.textDisabled}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: settings.enabled ? colors.textPrimary : colors.textDisabled },
+              ]}
+            >
               Som Padrão
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Icon name={selectedSound.icon as any} size={16} color={colors.textSecondary} />
-            <Text style={[
-              styles.settingValue,
-              { color: settings.enabled ? colors.textSecondary : colors.textDisabled }
-            ]}>
+            <Text
+              style={[
+                styles.settingValue,
+                { color: settings.enabled ? colors.textSecondary : colors.textDisabled },
+              ]}
+            >
               {selectedSound.label}
             </Text>
           </View>
         </TouchableOpacity>
 
         {showSoundPicker && settings.enabled && (
-          <View style={[styles.pickerContainer, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}>
+          <View
+            style={[
+              styles.pickerContainer,
+              {
+                backgroundColor: colors.background,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
             {SOUND_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
                   styles.pickerItem,
-                  settings.default_sound === option.value && { backgroundColor: colors.primaryLight },
+                  settings.default_sound === option.value && {
+                    backgroundColor: colors.primaryLight,
+                  },
                 ]}
                 onPress={() => handleUpdateSound(option.value)}
               >
@@ -264,22 +303,35 @@ export default function NotificationSettingsScreen() {
         )}
 
         {/* Vibração */}
-        <View style={[styles.settingItem, {
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border
-        }]}>
+        <View
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <View style={styles.settingLeft}>
-            <Icon name="vibrate" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
-            <Text style={[
-              styles.settingText,
-              { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-            ]}>
+            <Icon
+              name="vibrate"
+              size={20}
+              color={settings.enabled ? colors.textSecondary : colors.textDisabled}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: settings.enabled ? colors.textPrimary : colors.textDisabled },
+              ]}
+            >
               Vibração
             </Text>
           </View>
           <Switch
             value={settings.vibration_enabled}
-            onValueChange={() => { void toggleVibration(); }}
+            onValueChange={() => {
+              void toggleVibration();
+            }}
             disabled={!settings.enabled}
             trackColor={{ false: colors.border, true: colors.primaryLight }}
             thumbColor={settings.vibration_enabled ? colors.primary : colors.surface}
@@ -287,17 +339,28 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {/* Notificações Inteligentes */}
-        <View style={[styles.settingItem, {
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border
-        }]}>
+        <View
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <View style={styles.settingLeft}>
-            <Icon name="brain" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
+            <Icon
+              name="brain"
+              size={20}
+              color={settings.enabled ? colors.textSecondary : colors.textDisabled}
+            />
             <View style={{ flex: 1 }}>
-              <Text style={[
-                styles.settingText,
-                { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-              ]}>
+              <Text
+                style={[
+                  styles.settingText,
+                  { color: settings.enabled ? colors.textPrimary : colors.textDisabled },
+                ]}
+              >
                 Notificações Inteligentes
               </Text>
               <Text style={[styles.settingHelper, { color: colors.textTertiary }]}>
@@ -307,7 +370,9 @@ export default function NotificationSettingsScreen() {
           </View>
           <Switch
             value={settings.smart_notifications}
-            onValueChange={() => { void toggleSmartNotifications(); }}
+            onValueChange={() => {
+              void toggleSmartNotifications();
+            }}
             disabled={!settings.enabled}
             trackColor={{ false: colors.border, true: colors.primaryLight }}
             thumbColor={settings.smart_notifications ? colors.primary : colors.surface}
@@ -315,26 +380,44 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {/* Horário de Silêncio */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.textSecondary, backgroundColor: colors.surface },
+          ]}
+        >
           Horário de Silêncio
         </Text>
 
-        <View style={[styles.settingItem, {
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border
-        }]}>
+        <View
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <View style={styles.settingLeft}>
-            <Icon name="moon" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
-            <Text style={[
-              styles.settingText,
-              { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-            ]}>
+            <Icon
+              name="moon"
+              size={20}
+              color={settings.enabled ? colors.textSecondary : colors.textDisabled}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: settings.enabled ? colors.textPrimary : colors.textDisabled },
+              ]}
+            >
               Não Me Incomode
             </Text>
           </View>
           <Switch
             value={settings.quiet_hours_enabled}
-            onValueChange={() => { void toggleQuietHours(); }}
+            onValueChange={() => {
+              void toggleQuietHours();
+            }}
             disabled={!settings.enabled}
             trackColor={{ false: colors.border, true: colors.primaryLight }}
             thumbColor={settings.quiet_hours_enabled ? colors.primary : colors.surface}
@@ -342,17 +425,25 @@ export default function NotificationSettingsScreen() {
         </View>
 
         {settings.quiet_hours_enabled && settings.enabled && (
-          <View style={[styles.quietHoursContainer, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}>
+          <View
+            style={[
+              styles.quietHoursContainer,
+              {
+                backgroundColor: colors.background,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
             <View style={styles.quietHoursRow}>
               <Text style={[styles.quietHoursLabel, { color: colors.textSecondary }]}>De:</Text>
               <TouchableOpacity
-                style={[styles.timeButton, {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border
-                }]}
+                style={[
+                  styles.timeButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => setShowStartTimePicker(true)}
               >
                 <Icon name="clock" size={16} color={colors.textSecondary} />
@@ -365,10 +456,13 @@ export default function NotificationSettingsScreen() {
             <View style={styles.quietHoursRow}>
               <Text style={[styles.quietHoursLabel, { color: colors.textSecondary }]}>Até:</Text>
               <TouchableOpacity
-                style={[styles.timeButton, {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border
-                }]}
+                style={[
+                  styles.timeButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => setShowEndTimePicker(true)}
               >
                 <Icon name="clock" size={16} color={colors.textSecondary} />
@@ -381,46 +475,69 @@ export default function NotificationSettingsScreen() {
         )}
 
         {/* Snooze */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.textSecondary, backgroundColor: colors.surface },
+          ]}
+        >
           Snooze
         </Text>
 
         <TouchableOpacity
-          style={[styles.settingItem, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}
+          style={[
+            styles.settingItem,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
           onPress={() => setShowSnoozePicker(!showSnoozePicker)}
           disabled={!settings.enabled}
         >
           <View style={styles.settingLeft}>
-            <Icon name="timer" size={20} color={settings.enabled ? colors.textSecondary : colors.textDisabled} />
-            <Text style={[
-              styles.settingText,
-              { color: settings.enabled ? colors.textPrimary : colors.textDisabled }
-            ]}>
+            <Icon
+              name="timer"
+              size={20}
+              color={settings.enabled ? colors.textSecondary : colors.textDisabled}
+            />
+            <Text
+              style={[
+                styles.settingText,
+                { color: settings.enabled ? colors.textPrimary : colors.textDisabled },
+              ]}
+            >
               Tempo Padrão
             </Text>
           </View>
-          <Text style={[
-            styles.settingValue,
-            { color: settings.enabled ? colors.textSecondary : colors.textDisabled }
-          ]}>
+          <Text
+            style={[
+              styles.settingValue,
+              { color: settings.enabled ? colors.textSecondary : colors.textDisabled },
+            ]}
+          >
             {selectedSnooze.label}
           </Text>
         </TouchableOpacity>
 
         {showSnoozePicker && settings.enabled && (
-          <View style={[styles.pickerContainer, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}>
+          <View
+            style={[
+              styles.pickerContainer,
+              {
+                backgroundColor: colors.background,
+                borderBottomColor: colors.border,
+              },
+            ]}
+          >
             {SNOOZE_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
                   styles.pickerItem,
-                  settings.default_snooze_minutes === option.value && { backgroundColor: colors.primaryLight },
+                  settings.default_snooze_minutes === option.value && {
+                    backgroundColor: colors.primaryLight,
+                  },
                 ]}
                 onPress={() => handleUpdateSnooze(option.value)}
               >
@@ -436,15 +553,23 @@ export default function NotificationSettingsScreen() {
         )}
 
         {/* Snooze */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, backgroundColor: colors.surface }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: colors.textSecondary, backgroundColor: colors.surface },
+          ]}
+        >
           Configurações
         </Text>
 
         <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}
+          style={[
+            styles.actionButton,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
           onPress={handleClearAllNotifications}
         >
           <Icon name="trash" size={18} color={colors.danger} />
@@ -454,10 +579,13 @@ export default function NotificationSettingsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-          }]}
+          style={[
+            styles.actionButton,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
           onPress={handleResetSettings}
         >
           <Icon name="refresh" size={18} color={colors.warning} />
@@ -553,7 +681,12 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '600' },
   content: { flex: 1 },
   section: { marginBottom: 12 },
-  masterToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  masterToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+  },
   masterToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   masterToggleTitle: { fontSize: 18, fontWeight: '600' },
   masterToggleSubtitle: { fontSize: 13, marginTop: 2 },
@@ -577,9 +710,20 @@ const styles = StyleSheet.create({
   settingHelper: { fontSize: 12, marginTop: 2 },
   settingValue: { fontSize: 14 },
   pickerContainer: { borderBottomWidth: 1, paddingVertical: 8 },
-  pickerItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, gap: 12 },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
+  },
   pickerItemText: { fontSize: 15, flex: 1 },
-  quietHoursContainer: { paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, gap: 12 },
+  quietHoursContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
   quietHoursRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   quietHoursLabel: { fontSize: 15, width: 40 },
   timeButton: {

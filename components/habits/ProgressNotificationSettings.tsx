@@ -1,11 +1,10 @@
 // components/habits/ProgressNotificationSettings.tsx
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity , Platform } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity, Platform } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-
 
 export interface ProgressNotificationConfig {
   enabled: boolean;
@@ -35,7 +34,9 @@ export function ProgressNotificationSettings({
   habitType = 'positive',
 }: Props) {
   const { colors } = useTheme();
-  const [showTimePicker, setShowTimePicker] = useState<'morning' | 'afternoon' | 'evening' | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState<'morning' | 'afternoon' | 'evening' | null>(
+    null
+  );
   const [tempTime, setTempTime] = useState(new Date());
 
   // 🆕 Textos contextuais baseados no tipo de hábito
@@ -43,9 +44,7 @@ export function ProgressNotificationSettings({
     if (hasTarget) {
       return 'Lembretes de Progresso';
     }
-    return habitType === 'negative' 
-      ? 'Alertas de Urgência' 
-      : 'Lembretes de Motivação';
+    return habitType === 'negative' ? 'Alertas de Urgência' : 'Lembretes de Motivação';
   };
 
   const getDescription = () => {
@@ -124,14 +123,9 @@ export function ProgressNotificationSettings({
         <View style={styles.periodInfo}>
           <Icon name={icon} size={16} color={colors.textSecondary} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>
-              {label}
-            </Text>
+            <Text style={[styles.periodLabel, { color: colors.textPrimary }]}>{label}</Text>
             {isEnabled && (
-              <TouchableOpacity
-                onPress={() => openTimePicker(period)}
-                style={styles.timeButton}
-              >
+              <TouchableOpacity onPress={() => openTimePicker(period)} style={styles.timeButton}>
                 <Icon name="clock" size={12} color={colors.primary} />
                 <Text style={[styles.timeText, { color: colors.primary }]}>
                   {displayTime(timeValue)}
@@ -159,18 +153,14 @@ export function ProgressNotificationSettings({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Icon 
-            name={hasTarget ? "target" : habitType === 'negative' ? "alertTriangle" : "bellRing"} 
-            size={16} 
-            color={colors.textPrimary} 
+          <Icon
+            name={hasTarget ? 'target' : habitType === 'negative' ? 'alertTriangle' : 'bellRing'}
+            size={16}
+            color={colors.textPrimary}
           />
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {getTitle()}
-          </Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{getTitle()}</Text>
         </View>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {getDescription()}
-        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{getDescription()}</Text>
       </View>
 
       {!hasPermission && (
@@ -187,18 +177,22 @@ export function ProgressNotificationSettings({
 
       {hasPermission && (
         <>
-          <View style={[styles.masterToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.masterToggle,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={{ flex: 1 }}>
               <Text style={[styles.masterToggleLabel, { color: colors.textPrimary }]}>
                 Habilitar {hasTarget ? 'Lembretes' : 'Alertas'}
               </Text>
               <Text style={[styles.masterToggleSubtext, { color: colors.textTertiary }]}>
-                {hasTarget 
+                {hasTarget
                   ? 'Até 3 lembretes por dia'
                   : habitType === 'negative'
                     ? 'Alertas estratégicos para resistir'
-                    : 'Lembretes distribuídos ao longo do dia'
-                }
+                    : 'Lembretes distribuídos ao longo do dia'}
               </Text>
             </View>
             <Switch
@@ -215,11 +209,14 @@ export function ProgressNotificationSettings({
           </View>
 
           {config.enabled && (
-            <View style={[styles.periodsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.periodsTitle, { color: colors.textSecondary }]}>
-                Horários
-              </Text>
-              
+            <View
+              style={[
+                styles.periodsContainer,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.periodsTitle, { color: colors.textSecondary }]}>Horários</Text>
+
               {renderPeriodToggle('morning', 'Manhã', 'sunrise')}
               {renderPeriodToggle('afternoon', 'Tarde', 'sun')}
               {renderPeriodToggle('evening', 'Noite', 'moon')}
@@ -232,15 +229,19 @@ export function ProgressNotificationSettings({
                     ? 'Você será notificado apenas se ainda não atingiu a meta do dia'
                     : habitType === 'negative'
                       ? 'Alertas enviados se você ainda não marcou resistência hoje'
-                      : 'Lembretes enviados apenas se o hábito não foi completado'
-                  }
+                      : 'Lembretes enviados apenas se o hábito não foi completado'}
                 </Text>
               </View>
             </View>
           )}
 
           {showTimePicker && (
-            <View style={[styles.pickerContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.pickerContainer,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <Text style={[styles.pickerTitle, { color: colors.textPrimary }]}>
                 Selecione o horário
               </Text>

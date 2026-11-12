@@ -69,11 +69,14 @@ export function useHabitCompletionActions({
     setShowSuccessToast(true);
   }, []);
 
-  const findCompletion = useCallback((habitId: string, date: Date) => {
-    return weeklyCompletions.find(c =>
-      c.habit_id === habitId && isSameDay(new Date(c.completed_at), date)
-    );
-  }, [weeklyCompletions]);
+  const findCompletion = useCallback(
+    (habitId: string, date: Date) => {
+      return weeklyCompletions.find(
+        (c) => c.habit_id === habitId && isSameDay(new Date(c.completed_at), date)
+      );
+    },
+    [weeklyCompletions]
+  );
 
   const clearSelection = useCallback(() => {
     setSelectedHabit(null);
@@ -81,104 +84,156 @@ export function useHabitCompletionActions({
   }, []);
 
   /** Marca o dia (ou grava o valor final, em hábitos com meta). */
-  const markDay = useCallback((habit: Habit, date: Date, value: number | null) => {
-    if (!userId) return;
-    const existing = findCompletion(habit.id, date);
-    const fields = completionDayFields(date);
-    const optimisticId = makeOptimisticId(habit.id, date);
+  const markDay = useCallback(
+    (habit: Habit, date: Date, value: number | null) => {
+      if (!userId) return;
+      const existing = findCompletion(habit.id, date);
+      const fields = completionDayFields(date);
+      const optimisticId = makeOptimisticId(habit.id, date);
 
-    // Com meta, o valor novo substitui o existente.
-    const settleRemove = existing ? applyOptimistic({ kind: 'remove', habitId: habit.id, date }) : null;
-    const settleAdd = applyOptimistic({
-      kind: 'add',
-      completion: {
-        id: optimisticId,
-        habit_id: habit.id,
-        completed_at: fields.completedAt,
-        value_achieved: value,
-        was_synced: false,
-        created_at: new Date().toISOString(),
-      },
-    });
-
-    void completionOutbox
-      .enqueue({ userId, habitId: habit.id, kind: 'complete', value, ...fields })
-      .then(result => {
-        const ok = result !== 'dropped';
-        settleRemove?.(ok);
-        settleAdd(ok);
-        if (result === 'synced') void fetchStreaks([habit.id]);
-        if (!ok) {
-          removeCompletionById(optimisticId);
-          if (existing) addOptimisticCompletion(existing);
-          showResultMessage(SAVE_FAILED_MESSAGE);
-        }
+      // Com meta, o valor novo substitui o existente.
+      const settleRemove = existing
+        ? applyOptimistic({ kind: 'remove', habitId: habit.id, date })
+        : null;
+      const settleAdd = applyOptimistic({
+        kind: 'add',
+        completion: {
+          id: optimisticId,
+          habit_id: habit.id,
+          completed_at: fields.completedAt,
+          value_achieved: value,
+          was_synced: false,
+          created_at: new Date().toISOString(),
+        },
       });
-  }, [userId, findCompletion, applyOptimistic, fetchStreaks, removeCompletionById, addOptimisticCompletion, showResultMessage]);
 
-  const unmarkDay = useCallback((habit: Habit, date: Date) => {
-    if (!userId) return;
-    const existing = findCompletion(habit.id, date);
-    const settle = applyOptimistic({ kind: 'remove', habitId: habit.id, date });
+      void completionOutbox
+        .enqueue({ userId, habitId: habit.id, kind: 'complete', value, ...fields })
+        .then((result) => {
+          const ok = result !== 'dropped';
+          settleRemove?.(ok);
+          settleAdd(ok);
+          if (result === 'synced') void fetchStreaks([habit.id]);
+          if (!ok) {
+            removeCompletionById(optimisticId);
+            if (existing) addOptimisticCompletion(existing);
+            showResultMessage(SAVE_FAILED_MESSAGE);
+          }
+        });
+    },
+    [
+      userId,
+      findCompletion,
+      applyOptimistic,
+      fetchStreaks,
+      removeCompletionById,
+      addOptimisticCompletion,
+      showResultMessage,
+    ]
+  );
 
-    void completionOutbox
-      .enqueue({ userId, habitId: habit.id, kind: 'uncomplete', value: null, ...completionDayFields(date) })
-      .then(result => {
-        const ok = result !== 'dropped';
-        settle(ok);
-        if (result === 'synced') void fetchStreaks([habit.id]);
-        if (!ok) {
-          if (existing) addOptimisticCompletion(existing);
-          showResultMessage(SAVE_FAILED_MESSAGE);
-        }
-      });
-  }, [userId, findCompletion, applyOptimistic, fetchStreaks, addOptimisticCompletion, showResultMessage]);
+  const unmarkDay = useCallback(
+    (habit: Habit, date: Date) => {
+      if (!userId) return;
+      const existing = findCompletion(habit.id, date);
+      const settle = applyOptimistic({ kind: 'remove', habitId: habit.id, date });
 
-  const handleDayPress = useCallback((habit: Habit, date: Date) => {
-    if (!userId || isFuture(date)) return;
-    const isToday = isSameDay(date, new Date());
-    const completion = findCompletion(habit.id, date);
+      void completionOutbox
+        .enqueue({
+          userId,
+          habitId: habit.id,
+          kind: 'uncomplete',
+          value: null,
+          ...completionDayFields(date),
+        })
+        .then((result) => {
+          const ok = result !== 'dropped';
+          settle(ok);
+          if (result === 'synced') void fetchStreaks([habit.id]);
+          if (!ok) {
+            if (existing) addOptimisticCompletion(existing);
+            showResultMessage(SAVE_FAILED_MESSAGE);
+          }
+        });
+    },
+    [
+      userId,
+      findCompletion,
+      applyOptimistic,
+      fetchStreaks,
+      addOptimisticCompletion,
+      showResultMessage,
+    ]
+  );
 
-    // Meta numérica: hoje sempre abre o modal (para somar/ajustar); dias
-    // passados só quando ainda não há registro.
-    if (habit.has_target && (isToday || !completion)) {
-      setSelectedHabit(habit);
-      setSelectedDate(date);
-      setShowProgressModal(true);
-      return;
-    }
+  const handleDayPress = useCallback(
+    (habit: Habit, date: Date) => {
+      if (!userId || isFuture(date)) return;
+      const isToday = isSameDay(date, new Date());
+      const completion = findCompletion(habit.id, date);
 
-    if (completion) {
-      setSelectedHabit(habit);
-      setSelectedDate(date);
-      setShowUncompleteConfirm(true);
-      return;
-    }
+      // Meta numérica: hoje sempre abre o modal (para somar/ajustar); dias
+      // passados só quando ainda não há registro.
+      if (habit.has_target && (isToday || !completion)) {
+        setSelectedHabit(habit);
+        setSelectedDate(date);
+        setShowProgressModal(true);
+        return;
+      }
 
-    markDay(habit, date, null);
-    if (isToday) {
-      showResultMessage('Completado!');
-      setTimeout(() => celebrate(), 1000);
-    }
-  }, [userId, findCompletion, markDay, showResultMessage, celebrate]);
+      if (completion) {
+        setSelectedHabit(habit);
+        setSelectedDate(date);
+        setShowUncompleteConfirm(true);
+        return;
+      }
 
-  const handleConfirmProgress = useCallback((value: number, mode: 'add' | 'replace') => {
-    const habit = selectedHabit;
-    const date = selectedDate;
-    setShowProgressModal(false);
-    clearSelection();
-    if (!habit || !date) return;
+      markDay(habit, date, null);
+      if (isToday) {
+        showResultMessage('Completado!');
+        setTimeout(() => celebrate(), 1000);
+      }
+    },
+    [userId, findCompletion, markDay, showResultMessage, celebrate]
+  );
 
-    const current = findCompletion(habit.id, date)?.value_achieved ?? 0;
-    const finalValue = mode === 'add' ? current + value : value;
-    markDay(habit, date, finalValue);
+  const handleConfirmProgress = useCallback(
+    (value: number, mode: 'add' | 'replace') => {
+      const habit = selectedHabit;
+      const date = selectedDate;
+      setShowProgressModal(false);
+      clearSelection();
+      if (!habit || !date) return;
 
-    if (isSameDay(date, new Date())) {
-      const percentage = habit.target_value ? (finalValue / habit.target_value) * 100 : 0;
-      showResultMessage(formatProgressMessage(current > 0, mode, value, finalValue, habit.target_unit || '', percentage));
-      setTimeout(() => celebrate(), 1000);
-    }
-  }, [selectedHabit, selectedDate, clearSelection, findCompletion, markDay, showResultMessage, celebrate]);
+      const current = findCompletion(habit.id, date)?.value_achieved ?? 0;
+      const finalValue = mode === 'add' ? current + value : value;
+      markDay(habit, date, finalValue);
+
+      if (isSameDay(date, new Date())) {
+        const percentage = habit.target_value ? (finalValue / habit.target_value) * 100 : 0;
+        showResultMessage(
+          formatProgressMessage(
+            current > 0,
+            mode,
+            value,
+            finalValue,
+            habit.target_unit || '',
+            percentage
+          )
+        );
+        setTimeout(() => celebrate(), 1000);
+      }
+    },
+    [
+      selectedHabit,
+      selectedDate,
+      clearSelection,
+      findCompletion,
+      markDay,
+      showResultMessage,
+      celebrate,
+    ]
+  );
 
   const cancelProgress = useCallback(() => {
     setShowProgressModal(false);
@@ -204,12 +259,22 @@ export function useHabitCompletionActions({
   // Valor já registrado no dia escolhido (antes, o modal mostrava sempre o
   // valor de hoje, mesmo ao registrar um dia passado).
   const progressCurrentValue =
-    selectedHabit && selectedDate ? findCompletion(selectedHabit.id, selectedDate)?.value_achieved ?? 0 : 0;
+    selectedHabit && selectedDate
+      ? (findCompletion(selectedHabit.id, selectedDate)?.value_achieved ?? 0)
+      : 0;
 
   return {
-    showSuccessToast, setShowSuccessToast, successMessage,
-    showUncompleteConfirm, handleConfirmUncomplete, cancelUncomplete,
-    showProgressModal, selectedHabit, progressCurrentValue, handleConfirmProgress, cancelProgress,
+    showSuccessToast,
+    setShowSuccessToast,
+    successMessage,
+    showUncompleteConfirm,
+    handleConfirmUncomplete,
+    cancelUncomplete,
+    showProgressModal,
+    selectedHabit,
+    progressCurrentValue,
+    handleConfirmProgress,
+    cancelProgress,
     handleDayPress,
   };
 }

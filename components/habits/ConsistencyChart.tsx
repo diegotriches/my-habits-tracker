@@ -63,7 +63,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
 
       // Filtrar dados desta semana
-      const weekDays = data.filter(day => {
+      const weekDays = data.filter((day) => {
         // parseISO trata 'yyyy-MM-dd' como data local; new Date() usaria
         // meia-noite UTC e jogaria o domingo para a semana anterior.
         const dayDate = parseISO(day.date);
@@ -71,7 +71,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
       });
 
       if (weekDays.length > 0) {
-        const completed = weekDays.filter(d => d.completed).length;
+        const completed = weekDays.filter((d) => d.completed).length;
         const total = weekDays.length;
         const percentage = (completed / total) * 100;
 
@@ -125,13 +125,14 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
 
   // ========== ESTATÍSTICAS GERAIS ==========
   const avgPercentage = weeklyData.reduce((sum, w) => sum + w.percentage, 0) / weeklyData.length;
-  const bestWeek = weeklyData.reduce((best, current) => 
+  const bestWeek = weeklyData.reduce((best, current) =>
     current.percentage > best.percentage ? current : best
   );
   const currentWeek = weeklyData[weeklyData.length - 1];
-  const trend = weeklyData.length > 1 
-    ? currentWeek.percentage - weeklyData[weeklyData.length - 2].percentage
-    : 0;
+  const trend =
+    weeklyData.length > 1
+      ? currentWeek.percentage - weeklyData[weeklyData.length - 2].percentage
+      : 0;
 
   const handlePointPress = (index: number) => {
     hapticFeedback.light();
@@ -149,9 +150,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
               {avgPercentage.toFixed(0)}%
             </Text>
           </View>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Média
-          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Média</Text>
         </View>
 
         <View style={styles.statBox}>
@@ -161,28 +160,23 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
               {bestWeek.percentage.toFixed(0)}%
             </Text>
           </View>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Melhor
-          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Melhor</Text>
         </View>
 
         <View style={styles.statBox}>
           <View style={styles.statHeader}>
-            <Icon 
-              name={trend >= 0 ? "trendingUp" : "trendingDown"} 
-              size={14} 
-              color={trend >= 0 ? colors.success : colors.danger} 
+            <Icon
+              name={trend >= 0 ? 'trendingUp' : 'trendingDown'}
+              size={14}
+              color={trend >= 0 ? colors.success : colors.danger}
             />
-            <Text style={[
-              styles.statValue, 
-              { color: trend >= 0 ? colors.success : colors.danger }
-            ]}>
+            <Text
+              style={[styles.statValue, { color: trend >= 0 ? colors.success : colors.danger }]}
+            >
               {Math.abs(trend).toFixed(0)}%
             </Text>
           </View>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-            Tendência
-          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Tendência</Text>
         </View>
       </View>
 
@@ -236,13 +230,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
               <React.Fragment key={index}>
                 {/* Círculo externo (seleção) */}
                 {isSelected && (
-                  <Circle
-                    cx={point.x}
-                    cy={point.y}
-                    r={12}
-                    fill={habitColor}
-                    opacity={0.2}
-                  />
+                  <Circle cx={point.x} cy={point.y} r={12} fill={habitColor} opacity={0.2} />
                 )}
 
                 {/* Círculo principal */}
@@ -268,7 +256,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
               fontSize="10"
               fill={index === points.length - 1 ? colors.primary : colors.textTertiary}
               textAnchor="middle"
-              fontWeight={index === points.length - 1 ? "700" : "400"}
+              fontWeight={index === points.length - 1 ? '700' : '400'}
             >
               {point.week.weekLabel}
             </SvgText>
@@ -280,10 +268,10 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
       {selectedWeek !== null && weeklyData[selectedWeek] && (
         <View style={[styles.detailsCard, { backgroundColor: colors.background }]}>
           <View style={styles.detailsHeader}>
-            <Icon 
-              name="calendar" 
-              size={16} 
-              color={selectedWeek === points.length - 1 ? colors.primary : habitColor} 
+            <Icon
+              name="calendar"
+              size={16}
+              color={selectedWeek === points.length - 1 ? colors.primary : habitColor}
             />
             <Text style={[styles.detailsTitle, { color: colors.textPrimary }]}>
               {weeklyData[selectedWeek].weekLabel}
@@ -296,8 +284,8 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
           </View>
 
           <Text style={[styles.detailsDate, { color: colors.textSecondary }]}>
-            {format(weeklyData[selectedWeek].startDate, 'dd/MM', { locale: ptBR })} 
-            {' - '} 
+            {format(weeklyData[selectedWeek].startDate, 'dd/MM', { locale: ptBR })}
+            {' - '}
             {format(weeklyData[selectedWeek].endDate, 'dd/MM', { locale: ptBR })}
           </Text>
 
@@ -323,7 +311,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
             </View>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.closeButton}
             onPress={() => {
               hapticFeedback.light();
@@ -345,9 +333,7 @@ export function ConsistencyChart({ data, habitColor }: ConsistencyChartProps) {
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-            Semana Atual
-          </Text>
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Semana Atual</Text>
         </View>
       </View>
 

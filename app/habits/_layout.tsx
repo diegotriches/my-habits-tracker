@@ -4,7 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 export default function HabitsLayout() {
   const { colors } = useTheme();
-  
+
   return (
     <Stack
       screenOptions={{

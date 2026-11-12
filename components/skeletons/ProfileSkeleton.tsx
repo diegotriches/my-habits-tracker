@@ -33,18 +33,28 @@ export const ProfileSkeleton: React.FC = () => {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { 
-        backgroundColor: colors.surface,
-        borderBottomColor: colors.border 
-      }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <Animated.View style={[styles.headerTitle, { opacity, backgroundColor: skeletonColor }]} />
       </View>
 
       {/* Profile Header */}
-      <Animated.View style={[styles.profileHeader, { 
-        opacity,
-        backgroundColor: colors.surface 
-      }]}>
+      <Animated.View
+        style={[
+          styles.profileHeader,
+          {
+            opacity,
+            backgroundColor: colors.surface,
+          },
+        ]}
+      >
         <View style={[styles.avatar, { backgroundColor: skeletonColor }]} />
         <View style={[styles.levelBadge, { backgroundColor: skeletonColor }]} />
         <View style={[styles.username, { backgroundColor: skeletonColor }]} />
@@ -54,10 +64,15 @@ export const ProfileSkeleton: React.FC = () => {
       {/* Stats Cards */}
       <View style={styles.section}>
         <Animated.View style={[styles.sectionTitle, { opacity, backgroundColor: skeletonColor }]} />
-        <Animated.View style={[styles.statsCard, { 
-          opacity,
-          backgroundColor: colors.surface 
-        }]}>
+        <Animated.View
+          style={[
+            styles.statsCard,
+            {
+              opacity,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
           <View style={styles.statItem}>
             <View style={[styles.statValue, { backgroundColor: skeletonColor }]} />
             <View style={[styles.statLabel, { backgroundColor: skeletonColor }]} />
@@ -78,10 +93,15 @@ export const ProfileSkeleton: React.FC = () => {
       {/* Penalties Section */}
       <View style={styles.section}>
         <Animated.View style={[styles.sectionTitle, { opacity, backgroundColor: skeletonColor }]} />
-        <Animated.View style={[styles.card, { 
-          opacity,
-          backgroundColor: colors.surface 
-        }]}>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
           <View style={[styles.cardLine, { backgroundColor: skeletonColor }]} />
           <View style={[styles.cardLine, { backgroundColor: skeletonColor }]} />
         </Animated.View>
@@ -90,10 +110,15 @@ export const ProfileSkeleton: React.FC = () => {
       {/* Account Info */}
       <View style={styles.section}>
         <Animated.View style={[styles.sectionTitle, { opacity, backgroundColor: skeletonColor }]} />
-        <Animated.View style={[styles.card, { 
-          opacity,
-          backgroundColor: colors.surface 
-        }]}>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
           <View style={[styles.cardLine, { backgroundColor: skeletonColor }]} />
           <View style={[styles.cardLine, { backgroundColor: skeletonColor }]} />
         </Animated.View>

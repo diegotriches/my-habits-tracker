@@ -53,21 +53,23 @@ export function backupToCsv(backup: BackupFile): string {
   const cell = (value: string) =>
     /[;"\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 
-  const rows = backup.habits.flatMap(h =>
-    h.completions.map(c => {
+  const rows = backup.habits.flatMap((h) =>
+    h.completions.map((c) => {
       const date = new Date(c.completed_at);
       return [
         h.name,
         format(date, 'yyyy-MM-dd'),
         format(date, 'HH:mm'),
         c.value_achieved === null ? '' : String(c.value_achieved).replace('.', ','),
-        h.has_target ? h.target_unit ?? '' : '',
+        h.has_target ? (h.target_unit ?? '') : '',
       ];
     })
   );
   rows.sort((a, b) => (a[1] + a[2]).localeCompare(b[1] + b[2]));
 
-  const lines = [['Hábito', 'Data', 'Horário', 'Valor', 'Unidade'], ...rows].map(r => r.map(cell).join(';'));
+  const lines = [['Hábito', 'Data', 'Horário', 'Valor', 'Unidade'], ...rows].map((r) =>
+    r.map(cell).join(';')
+  );
   // BOM: sem ele o Excel abre o UTF-8 com os acentos quebrados.
   return '\uFEFF' + lines.join('\r\n') + '\r\n';
 }
@@ -82,7 +84,9 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const numOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const strOrNull = (v: unknown) => (typeof v === 'string' ? v : null);
 const validDays = (v: unknown) =>
-  Array.isArray(v) && v.every(d => Number.isInteger(d) && d >= 0 && d <= 6) ? (v as number[]) : null;
+  Array.isArray(v) && v.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+    ? (v as number[])
+    : null;
 const validDate = (v: unknown) => typeof v === 'string' && !Number.isNaN(new Date(v).getTime());
 
 function sanitizeHabit(raw: unknown): BackupHabit | null {
@@ -94,12 +98,17 @@ function sanitizeHabit(raw: unknown): BackupHabit | null {
 
   const completions = (Array.isArray(raw.completions) ? raw.completions : [])
     .filter((c): c is Record<string, unknown> => isRecord(c) && validDate(c.completed_at))
-    .map(c => ({ completed_at: c.completed_at as string, value_achieved: numOrNull(c.value_achieved) }));
+    .map((c) => ({
+      completed_at: c.completed_at as string,
+      value_achieved: numOrNull(c.value_achieved),
+    }));
 
   const reminders = (Array.isArray(raw.reminders) ? raw.reminders : [])
-    .filter((r): r is Record<string, unknown> =>
-      isRecord(r) && typeof r.time === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(r.time))
-    .map(r => ({
+    .filter(
+      (r): r is Record<string, unknown> =>
+        isRecord(r) && typeof r.time === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(r.time)
+    )
+    .map((r) => ({
       time: (r.time as string).slice(0, 5),
       days_of_week: validDays(r.days_of_week),
       is_active: r.is_active !== false,
@@ -140,7 +149,9 @@ export function parseBackup(text: string): { backup: BackupFile; skipped: number
     throw new BackupFormatError('O arquivo não é um backup do My Habits Tracker.');
   }
   if (typeof raw.version !== 'number' || raw.version > BACKUP_VERSION) {
-    throw new BackupFormatError('Este backup foi gerado por uma versão mais nova do app. Atualize o app para importá-lo.');
+    throw new BackupFormatError(
+      'Este backup foi gerado por uma versão mais nova do app. Atualize o app para importá-lo.'
+    );
   }
 
   const habits = raw.habits.map(sanitizeHabit);

@@ -1,12 +1,6 @@
 // components/habits/DraggableHabitList.tsx
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  FlatList,
-  Platform,
-  UIManager,
-  View,
-  StyleSheet,
-} from 'react-native';
+import { FlatList, Platform, UIManager, View, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -63,70 +57,82 @@ export function DraggableHabitList({
   const headerHeight = useRef(0);
 
   const sortedHabits = orderedIds
-    .map(id => habits.find(h => h.id === id))
+    .map((id) => habits.find((h) => h.id === id))
     .filter(Boolean) as Habit[];
 
   // Calcula o Y acumulado de um item somando alturas dos itens anteriores
-  const getItemY = useCallback((index: number): number => {
-    let y = headerHeight.current;
-    for (let i = 0; i < index; i++) {
-      const id = sortedHabits[i]?.id;
-      y += itemHeights.current[id] ?? 0;
-    }
-    return y;
-  }, [sortedHabits]);
+  const getItemY = useCallback(
+    (index: number): number => {
+      let y = headerHeight.current;
+      for (let i = 0; i < index; i++) {
+        const id = sortedHabits[i]?.id;
+        y += itemHeights.current[id] ?? 0;
+      }
+      return y;
+    },
+    [sortedHabits]
+  );
 
-  const getIndexFromAbsoluteY = useCallback((absoluteY: number): number => {
-    const relativeY = absoluteY - containerPageY.current + scrollOffsetY.current;
-    let accumulated = headerHeight.current;
-    for (let i = 0; i < sortedHabits.length; i++) {
-      const id = sortedHabits[i].id;
-      accumulated += itemHeights.current[id] ?? 0;
-      if (relativeY < accumulated) return i;
-    }
-    return sortedHabits.length - 1;
-  }, [sortedHabits]);
+  const getIndexFromAbsoluteY = useCallback(
+    (absoluteY: number): number => {
+      const relativeY = absoluteY - containerPageY.current + scrollOffsetY.current;
+      let accumulated = headerHeight.current;
+      for (let i = 0; i < sortedHabits.length; i++) {
+        const id = sortedHabits[i].id;
+        accumulated += itemHeights.current[id] ?? 0;
+        if (relativeY < accumulated) return i;
+      }
+      return sortedHabits.length - 1;
+    },
+    [sortedHabits]
+  );
 
-  const startDrag = useCallback((index: number, absoluteY: number) => {
-    if (!containerRef.current) return;
+  const startDrag = useCallback(
+    (index: number, absoluteY: number) => {
+      if (!containerRef.current) return;
 
-    containerRef.current.measure((_x, _y, _w, _h, _px, pageY) => {
-      containerPageY.current = pageY;
+      containerRef.current.measure((_x, _y, _w, _h, _px, pageY) => {
+        containerPageY.current = pageY;
 
-      const cardY = getItemY(index);
+        const cardY = getItemY(index);
 
-      // Posição absoluta do topo do card na tela
-      const cardAbsoluteTop = pageY + cardY - scrollOffsetY.current;
-      // Onde dentro do card o dedo tocou
-      touchOffsetInCard.current = absoluteY - cardAbsoluteTop;
-      // Top do card flutuante relativo ao container
-      const cardTopInContainer = cardY - scrollOffsetY.current;
+        // Posição absoluta do topo do card na tela
+        const cardAbsoluteTop = pageY + cardY - scrollOffsetY.current;
+        // Onde dentro do card o dedo tocou
+        touchOffsetInCard.current = absoluteY - cardAbsoluteTop;
+        // Top do card flutuante relativo ao container
+        const cardTopInContainer = cardY - scrollOffsetY.current;
 
-      setFloatingTop(cardTopInContainer);
-      floatingScale.value = withSpring(1.04, { damping: 14, stiffness: 180 });
-      floatingOpacity.value = withTiming(1, { duration: 100 });
+        setFloatingTop(cardTopInContainer);
+        floatingScale.value = withSpring(1.04, { damping: 14, stiffness: 180 });
+        floatingOpacity.value = withTiming(1, { duration: 100 });
 
-      draggingIndexRef.current = index;
-      dragTargetIndexRef.current = index;
-      setDraggingIndex(index);
-      setDragTargetIndex(index);
-      hapticFeedback.selection();
-    });
-  }, [floatingScale, floatingOpacity, getItemY]);
+        draggingIndexRef.current = index;
+        dragTargetIndexRef.current = index;
+        setDraggingIndex(index);
+        setDragTargetIndex(index);
+        hapticFeedback.selection();
+      });
+    },
+    [floatingScale, floatingOpacity, getItemY]
+  );
 
-  const moveDrag = useCallback((absoluteY: number) => {
-    if (draggingIndexRef.current === null) return;
+  const moveDrag = useCallback(
+    (absoluteY: number) => {
+      if (draggingIndexRef.current === null) return;
 
-    const newTop = absoluteY - containerPageY.current - touchOffsetInCard.current;
-    setFloatingTop(newTop);
+      const newTop = absoluteY - containerPageY.current - touchOffsetInCard.current;
+      setFloatingTop(newTop);
 
-    const newTarget = getIndexFromAbsoluteY(absoluteY);
-    if (newTarget !== dragTargetIndexRef.current) {
-      dragTargetIndexRef.current = newTarget;
-      hapticFeedback.selection();
-      setDragTargetIndex(newTarget);
-    }
-  }, [getIndexFromAbsoluteY]);
+      const newTarget = getIndexFromAbsoluteY(absoluteY);
+      if (newTarget !== dragTargetIndexRef.current) {
+        dragTargetIndexRef.current = newTarget;
+        hapticFeedback.selection();
+        setDragTargetIndex(newTarget);
+      }
+    },
+    [getIndexFromAbsoluteY]
+  );
 
   const endDrag = useCallback(() => {
     const from = draggingIndexRef.current;
@@ -182,13 +188,19 @@ export function DraggableHabitList({
           refreshControl={refreshControl as React.ReactElement<any>}
           ListHeaderComponent={
             ListHeaderComponent ? (
-              <View onLayout={(e) => { headerHeight.current = e.nativeEvent.layout.height; }}>
+              <View
+                onLayout={(e) => {
+                  headerHeight.current = e.nativeEvent.layout.height;
+                }}
+              >
                 {ListHeaderComponent}
               </View>
             ) : undefined
           }
           contentContainerStyle={contentContainerStyle}
-          onScroll={(e) => { scrollOffsetY.current = e.nativeEvent.contentOffset.y; }}
+          onScroll={(e) => {
+            scrollOffsetY.current = e.nativeEvent.contentOffset.y;
+          }}
           scrollEventThrottle={16}
           renderItem={({ item, index }) => (
             <DraggableItem

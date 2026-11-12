@@ -33,11 +33,11 @@ export function DeleteAccountButton() {
     Alert.alert(
       '⚠️ Excluir Conta',
       'Você está prestes a excluir permanentemente sua conta. Esta ação:\n\n' +
-      '• Apagará todos os seus hábitos\n' +
-      '• Apagará todo o seu histórico\n' +
-      '• Apagará suas configurações\n' +
-      '• Não poderá ser desfeita\n\n' +
-      'Tem certeza que deseja continuar?',
+        '• Apagará todos os seus hábitos\n' +
+        '• Apagará todo o seu histórico\n' +
+        '• Apagará suas configurações\n' +
+        '• Não poderá ser desfeita\n\n' +
+        'Tem certeza que deseja continuar?',
       [
         {
           text: 'Cancelar',
@@ -80,7 +80,7 @@ export function DeleteAccountButton() {
       Alert.alert(
         '✅ Conta Excluída',
         'Sua conta e todos os seus dados foram permanentemente excluídos.\n\n' +
-        'Obrigado por ter usado o Habit Tracker!',
+          'Obrigado por ter usado o Habit Tracker!',
         [
           {
             text: 'OK',
@@ -93,7 +93,7 @@ export function DeleteAccountButton() {
     } catch (error) {
       console.error('❌ Erro ao excluir conta:', error);
       setLoading(false);
-      
+
       Alert.alert(
         'Erro',
         'Ocorreu um erro ao excluir sua conta. Por favor, tente novamente ou entre em contato com o suporte.'
@@ -108,9 +108,7 @@ export function DeleteAccountButton() {
         onPress={handleDeleteAccount}
         disabled={loading}
       >
-        <Text style={styles.deleteText}>
-          Excluir Conta Permanentemente
-        </Text>
+        <Text style={styles.deleteText}>Excluir Conta Permanentemente</Text>
       </TouchableOpacity>
 
       {/* Modal de Confirmação */}
@@ -125,7 +123,7 @@ export function DeleteAccountButton() {
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
               ⚠️ Confirmação Final
             </Text>
-            
+
             <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
               Esta ação é irreversível. Todos os seus dados serão permanentemente apagados.
             </Text>
@@ -153,7 +151,10 @@ export function DeleteAccountButton() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[
+                  styles.cancelButton,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
                 onPress={() => {
                   setShowModal(false);
                   setConfirmText('');
@@ -166,10 +167,7 @@ export function DeleteAccountButton() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.confirmButton,
-                  loading && styles.disabledButton,
-                ]}
+                style={[styles.confirmButton, loading && styles.disabledButton]}
                 onPress={confirmDeletion}
                 disabled={loading}
               >

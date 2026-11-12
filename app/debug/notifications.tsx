@@ -56,7 +56,7 @@ export default function NotificationTestScreen() {
 
   const addResult = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const prefix = type === 'success' ? '[OK]' : type === 'error' ? '[ERRO]' : '[INFO]';
-    setTestResults(prev => [`${prefix} ${message}`, ...prev]);
+    setTestResults((prev) => [`${prefix} ${message}`, ...prev]);
   };
 
   // ---------------------------------------------------------------------------
@@ -72,7 +72,10 @@ export default function NotificationTestScreen() {
         addResult('Permissao ja concedida', 'success');
       } else {
         const granted = await notificationService.requestPermissions();
-        addResult(granted ? 'Permissao concedida' : 'Permissao negada', granted ? 'success' : 'error');
+        addResult(
+          granted ? 'Permissao concedida' : 'Permissao negada',
+          granted ? 'success' : 'error'
+        );
       }
     } catch (e) {
       addResult(`Erro: ${e}`, 'error');
@@ -115,7 +118,10 @@ export default function NotificationTestScreen() {
       }
       const importanceLabels = ['NONE', 'MIN', 'LOW', 'DEFAULT', 'HIGH', 'MAX'];
       addResult(`Canal existe: ${channel.name}`, 'success');
-      addResult(`Importancia: ${importanceLabels[channel.importance] ?? channel.importance}`, 'info');
+      addResult(
+        `Importancia: ${importanceLabels[channel.importance] ?? channel.importance}`,
+        'info'
+      );
       addResult(`Som: ${channel.sound ?? 'padrao'}`, 'info');
       addResult(`Vibracao: ${channel.enableVibrate ? 'Sim' : 'Nao'}`, 'info');
     } catch (e) {
@@ -148,29 +154,25 @@ export default function NotificationTestScreen() {
   };
 
   const cancelAllNotifications = () => {
-    Alert.alert(
-      'Cancelar Todas?',
-      'Isso vai cancelar TODAS as notificacoes agendadas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            addResult('Cancelando todas...', 'info');
-            try {
-              await notificationService.cancelAllNotifications();
-              addResult('Todas as notificacoes canceladas', 'success');
-            } catch (e) {
-              addResult(`Erro: ${e}`, 'error');
-            } finally {
-              setLoading(false);
-            }
-          },
+    Alert.alert('Cancelar Todas?', 'Isso vai cancelar TODAS as notificacoes agendadas.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Confirmar',
+        style: 'destructive',
+        onPress: async () => {
+          setLoading(true);
+          addResult('Cancelando todas...', 'info');
+          try {
+            await notificationService.cancelAllNotifications();
+            addResult('Todas as notificacoes canceladas', 'success');
+          } catch (e) {
+            addResult(`Erro: ${e}`, 'error');
+          } finally {
+            setLoading(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const runAllTests = async () => {
@@ -194,7 +196,12 @@ export default function NotificationTestScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Icon name="arrowLeft" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -246,16 +253,59 @@ export default function NotificationTestScreen() {
           Testes de Notificacao
         </Text>
 
-        <TestButton title="1. Verificar Permissoes" subtitle="Solicita permissao de notificacoes" icon="shield" onPress={testPermissions} loading={loading} colors={colors} />
-        <TestButton title="2. Teste Imediato (5s)" subtitle="Agenda notificacao para daqui 5 segundos" icon="zap" onPress={testImmediateNotification} loading={loading} colors={colors} highlight />
-        <TestButton title="3. Debug Canal" subtitle="Verifica configuracao do canal habits" icon="settings" onPress={testDebugChannel} loading={loading} colors={colors} />
-        <TestButton title="4. Listar Agendadas" subtitle="Mostra todas as notificacoes" icon="list" onPress={listScheduledNotifications} loading={loading} colors={colors} />
-        <TestButton title="5. Cancelar Todas" subtitle="Remove todos os lembretes" icon="alertCircle" onPress={cancelAllNotifications} loading={loading} colors={colors} danger />
-        <TestButton title="Diagnostico Completo" subtitle="Executa todos os testes em sequencia" icon="activity" onPress={runAllTests} loading={loading} colors={colors} highlight />
+        <TestButton
+          title="1. Verificar Permissoes"
+          subtitle="Solicita permissao de notificacoes"
+          icon="shield"
+          onPress={testPermissions}
+          loading={loading}
+          colors={colors}
+        />
+        <TestButton
+          title="2. Teste Imediato (5s)"
+          subtitle="Agenda notificacao para daqui 5 segundos"
+          icon="zap"
+          onPress={testImmediateNotification}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
+        <TestButton
+          title="3. Debug Canal"
+          subtitle="Verifica configuracao do canal habits"
+          icon="settings"
+          onPress={testDebugChannel}
+          loading={loading}
+          colors={colors}
+        />
+        <TestButton
+          title="4. Listar Agendadas"
+          subtitle="Mostra todas as notificacoes"
+          icon="list"
+          onPress={listScheduledNotifications}
+          loading={loading}
+          colors={colors}
+        />
+        <TestButton
+          title="5. Cancelar Todas"
+          subtitle="Remove todos os lembretes"
+          icon="alertCircle"
+          onPress={cancelAllNotifications}
+          loading={loading}
+          colors={colors}
+          danger
+        />
+        <TestButton
+          title="Diagnostico Completo"
+          subtitle="Executa todos os testes em sequencia"
+          icon="activity"
+          onPress={runAllTests}
+          loading={loading}
+          colors={colors}
+          highlight
+        />
 
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          Log de Testes
-        </Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Log de Testes</Text>
 
         <View style={[styles.logContainer, { backgroundColor: colors.surface }]}>
           {testResults.length === 0 ? (
@@ -292,7 +342,16 @@ interface TestButtonProps {
   highlight?: boolean;
 }
 
-function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, highlight }: TestButtonProps) {
+function TestButton({
+  title,
+  subtitle,
+  icon,
+  onPress,
+  loading,
+  colors,
+  danger,
+  highlight,
+}: TestButtonProps) {
   return (
     <TouchableOpacity
       style={[
@@ -307,14 +366,31 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, h
       disabled={loading}
       activeOpacity={0.7}
     >
-      <View style={[
-        styles.iconContainer,
-        { backgroundColor: danger ? colors.dangerLight : highlight ? colors.primary : colors.primaryLight },
-      ]}>
-        <Icon name={icon} size={24} color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary} />
+      <View
+        style={[
+          styles.iconContainer,
+          {
+            backgroundColor: danger
+              ? colors.dangerLight
+              : highlight
+                ? colors.primary
+                : colors.primaryLight,
+          },
+        ]}
+      >
+        <Icon
+          name={icon}
+          size={24}
+          color={danger ? colors.danger : highlight ? '#FFFFFF' : colors.primary}
+        />
       </View>
       <View style={styles.buttonContent}>
-        <Text style={[styles.buttonTitle, { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.buttonTitle,
+            { color: danger ? colors.danger : highlight ? colors.primary : colors.textPrimary },
+          ]}
+        >
           {title}
         </Text>
         <Text style={[styles.buttonSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
@@ -330,21 +406,57 @@ function TestButton({ title, subtitle, icon, onPress, loading, colors, danger, h
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
   backButton: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 18, fontWeight: '700', flex: 1, textAlign: 'center', marginRight: 32 },
   content: { flex: 1, paddingHorizontal: 20 },
-  warningBanner: { flexDirection: 'row', alignItems: 'flex-start', padding: 16, borderRadius: 12, marginTop: 16, gap: 12 },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 12,
+  },
   warningTitle: { fontSize: 14, fontWeight: '700', marginBottom: 4 },
   warningText: { fontSize: 12, lineHeight: 18 },
-  infoBanner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginTop: 16, gap: 12 },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 12,
+  },
   infoText: { flex: 1, fontSize: 13, fontWeight: '600' },
   deviceCard: { padding: 16, borderRadius: 12, marginTop: 12 },
   deviceText: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   deviceSubtext: { fontSize: 13 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 24, marginBottom: 12 },
-  testButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
-  iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   buttonContent: { flex: 1 },
   buttonTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   buttonSubtitle: { fontSize: 13 },

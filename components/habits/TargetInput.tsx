@@ -38,18 +38,21 @@ export function TargetInput({
   const inputRef = useRef<TextInput>(null);
 
   const popularUnits = ['litros', 'km', 'minutos', 'horas', 'páginas', 'vezes'];
-  const otherUnits = availableUnits.filter(u => !popularUnits.includes(u));
+  const otherUnits = availableUnits.filter((u) => !popularUnits.includes(u));
   const allKnownUnits = [...popularUnits, ...otherUnits];
   const isCustomUnit = unit && !allKnownUnits.includes(unit);
 
   // Usar useCallback para evitar recriação da função a cada render
-  const handleValueChange = useCallback((text: string) => {
-    const cleaned = text.replace(/[^0-9.]/g, '');
-    const parts = cleaned.split('.');
-    if (parts.length > 2) return;
-    if (parts.length === 2 && parts[1].length > 2) return;
-    onValueChange(cleaned);
-  }, [onValueChange]);
+  const handleValueChange = useCallback(
+    (text: string) => {
+      const cleaned = text.replace(/[^0-9.]/g, '');
+      const parts = cleaned.split('.');
+      if (parts.length > 2) return;
+      if (parts.length === 2 && parts[1].length > 2) return;
+      onValueChange(cleaned);
+    },
+    [onValueChange]
+  );
 
   const handleSelectUnit = (u: string) => {
     hapticFeedback.selection();
@@ -84,16 +87,17 @@ export function TargetInput({
       <View style={styles.inputRow}>
         {/* Input de Valor */}
         <View style={styles.valueContainer}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-            Valor
-          </Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Valor</Text>
           <TextInput
             ref={inputRef}
-            style={[styles.valueInput, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            }]}
+            style={[
+              styles.valueInput,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
             placeholder="0"
             placeholderTextColor={colors.textTertiary}
             defaultValue={value}
@@ -111,20 +115,23 @@ export function TargetInput({
 
         {/* Seletor de Unidade */}
         <View style={styles.unitContainer}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-            Unidade
-          </Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Unidade</Text>
           <TouchableOpacity
-            style={[styles.unitButton, {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            }]}
+            style={[
+              styles.unitButton,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={handleOpenPicker}
           >
-            <Text style={[
-              styles.unitButtonText,
-              { color: unit ? colors.textPrimary : colors.textTertiary },
-            ]}>
+            <Text
+              style={[
+                styles.unitButtonText,
+                { color: unit ? colors.textPrimary : colors.textTertiary },
+              ]}
+            >
               {unit || 'Selecione'}
             </Text>
             <Icon name="chevronDown" size={12} color={colors.textSecondary} />
@@ -134,12 +141,19 @@ export function TargetInput({
 
       {/* Preview da Meta */}
       {value && unit && (
-        <View style={[styles.preview, {
-          backgroundColor: colors.successLight,
-          borderColor: colors.success,
-        }]}>
+        <View
+          style={[
+            styles.preview,
+            {
+              backgroundColor: colors.successLight,
+              borderColor: colors.success,
+            },
+          ]}
+        >
           <Text style={[styles.previewLabel, { color: colors.success }]}>Meta diária:</Text>
-          <Text style={[styles.previewValue, { color: colors.success }]}>{value} {unit}</Text>
+          <Text style={[styles.previewValue, { color: colors.success }]}>
+            {value} {unit}
+          </Text>
         </View>
       )}
 
@@ -152,7 +166,10 @@ export function TargetInput({
       >
         <Pressable
           style={styles.modalOverlay}
-          onPress={() => { Keyboard.dismiss(); setShowUnitPicker(false); }}
+          onPress={() => {
+            Keyboard.dismiss();
+            setShowUnitPicker(false);
+          }}
         >
           <Pressable
             style={[styles.modalContent, { backgroundColor: colors.background }]}
@@ -179,11 +196,14 @@ export function TargetInput({
                 </Text>
                 <View style={styles.customUnitRow}>
                   <TextInput
-                    style={[styles.customUnitInput, {
-                      backgroundColor: colors.surface,
-                      borderColor: customUnit.trim() ? colors.primary : colors.border,
-                      color: colors.textPrimary,
-                    }]}
+                    style={[
+                      styles.customUnitInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: customUnit.trim() ? colors.primary : colors.border,
+                        color: colors.textPrimary,
+                      },
+                    ]}
                     placeholder="Digite sua unidade..."
                     placeholderTextColor={colors.textTertiary}
                     value={customUnit}
@@ -201,7 +221,11 @@ export function TargetInput({
                     onPress={handleConfirmCustomUnit}
                     disabled={!customUnit.trim()}
                   >
-                    <Icon name="check" size={18} color={customUnit.trim() ? '#FFFFFF' : colors.textTertiary} />
+                    <Icon
+                      name="check"
+                      size={18}
+                      color={customUnit.trim() ? '#FFFFFF' : colors.textTertiary}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -218,15 +242,20 @@ export function TargetInput({
                       style={[
                         styles.unitOption,
                         { backgroundColor: colors.surface, borderColor: colors.border },
-                        unit === u && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+                        unit === u && {
+                          backgroundColor: colors.primaryLight,
+                          borderColor: colors.primary,
+                        },
                       ]}
                       onPress={() => handleSelectUnit(u)}
                     >
-                      <Text style={[
-                        styles.unitOptionText,
-                        { color: colors.textSecondary },
-                        unit === u && { color: colors.primary, fontWeight: '600' },
-                      ]}>
+                      <Text
+                        style={[
+                          styles.unitOptionText,
+                          { color: colors.textSecondary },
+                          unit === u && { color: colors.primary, fontWeight: '600' },
+                        ]}
+                      >
                         {u}
                       </Text>
                     </TouchableOpacity>
@@ -237,9 +266,7 @@ export function TargetInput({
               {/* Outras Unidades */}
               {otherUnits.length > 0 && (
                 <View style={styles.unitSection}>
-                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                    Outras
-                  </Text>
+                  <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Outras</Text>
                   <View style={styles.unitGrid}>
                     {otherUnits.map((u) => (
                       <TouchableOpacity
@@ -247,15 +274,20 @@ export function TargetInput({
                         style={[
                           styles.unitOption,
                           { backgroundColor: colors.surface, borderColor: colors.border },
-                          unit === u && { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+                          unit === u && {
+                            backgroundColor: colors.primaryLight,
+                            borderColor: colors.primary,
+                          },
                         ]}
                         onPress={() => handleSelectUnit(u)}
                       >
-                        <Text style={[
-                          styles.unitOptionText,
-                          { color: colors.textSecondary },
-                          unit === u && { color: colors.primary, fontWeight: '600' },
-                        ]}>
+                        <Text
+                          style={[
+                            styles.unitOptionText,
+                            { color: colors.textSecondary },
+                            unit === u && { color: colors.primary, fontWeight: '600' },
+                          ]}
+                        >
                           {u}
                         </Text>
                       </TouchableOpacity>

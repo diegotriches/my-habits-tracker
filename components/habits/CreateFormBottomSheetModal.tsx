@@ -1,5 +1,15 @@
 import React from 'react';
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 
 interface CreateFormBottomSheetModalProps {
@@ -32,19 +42,31 @@ export function CreateFormBottomSheetModal({
   colors,
 }: CreateFormBottomSheetModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onCancel}
+    >
       <Pressable style={styles.modalOverlay} onPress={onCancel}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalKeyboardView}
         >
-          <Pressable style={[styles.modalContent, { backgroundColor: colors.background }]} onPress={Keyboard.dismiss}>
+          <Pressable
+            style={[styles.modalContent, { backgroundColor: colors.background }]}
+            onPress={Keyboard.dismiss}
+          >
             <View style={styles.modalHandle}>
               <View style={[styles.modalHandleBar, { backgroundColor: colors.border }]} />
             </View>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{title}</Text>
-              <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <TouchableOpacity
+                onPress={onCancel}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Icon name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>

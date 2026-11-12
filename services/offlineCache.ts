@@ -52,7 +52,7 @@ export async function writeCache<T>(key: string, userId: string, data: T): Promi
 export async function pruneCache(group: string, keep: (key: string) => boolean): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const stale = keys.filter(k => k.startsWith(PREFIX + group) && !keep(k.slice(PREFIX.length)));
+    const stale = keys.filter((k) => k.startsWith(PREFIX + group) && !keep(k.slice(PREFIX.length)));
     if (stale.length > 0) await AsyncStorage.multiRemove(stale);
   } catch (error) {
     console.warn('Erro ao limpar cache offline:', error);
@@ -63,7 +63,7 @@ export async function pruneCache(group: string, keep: (key: string) => boolean):
 export async function clearOfflineCache(): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const cacheKeys = keys.filter(k => k.startsWith(ANY_VERSION_PREFIX));
+    const cacheKeys = keys.filter((k) => k.startsWith(ANY_VERSION_PREFIX));
     if (cacheKeys.length > 0) await AsyncStorage.multiRemove(cacheKeys);
   } catch (error) {
     console.warn('Erro ao apagar cache offline:', error);

@@ -7,18 +7,26 @@ interface HabitTypeIndicatorProps {
   isNegative: boolean;
 }
 
-export const HabitTypeIndicator = React.memo(function HabitTypeIndicator({ isNegative }: HabitTypeIndicatorProps) {
+export const HabitTypeIndicator = React.memo(function HabitTypeIndicator({
+  isNegative,
+}: HabitTypeIndicatorProps) {
   const { colors } = useTheme();
 
   return (
-    <View style={[
-      styles.typeIndicator,
-      {
-        backgroundColor: isNegative ? colors.warningLight : colors.successLight,
-        borderColor: isNegative ? colors.warning : colors.success,
-      },
-    ]}>
-      <Icon name={isNegative ? 'xCircle' : 'check'} size={20} color={isNegative ? colors.warning : colors.success} />
+    <View
+      style={[
+        styles.typeIndicator,
+        {
+          backgroundColor: isNegative ? colors.warningLight : colors.successLight,
+          borderColor: isNegative ? colors.warning : colors.success,
+        },
+      ]}
+    >
+      <Icon
+        name={isNegative ? 'xCircle' : 'check'}
+        size={20}
+        color={isNegative ? colors.warning : colors.success}
+      />
       <View style={{ flex: 1 }}>
         <Text style={[styles.typeLabel, { color: isNegative ? colors.warning : colors.success }]}>
           {isNegative ? 'Hábito Negativo' : 'Hábito Positivo'}
@@ -36,7 +44,12 @@ export const HabitTypeIndicator = React.memo(function HabitTypeIndicator({ isNeg
 
 const styles = StyleSheet.create({
   typeIndicator: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
   },
   typeLabel: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   typeDescription: { fontSize: 12 },
