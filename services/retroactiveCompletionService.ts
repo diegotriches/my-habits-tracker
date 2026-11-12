@@ -1,5 +1,5 @@
 // services/retroactiveCompletionService.ts
-import { supabase } from './supabase';
+import { fetchAllRows, supabase } from './supabase';
 import { Habit } from '@/types/database';
 import {
   startOfDay,
@@ -43,11 +43,18 @@ export const retroactiveCompletionService = {
       }
 
       // 2. Buscar todas as completions (incluindo value_achieved para filtrar metas)
-      const { data: rawCompletions } = await supabase
-        .from('completions')
-        .select('completed_at, value_achieved')
-        .eq('habit_id', habitId)
-        .order('completed_at', { ascending: false });
+      // Paginado: o Supabase corta em 1000 linhas, e o streak/recorde de um
+      // hábito com histórico maior sairia errado. Um erro aqui interrompe o
+      // recálculo (antes era ignorado e o streak podia ser zerado).
+      const rawCompletions = await fetchAllRows((from, to) =>
+        supabase
+          .from('completions')
+          .select('completed_at, value_achieved')
+          .eq('habit_id', habitId)
+          .order('completed_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to)
+      );
 
       if (!rawCompletions || rawCompletions.length === 0) {
         await supabase.from('streaks')

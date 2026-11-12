@@ -17,6 +17,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { useCurrentDay } from '@/hooks/useCurrentDay';
+import { capitalizeFirst } from '@/utils/text';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { OfflineStatusBanner } from '@/components/ui/OfflineStatusBanner';
 import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
@@ -110,7 +111,7 @@ export default function HomeScreen() {
   };
 
   const firstName = profile?.display_name?.split(' ')[0] || '';
-  const todayFormatted = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR });
+  const todayFormatted = capitalizeFirst(format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR }));
 
   useEffect(() => {
     if (habits.length > 0) {
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
   },
   avatarInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   todayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-  todayText: { fontSize: 13, fontWeight: '500', textTransform: 'capitalize' },
+  todayText: { fontSize: 13, fontWeight: '500' },
   fab: {
     position: 'absolute', bottom: 70, right: 20,
     width: 56, height: 56, borderRadius: 28,

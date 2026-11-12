@@ -4,7 +4,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
-import { supabase } from './supabase';
+import { fetchAllRows, supabase } from './supabase';
 import { retroactiveCompletionService } from './retroactiveCompletionService';
 import { reminderSyncService } from './reminderSyncService';
 import { progressNotificationScheduler } from './progressNotificationScheduler';
@@ -89,7 +89,6 @@ export interface ImportSummary {
   remindersAdded: number;
 }
 
-const PAGE_SIZE = 1000; // limite de linhas por consulta do Supabase
 const INSERT_BATCH = 500;
 
 const nameKey = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
@@ -99,19 +98,16 @@ const localDay = (iso: string) => format(new Date(iso), 'yyyy-MM-dd');
 // Exportação
 // ---------------------------------------------------------------------------
 
-async function fetchAllCompletions(habitIds: string[]) {
-  const rows: Array<{ habit_id: string; completed_at: string; value_achieved: number | null }> = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+function fetchAllCompletions(habitIds: string[]) {
+  return fetchAllRows((from, to) =>
+    supabase
       .from('completions')
       .select('habit_id, completed_at, value_achieved')
       .in('habit_id', habitIds)
       .order('completed_at', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE_SIZE) return rows;
-  }
+      .order('id', { ascending: true })
+      .range(from, to)
+  );
 }
 
 export async function buildBackup(userId: string): Promise<BackupFile> {

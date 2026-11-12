@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/services/supabase';
+import { fetchAllRows, supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { Habit, Completion, Streak } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
@@ -151,13 +151,17 @@ export function useHabitDetails(habitId: string) {
 
       if (habitError) throw habitError;
 
-      const { data: completions, error: completionsError } = await supabase
-        .from('completions')
-        .select('*')
-        .eq('habit_id', habitId)
-        .order('completed_at', { ascending: false });
-
-      if (completionsError) throw completionsError;
+      // Paginado: acima de 1000 conclusões o Supabase cortaria o histórico e
+      // as estatísticas sairiam erradas.
+      const completions = await fetchAllRows((from, to) =>
+        supabase
+          .from('completions')
+          .select('*')
+          .eq('habit_id', habitId)
+          .order('completed_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(from, to)
+      );
 
       const { data: streak, error: streakError } = await supabase
         .from('streaks')

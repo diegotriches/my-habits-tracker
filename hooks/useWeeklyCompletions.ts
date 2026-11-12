@@ -114,10 +114,9 @@ export const useWeeklyCompletions = () => {
 
       const { data, error: fetchError } = await supabase
         .from('completions')
-        .select(`
-          *,
-          habits!inner (*)
-        `)
+        // O join com habits só filtra pelo dono; trazer o hábito inteiro em
+        // cada conclusão inflava a resposta e o cache offline.
+        .select('*, habits!inner (user_id)')
         .eq('habits.user_id', userId)
         .gte('completed_at', weekStart.toISOString())
         .lte('completed_at', weekEnd.toISOString())

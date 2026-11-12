@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
   weekLabel: {
     fontSize: 14,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   currentBadge: {
     marginTop: 4,

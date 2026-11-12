@@ -120,3 +120,10 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Offline, tocar em exportar/importar: aparece "Sem conexão"
 - [ ] Histórico grande (mais de 1000 conclusões no total): exporta tudo (confira a contagem de linhas do CSV)
 - [ ] Depois de importar, a home já mostra os hábitos novos sem precisar puxar para atualizar
+
+## 14. Correções rápidas da revisão
+
+- [ ] Home: a data aparece como "Quarta-feira, 11 de novembro" (só a primeira letra maiúscula) e o navegador de semanas como "8 - 14 de nov" / "29 nov - 5 dez"
+- [ ] Home carrega a semana normalmente (a consulta foi enxugada), inclusive aberta offline pelo cache
+- [ ] Detalhes e streaks de um hábito continuam corretos (agora paginados)
+- [ ] Em build de produção, abrir `habittracker://debug/notifications` (ex.: `adb shell am start -a android.intent.action.VIEW -d "habittracker://debug/notifications"`) leva à home, não à tela de debug

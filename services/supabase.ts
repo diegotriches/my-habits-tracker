@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { createClient, Session } from '@supabase/supabase-js';
+import { createClient, PostgrestError, Session } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -46,6 +46,28 @@ export async function readStoredSession(): Promise<Session | null> {
     return session?.user ? session : null;
   } catch {
     return null;
+  }
+}
+
+// O Supabase devolve no máximo 1000 linhas por consulta (sem erro: o resto
+// simplesmente não vem).
+const PAGE_SIZE = 1000;
+
+/**
+ * Busca todas as linhas de uma consulta, página por página. `query` recebe o
+ * intervalo e deve devolver a consulta com `.range(from, to)` aplicado, com
+ * ordenação estável (ex.: data + id como desempate) — senão linhas podem se
+ * repetir ou faltar entre páginas.
+ */
+export async function fetchAllRows<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await query(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
   }
 }
 
