@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';
-import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
+import { streakService } from '@/services/streakService';
 import { readCache, writeCache } from '@/services/offlineCache';
 
 const streaksTable = () => supabase.from('streaks');
@@ -50,7 +50,7 @@ export const useStreaks = () => {
     try {
       for (const habit of habits) {
         await ensureStreakExists(habit.id);
-        await retroactiveCompletionService.recalculateStreak(habit.id);
+        await streakService.recalculateStreak(habit.id);
       }
 
       const habitIds = habits.map((h) => h.id);

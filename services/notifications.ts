@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
 import { completeHabitFromNotification } from './pendingCompletionService';
-import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { streakService } from './streakService';
 import { Habit } from '@/types/database';
 
 // Configurar handler padrão
@@ -291,7 +291,7 @@ class NotificationService {
 
       if (result === 'retry') throw new Error('Falha ao registrar conclusao');
 
-      await retroactiveCompletionService.recalculateStreak(habitId);
+      await streakService.recalculateStreak(habitId);
 
       await Notifications.scheduleNotificationAsync({
         content: {

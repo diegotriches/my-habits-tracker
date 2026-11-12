@@ -3,7 +3,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { endOfDay, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
-import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { streakService } from './streakService';
 import { completionOutbox } from './completionOutbox';
 import { CompletionInsert, Habit } from '@/types/database';
 
@@ -109,7 +109,7 @@ async function drainNativeQueue(): Promise<void> {
     await exactAlarmService.removePendingCompletions(processed);
 
     for (const habitId of changedHabits) {
-      await retroactiveCompletionService.recalculateStreak(habitId);
+      await streakService.recalculateStreak(habitId);
     }
 
     console.log(

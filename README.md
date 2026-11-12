@@ -25,7 +25,7 @@ components/
 hooks/                 # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
 services/              # Chamadas ao Supabase e serviços de domínio
   completionOutbox.ts               # fila de saída das marcações (funciona offline)
-  retroactiveCompletionService.ts   # cálculo de streak
+  streakService.ts   # cálculo de streak
   notificationService.ts, exactAlarmService.ts
 constants/             # Ícones, cores, constantes de formulário compartilhadas
 contexts/              # ThemeContext (claro/escuro/automático)

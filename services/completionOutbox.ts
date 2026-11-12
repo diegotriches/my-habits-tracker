@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter } from 'react-native';
 import { endOfDay, parseISO, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
-import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { streakService } from './streakService';
 import { CompletionOp } from '@/utils/completionOps';
 
 // Reexportados: as telas importam daqui.
@@ -170,7 +170,7 @@ async function runFlush(): Promise<void> {
   }
 
   for (const habitId of syncedHabits) {
-    await retroactiveCompletionService.recalculateStreak(habitId);
+    await streakService.recalculateStreak(habitId);
   }
   for (const id of syncedOps) resolveWaiter(id, 'synced');
 

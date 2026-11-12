@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
 import { fetchAllRows, supabase } from './supabase';
-import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { streakService } from './streakService';
 import { reminderSyncService } from './reminderSyncService';
 import { progressNotificationScheduler } from './progressNotificationScheduler';
 import { CompletionInsert, HabitInsert, ReminderInsert } from '@/types/database';
@@ -315,7 +315,7 @@ export async function importBackup(backup: BackupFile, userId: string): Promise<
   }
 
   for (const habitId of touchedHabits) {
-    await retroactiveCompletionService.recalculateStreak(habitId);
+    await streakService.recalculateStreak(habitId);
   }
   if (summary.remindersAdded > 0) {
     await reminderSyncService.syncReminders(userId);

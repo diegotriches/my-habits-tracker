@@ -1,4 +1,4 @@
-// services/retroactiveCompletionService.ts
+// services/streakService.ts
 import { fetchAllRows, supabase } from './supabase';
 import { Habit } from '@/types/database';
 import { startOfDay, format } from 'date-fns';
@@ -12,7 +12,7 @@ import {
  * Cálculo de streaks a partir do histórico de conclusões. (As marcações em
  * si passam pela fila de saída — services/completionOutbox.ts.)
  */
-export const retroactiveCompletionService = {
+export const streakService = {
   /**
    * Recalcular streak após mudanças.
    *
