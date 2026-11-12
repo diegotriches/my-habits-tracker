@@ -218,6 +218,7 @@ npx supabase functions deploy delete-account --project-ref <ref> --use-api
 ## Pendências conhecidas
 
 - Validação manual das correções de 11–12/11/2026 no aparelho (inclui avatar e perfil): ver [docs/manual-testing.md](docs/manual-testing.md)
+- **Widget na tela inicial (Android)**, para marcar sem abrir o app: ficou de fora do roteiro de melhorias de 12/11/2026 por decisão. É nativo (exige build nova, não sai por OTA) e precisaria gravar na mesma fila local do botão "Feito" (`PendingCompletionStorage`).
 
 ## Antes de publicar na Play Store
 
