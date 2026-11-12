@@ -25,6 +25,8 @@ import { OUTBOX_SYNCED_EVENT } from '@/services/completionOutbox';
 import { DATA_IMPORTED_EVENT } from '@/services/dataTransferService';
 import { Habit } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { computeTodaySummary } from '@/utils/todaySummary';
+import { TodaySummaryCard } from '@/components/habits/TodaySummaryCard';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -82,6 +84,30 @@ export default function HomeScreen() {
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
   const { orderedIds, updateOrder } = useHabitOrder(habitIds);
 
+  // Resumo do dia: só na semana atual (a única em que "hoje" está na tela).
+  const isCurrentWeek = isSameDay(
+    selectedWeekStart,
+    startOfWeek(parseISO(today), { weekStartsOn: 0 })
+  );
+  const todaySummary = useMemo(
+    () => computeTodaySummary(habits, weeklyCompletions, parseISO(today)),
+    [habits, weeklyCompletions, today]
+  );
+
+  // Celebração com propósito: o confete aparece ao concluir o último hábito do
+  // dia, e não a cada marcação. A marcação de hoje arma a verificação, feita no
+  // render seguinte, já com o resumo atualizado — assim, carregar os dados com
+  // o dia já completo (ao abrir o app) não dispara confete.
+  const checkDayDoneRef = useRef(false);
+  const handleTodayMarked = useCallback(() => {
+    checkDayDoneRef.current = true;
+  }, []);
+  useEffect(() => {
+    if (!checkDayDoneRef.current) return;
+    checkDayDoneRef.current = false;
+    if (todaySummary.allDone) setTimeout(celebrate, 600);
+  }, [todaySummary, celebrate]);
+
   const {
     showSuccessToast,
     setShowSuccessToast,
@@ -99,7 +125,7 @@ export default function HomeScreen() {
     userId: user?.id,
     weeklyCompletions,
     fetchStreaks,
-    celebrate,
+    onTodayMarked: handleTodayMarked,
     applyOptimistic,
     addOptimisticCompletion,
     removeCompletionById,
@@ -327,6 +353,9 @@ export default function HomeScreen() {
                   {todayFormatted}
                 </Text>
               </View>
+              {isCurrentWeek && (
+                <TodaySummaryCard due={todaySummary.due} done={todaySummary.done} />
+              )}
               <WeekNavigator weekStart={selectedWeekStart} onWeekChange={handleWeekChange} />
             </View>
           }

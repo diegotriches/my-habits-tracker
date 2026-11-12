@@ -144,3 +144,12 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Tema "Automático": trocar o tema do sistema muda o app na hora
 - [ ] Reordenar hábitos, criar um hábito novo e reabrir o app: a ordem é mantida e o novo aparece no fim
 - [ ] Login com Google e logout/login com e-mail continuam funcionando (o redirecionamento do layout ganhou o `router` nas dependências)
+
+## 17. Resumo do dia e celebração
+
+- [ ] Home na semana atual: aparece "X de Y hoje" com barra; marcar um hábito avança na hora (inclusive offline)
+- [ ] Hábito de dias específicos fora do dia não entra na conta; hábito "3x por semana" sai da conta depois de bater a meta da semana (e volta na semana seguinte)
+- [ ] Hábito com meta numérica só conta como feito ao atingir o valor
+- [ ] Ao concluir o último hábito do dia: "Tudo feito hoje!" e confete; marcar os outros hábitos **não** solta confete
+- [ ] Abrir o app com o dia já completo: mostra "Tudo feito hoje!" sem confete
+- [ ] Navegar para outra semana: o resumo some; voltar para a atual: reaparece

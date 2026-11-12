@@ -21,8 +21,8 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 
 ## C. Visual e experiência
 
-- [ ] **Resumo do dia** no topo da home ("3 de 5 hoje" + barra de progresso).
-- [ ] **Celebração com propósito**: confete só ao concluir todos os hábitos do dia e em marcos de streak (7, 30, 100...), não a cada marcação.
+- [x] **Resumo do dia** no topo da home ("3 de 5 hoje" + barra de progresso). `utils/todaySummary.ts` (com testes) + `TodaySummaryCard`; hábitos com meta semanal só contam enquanto a meta da semana não foi batida.
+- [x] **Celebração com propósito**: confete só ao concluir todos os hábitos do dia e em marcos de streak (7, 30, 100...), não a cada marcação. Feito o "tudo feito hoje"; os marcos de streak ficam com o item do "N dias seguidos", que calcula o streak localmente.
 - [ ] **Hábitos negativos**: deixar claro o que marcar significa ("Resisti hoje").
 - [ ] **Acessibilidade**: rótulos para leitores de tela nos dias da semana e no calendário ("Terça, 11 de novembro, concluído").
 - [ ] **"N dias seguidos" de volta** no toast de hoje, calculado localmente (sumiu com a fila offline).

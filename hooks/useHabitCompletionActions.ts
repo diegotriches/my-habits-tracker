@@ -31,7 +31,8 @@ interface UseHabitCompletionActionsParams {
   userId: string | undefined;
   weeklyCompletions: Completion[];
   fetchStreaks: (habitIds: string[]) => Promise<void>;
-  celebrate: () => void;
+  /** Hoje foi marcado — a tela decide se celebra (ex.: se o dia ficou completo). */
+  onTodayMarked: () => void;
   // Mutação otimista (de useWeeklyCompletions): applyOptimistic reflete a
   // marcação/desmarcação na UI na hora e a protege de refetches até a fila
   // enviá-la; as outras duas revertem a UI em caso de erro definitivo.
@@ -50,7 +51,7 @@ export function useHabitCompletionActions({
   userId,
   weeklyCompletions,
   fetchStreaks,
-  celebrate,
+  onTodayMarked,
   applyOptimistic,
   addOptimisticCompletion,
   removeCompletionById,
@@ -191,10 +192,10 @@ export function useHabitCompletionActions({
       markDay(habit, date, null);
       if (isToday) {
         showResultMessage('Completado!');
-        setTimeout(() => celebrate(), 1000);
+        onTodayMarked();
       }
     },
-    [userId, findCompletion, markDay, showResultMessage, celebrate]
+    [userId, findCompletion, markDay, showResultMessage, onTodayMarked]
   );
 
   const handleConfirmProgress = useCallback(
@@ -221,7 +222,7 @@ export function useHabitCompletionActions({
             percentage
           )
         );
-        setTimeout(() => celebrate(), 1000);
+        onTodayMarked();
       }
     },
     [
@@ -231,7 +232,7 @@ export function useHabitCompletionActions({
       findCompletion,
       markDay,
       showResultMessage,
-      celebrate,
+      onTodayMarked,
     ]
   );
 
