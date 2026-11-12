@@ -14,30 +14,40 @@ App de rastreamento de hábitos para Android/iOS, construído com React Native (
 ## Estrutura de pastas
 
 ```
-app/                  # Telas (Expo Router — cada arquivo é uma rota)
-  (tabs)/              # Tabs principais (home, perfil)
+app/                    # Telas (Expo Router — cada arquivo é uma rota)
+  (auth)/               # Login, cadastro e retorno do OAuth do Google
+  (tabs)/               # Home e perfil
   habits/               # Detalhes, edição e criação de hábito
-  settings/             # Configurações (notificações, privacidade, hábitos arquivados)
+  settings/             # Configurações (perfil, notificações, privacidade, arquivados)
   stats/                # Estatísticas do ano (mapa de calor)
+  debug/                # Diagnóstico de notificações (só em desenvolvimento)
 components/
   habits/               # Componentes específicos de hábitos
   stats/                # Mapa de calor do ano
-  ui/                    # Componentes genéricos reutilizáveis (BottomSheetModal, Icon, etc.)
+  account/              # Backup/importação e exclusão de conta
+  auth/                 # Botão de login com o Google
+  notifications/        # NotificationHandler (permissões, filas, ressincronização)
+  ui/                   # Componentes genéricos reutilizáveis (BottomSheetModal, Icon, etc.)
   profile/, skeletons/
-hooks/                 # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
-services/              # Chamadas ao Supabase e serviços de domínio
-  completionOutbox.ts               # fila de saída das marcações (funciona offline)
-  streakService.ts   # cálculo de streak
+hooks/                  # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
+services/               # Chamadas ao Supabase e serviços de domínio
+  completionOutbox.ts   # fila de saída das marcações (funciona offline)
+  streakService.ts      # cálculo de streak
   notificationService.ts, exactAlarmService.ts
-constants/             # Ícones, cores, constantes de formulário compartilhadas
-contexts/              # ThemeContext (claro/escuro/automático)
-types/supabase.ts      # Tipos gerados do schema do Supabase (não editar; ver CLAUDE.md)
-types/database.ts      # Aliases do app sobre os tipos gerados (Habit, Completion, ...)
-supabase/migrations/   # Migrations SQL do banco, executadas no SQL Editor
+utils/                  # Lógica pura e testada (streak, resumo do dia, mapa de calor, backup...)
+  __tests__/            # Testes (Jest)
+constants/              # Ícones, cores, constantes de formulário compartilhadas
+contexts/               # ThemeContext (claro/escuro/automático), AuthContext
+types/supabase.ts       # Tipos gerados do schema do Supabase (não editar; ver CLAUDE.md)
+types/database.ts       # Aliases do app sobre os tipos gerados (Habit, Completion, ...)
+supabase/migrations/    # Migrations SQL do banco, executadas no SQL Editor
+supabase/functions/     # Edge Functions (Deno): delete-account
 plugins/                # Config plugin do Expo para o módulo nativo de alarmes
   withExactAlarm.js
-  java/                 # AlarmReceiver, AlarmStorage, BootReceiver, ExactAlarmModule (Java)
+  java/                 # AlarmReceiver, AlarmStorage, BootReceiver, ExactAlarmModule/Package, PendingCompletionStorage
 assets/images/          # Ícones, splash, favicon
+assets/sounds/          # Sons dos lembretes (um canal Android por som)
+docs/                   # Roteiro de testes manuais (manual-testing.md)
 ```
 
 `android/` é gerado via `expo prebuild` e **não é commitado** — qualquer mudança em `plugins/` ou `app.json` que afete o nativo exige `npx expo prebuild --clean` antes do próximo build.

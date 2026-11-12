@@ -27,7 +27,7 @@ export async function getReminderReliability(): Promise<ReminderReliabilityStatu
   return { exactAlarms, batteryUnrestricted };
 }
 
-export function needsAttention(status: ReminderReliabilityStatus): boolean {
+function needsAttention(status: ReminderReliabilityStatus): boolean {
   return !status.exactAlarms || !status.batteryUnrestricted;
 }
 

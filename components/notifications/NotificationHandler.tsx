@@ -120,17 +120,3 @@ export function NotificationHandler() {
 
   return null;
 }
-
-/**
- * Hook para refresh quando app volta do background
- */
-export function useNotificationRefresh(onRefresh: () => Promise<void>) {
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'active') {
-        await onRefresh();
-      }
-    });
-    return () => subscription.remove();
-  }, [onRefresh]);
-}

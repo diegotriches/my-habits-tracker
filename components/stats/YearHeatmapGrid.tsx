@@ -10,7 +10,7 @@ const GAP = 2;
 const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 /** Cor de cada nível: do cinza (nada) ao verde cheio (tudo feito). */
-export function useHeatColors(): Record<HeatLevel, string> {
+function useHeatColors(): Record<HeatLevel, string> {
   const { colors } = useTheme();
   return {
     0: colors.border,

@@ -14,7 +14,7 @@ export function isOfflineState(
   return state.isConnected === false || state.isInternetReachable === false;
 }
 
-export async function isOffline(): Promise<boolean> {
+async function isOffline(): Promise<boolean> {
   return isOfflineState(await NetInfo.fetch());
 }
 

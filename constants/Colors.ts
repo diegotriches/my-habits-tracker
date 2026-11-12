@@ -125,4 +125,3 @@ export type ColorScheme = 'light' | 'dark';
 export type ThemeColors = typeof Colors.light;
 
 // Export default para compatibilidade com código antigo
-export default Colors;

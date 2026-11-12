@@ -3,7 +3,7 @@ export const MAX_NAME_LENGTH = 50;
 export const MAX_DESCRIPTION_LENGTH = 200;
 export const MAX_REMINDERS = 5; // lembretes por hábito
 
-export const TARGET_UNITS = {
+const TARGET_UNITS = {
   volume: ['litros', 'ml', 'copos'],
   distance: ['km', 'metros', 'passos'],
   time: ['horas', 'minutos'],

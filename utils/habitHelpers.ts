@@ -35,21 +35,6 @@ export function getScheduledWeekDays(
 }
 
 /**
- * Retorna o dia da semana atual (0-6, onde 0=Domingo)
- */
-export function getCurrentDayOfWeek(): number {
-  return new Date().getDay();
-}
-
-/**
- * Retorna nome do dia da semana em português
- */
-export function getDayName(dayNumber: number): string {
-  const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  return days[dayNumber] || '';
-}
-
-/**
  * Retorna nome abreviado do dia da semana
  */
 export function getDayShortName(dayNumber: number): string {
@@ -86,40 +71,4 @@ export function getDaysPerWeek(habit: Habit): number {
   }
   if (habit.frequency_type === 'daily') return 7;
   return habit.frequency_days?.length || 7;
-}
-
-/**
- * Retorna a próxima data em que o hábito DEVERIA ser feito
- * (usado apenas para notificações/lembretes)
- */
-export function getNextDueDate(habit: Habit, fromDate: Date = new Date()): Date | null {
-  if (habit.frequency_type === 'daily') {
-    return new Date(fromDate);
-  }
-
-  if (
-    habit.frequency_type === 'weekly' &&
-    habit.frequency_days &&
-    habit.frequency_days.length > 0
-  ) {
-    const currentDay = fromDate.getDay();
-    const sortedDays = [...habit.frequency_days].sort((a, b) => a - b);
-
-    for (const day of sortedDays) {
-      if (day > currentDay) {
-        const daysUntil = day - currentDay;
-        const nextDate = new Date(fromDate);
-        nextDate.setDate(nextDate.getDate() + daysUntil);
-        return nextDate;
-      }
-    }
-
-    const firstDay = sortedDays[0];
-    const daysUntil = 7 - currentDay + firstDay;
-    const nextDate = new Date(fromDate);
-    nextDate.setDate(nextDate.getDate() + daysUntil);
-    return nextDate;
-  }
-
-  return null;
 }

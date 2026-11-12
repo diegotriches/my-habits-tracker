@@ -8,18 +8,12 @@ import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
 import { ensureOnline } from '@/services/network';
 import { reminderSyncService } from '@/services/reminderSyncService';
-
-const TARGET_UNITS = {
-  volume: ['litros', 'ml', 'copos'],
-  distance: ['km', 'metros', 'passos'],
-  time: ['horas', 'minutos'],
-  count: ['páginas', 'exercícios', 'vezes', 'unidades'],
-  weight: ['kg', 'gramas'],
-};
-
-export const MIN_NAME_LENGTH = 3;
-export const MAX_NAME_LENGTH = 50;
-export const MAX_DESCRIPTION_LENGTH = 200;
+import {
+  getAllTargetUnits,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_NAME_LENGTH,
+  MIN_NAME_LENGTH,
+} from '@/constants/HabitForm';
 
 type FrequencyType = 'daily' | 'weekly' | 'custom';
 
@@ -324,7 +318,7 @@ export function useEditHabitForm(habitId: string) {
     updateHabit,
   ]);
 
-  const getAllUnits = useCallback(() => Object.values(TARGET_UNITS).flat(), []);
+  const getAllUnits = useCallback(() => getAllTargetUnits(), []);
 
   return {
     loading,

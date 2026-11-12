@@ -19,11 +19,8 @@ import { CompactColorSelector } from '@/components/habits/CompactColorSelector';
 import { FrequencySelector } from '@/components/habits/FrequencySelector';
 import { TargetInput } from '@/components/habits/TargetInput';
 import { HabitTypeIndicator } from '@/components/habits/HabitTypeIndicator';
-import {
-  useEditHabitForm,
-  MAX_NAME_LENGTH,
-  MAX_DESCRIPTION_LENGTH,
-} from '@/hooks/useEditHabitForm';
+import { useEditHabitForm } from '@/hooks/useEditHabitForm';
+import { MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH } from '@/constants/HabitForm';
 import { hapticFeedback } from '@/utils/haptics';
 import { useTheme } from '../../../contexts/ThemeContext';
 

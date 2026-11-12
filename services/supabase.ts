@@ -73,25 +73,3 @@ export async function fetchAllRows<T>(
     if (!data || data.length < PAGE_SIZE) return rows;
   }
 }
-
-// Helper para verificar se está autenticado
-export const isAuthenticated = async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return !!session;
-};
-
-// Helper para pegar usuário atual
-export const getCurrentUser = async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-};
-
-// Helper para logout
-export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-};
