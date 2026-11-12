@@ -1,20 +1,24 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
+// app/+not-found.tsx
+import { Link } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
+import { Icon } from '@/components/ui/Icon';
+import { useTheme } from '@/contexts/ThemeContext';
 
-import { Text, View } from '@/components/Themed';
-
+/** Rota inexistente (ex.: deep link antigo ou digitado errado). */
 export default function NotFoundScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
+  const { colors } = useTheme();
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
-        </Link>
-      </View>
-    </>
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Icon name="search" size={40} color={colors.textTertiary} />
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Página não encontrada</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        O link que você abriu não existe mais ou está incorreto.
+      </Text>
+      <Link href="/" style={[styles.link, { color: colors.primary }]}>
+        Voltar para o início
+      </Link>
+    </View>
   );
 }
 
@@ -23,18 +27,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
+    gap: 8,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
+  title: { fontSize: 20, fontWeight: '700', marginTop: 8 },
+  subtitle: { fontSize: 14, textAlign: 'center' },
+  link: { marginTop: 16, paddingVertical: 12, fontSize: 15, fontWeight: '600' },
 });
