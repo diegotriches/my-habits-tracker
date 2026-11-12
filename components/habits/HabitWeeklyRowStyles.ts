@@ -50,6 +50,10 @@ export const createWeeklyRowStyles = (colors: any, habitColor?: string) =>
       flex: 1,
     },
 
+    // Etiqueta "Evitar" dos hábitos negativos
+    avoidChip: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+    avoidChipText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+
     habitName: {
       fontSize: 16,
       fontWeight: '600',

@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Icon } from '@/components/ui/Icon';
 import { hapticFeedback } from '@/utils/haptics';
+import { DayStatus, dayAccessibilityHint, dayAccessibilityLabel } from '@/utils/a11y';
 
 interface DayData {
   date: string;
@@ -39,6 +40,8 @@ interface HabitStreakTrackerProps {
   currentMonth?: Date;
   onMonthChange?: (month: Date) => void;
   onDayPress?: (date: Date, isCompleted: boolean, currentValue?: number) => void;
+  /** Hábito negativo: o leitor de tela anuncia o dia marcado como "evitado". */
+  isNegative?: boolean;
 }
 
 interface Streak {
@@ -76,6 +79,7 @@ export function HabitStreakTracker({
   currentMonth: controlledMonth,
   onMonthChange,
   onDayPress,
+  isNegative = false,
 }: HabitStreakTrackerProps) {
   const { colors } = useTheme();
 
@@ -322,6 +326,23 @@ export function HabitStreakTracker({
       </View>
     );
 
+    const a11yStatus: DayStatus = isFutureDay
+      ? 'future'
+      : status === 'completed'
+        ? 'done'
+        : status === 'missed'
+          ? 'missed'
+          : 'unscheduled';
+    const a11yLabel = dayAccessibilityLabel(day, {
+      status: a11yStatus,
+      isToday: isCurrentDay,
+      isNegative,
+      percentage:
+        hasTarget && targetValue > 0 && status === 'completed'
+          ? Math.round(getDayProgress(day) * 100)
+          : null,
+    });
+
     return (
       <View key={index} style={styles.dayCell}>
         {isClickable ? (
@@ -329,11 +350,17 @@ export function HabitStreakTracker({
             style={styles.dayTouchable}
             onPress={() => handleDayPress(day)}
             activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityLabel={a11yLabel}
+            accessibilityHint={dayAccessibilityHint(a11yStatus)}
+            accessibilityState={{ checked: status === 'completed' }}
           >
             {dayContent}
           </TouchableOpacity>
         ) : (
-          dayContent
+          <View accessible accessibilityLabel={a11yLabel}>
+            {dayContent}
+          </View>
         )}
       </View>
     );

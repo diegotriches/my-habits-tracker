@@ -334,6 +334,7 @@ export default function HabitDetailsScreen() {
             currentMonth={calendarMonth}
             onMonthChange={setCalendarMonth}
             onDayPress={handleCalendarDayPress}
+            isNegative={habit.type === 'negative'}
           />
         </View>
 

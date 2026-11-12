@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Completion, Habit, Streak } from '@/types/database';
 import { getDayShortName, getDaysPerWeek } from '@/utils/habitHelpers';
+import { DayStatus, dayAccessibilityHint, dayAccessibilityLabel } from '@/utils/a11y';
 import { hapticFeedback } from '@/utils/haptics';
 import { addDays, isFuture, isSameDay, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import React, { useRef } from 'react';
@@ -173,6 +174,13 @@ export function HabitWeeklyRow({
 
     const metTarget = hasMetTarget(completion);
     const percentage = getProgressPercentage(completion);
+    const dayStatus: DayStatus = isDayFuture
+      ? 'future'
+      : isCompleted
+        ? 'done'
+        : isScheduled
+          ? 'missed'
+          : 'unscheduled';
 
     let checkboxColor = colors.border;
     let checkIcon: 'check' | 'shield' | 'star' | null = null;
@@ -200,7 +208,8 @@ export function HabitWeeklyRow({
           );
         }
       } else {
-        checkboxColor = isNegative ? colors.warning : colors.success;
+        // Marcar um hábito negativo é uma vitória ("evitei"): verde, com escudo.
+        checkboxColor = colors.success;
         checkIcon = isNegative ? 'shield' : 'check';
       }
     } else if (isScheduled && !isCompleted && !isDayFuture) {
@@ -219,6 +228,15 @@ export function HabitWeeklyRow({
         ]}
         onPress={() => handleDayPress(date)}
         disabled={isDayFuture}
+        accessibilityRole="button"
+        accessibilityLabel={dayAccessibilityLabel(date, {
+          status: dayStatus,
+          isToday,
+          isNegative,
+          percentage: habit.has_target && isCompleted ? (metTarget ? 100 : percentage) : null,
+        })}
+        accessibilityHint={dayAccessibilityHint(dayStatus)}
+        accessibilityState={{ checked: isCompleted, disabled: isDayFuture }}
       >
         {checkIcon && !badgeContent ? (
           <Icon name={checkIcon} size={14} color={colors.textInverse} />
@@ -239,12 +257,25 @@ export function HabitWeeklyRow({
       <View style={[styles.colorIndicator, { backgroundColor: habitColor }]} />
 
       <View style={styles.habitInfo}>
-        <TouchableOpacity onPress={handleHabitPress} activeOpacity={0.7} style={styles.habitHeader}>
+        <TouchableOpacity
+          onPress={handleHabitPress}
+          activeOpacity={0.7}
+          style={styles.habitHeader}
+          accessibilityRole="button"
+          accessibilityLabel={`${habit.name}${isNegative ? ', hábito a evitar' : ''}, ${completedDays} de ${expectedDays} nesta semana${
+            streak && streak.current_streak > 0 ? `, ${streak.current_streak} dias seguidos` : ''
+          }`}
+          accessibilityHint="Abre os detalhes do hábito"
+        >
           <View style={styles.habitNameRow}>
-            {isNegative && <Icon name="xCircle" size={16} color={colors.warning} />}
             <Text style={[styles.habitName, { color: colors.textPrimary }]} numberOfLines={1}>
               {habit.name}
             </Text>
+            {isNegative && (
+              <View style={[styles.avoidChip, { backgroundColor: colors.warningLight }]}>
+                <Text style={[styles.avoidChipText, { color: colors.warning }]}>Evitar</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.statsRow}>

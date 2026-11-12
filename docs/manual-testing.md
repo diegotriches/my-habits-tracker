@@ -153,3 +153,11 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Ao concluir o último hábito do dia: "Tudo feito hoje!" e confete; marcar os outros hábitos **não** solta confete
 - [ ] Abrir o app com o dia já completo: mostra "Tudo feito hoje!" sem confete
 - [ ] Navegar para outra semana: o resumo some; voltar para a atual: reaparece
+
+## 18. Hábitos negativos e acessibilidade
+
+- [ ] Hábito negativo na home: etiqueta "EVITAR" ao lado do nome; dia marcado fica **verde** com escudo; marcar hoje mostra "Evitado hoje!"
+- [ ] Criação de hábito: a opção "Negativo" explica "Marque os dias em que evitou"; o indicador do tipo explica que cada dia evitado conta no streak
+- [ ] Com o **TalkBack** ligado (Configurações → Acessibilidade), na home: tocar num dia anuncia, por exemplo, "hoje, quarta-feira, 11 de novembro, não feito, toque para marcar"; num hábito com meta, "60% da meta"; num negativo, "evitado"
+- [ ] Com o TalkBack, o nome do hábito anuncia "X de Y nesta semana, N dias seguidos" e o resumo do dia "3 de 5 hábitos feitos hoje"
+- [ ] Com o TalkBack, no calendário dos detalhes os dias também são anunciados com o estado

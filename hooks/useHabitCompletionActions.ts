@@ -191,7 +191,8 @@ export function useHabitCompletionActions({
 
       markDay(habit, date, null);
       if (isToday) {
-        showResultMessage('Completado!');
+        // Hábito negativo: marcar significa que conseguiu evitar.
+        showResultMessage(habit.type === 'negative' ? 'Evitado hoje!' : 'Completado!');
         onTodayMarked();
       }
     },

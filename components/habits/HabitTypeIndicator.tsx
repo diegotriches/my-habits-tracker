@@ -32,7 +32,9 @@ export const HabitTypeIndicator = React.memo(function HabitTypeIndicator({
           {isNegative ? 'Hábito Negativo' : 'Hábito Positivo'}
         </Text>
         <Text style={[styles.typeDescription, { color: colors.textSecondary }]}>
-          {isNegative ? 'Evitar algo que você quer parar' : 'Criar um novo hábito saudável'}
+          {isNegative
+            ? 'Marque os dias em que conseguiu evitar — cada dia evitado conta no streak'
+            : 'Criar um novo hábito saudável'}
         </Text>
       </View>
       <View style={[styles.lockBadge, { backgroundColor: colors.surface }]}>

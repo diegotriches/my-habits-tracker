@@ -64,7 +64,7 @@ export const HabitTypeSelector = React.memo(function HabitTypeSelector({
           >
             Negativo
           </Text>
-          <Text style={styles.habitTypeDescription}>Evitar algo ruim</Text>
+          <Text style={styles.habitTypeDescription}>Marque os dias em que evitou</Text>
         </View>
       </TouchableOpacity>
     </View>
