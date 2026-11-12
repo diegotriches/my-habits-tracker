@@ -37,6 +37,8 @@ export interface BackupHabit {
   frequency_goal_period: FrequencyGoalPeriod | null;
   frequency_goal_custom_days: number | null;
   created_at: string;
+  /** Quando foi arquivado (null = na tela inicial). Ausente em backups antigos. */
+  archived_at: string | null;
   completions: BackupCompletion[];
   reminders: BackupReminder[];
 }
@@ -132,6 +134,7 @@ function sanitizeHabit(raw: unknown): BackupHabit | null {
       : null,
     frequency_goal_custom_days: numOrNull(raw.frequency_goal_custom_days),
     created_at: validDate(raw.created_at) ? (raw.created_at as string) : new Date().toISOString(),
+    archived_at: validDate(raw.archived_at) ? (raw.archived_at as string) : null,
     completions,
     reminders,
   };

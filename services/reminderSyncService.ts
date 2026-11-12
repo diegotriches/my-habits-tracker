@@ -64,7 +64,9 @@ async function runSync(userId: string): Promise<boolean> {
       .from('habits')
       .select('id, name, has_target')
       .eq('user_id', userId)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      // Arquivado não toca; ao restaurar, esta mesma sincronização o reagenda.
+      .is('archived_at', null);
     // Sem os dados do banco (ex.: offline) não mexe em nada: cancelar e não
     // conseguir reagendar deixaria o usuário sem lembretes.
     if (habitsError) throw habitsError;

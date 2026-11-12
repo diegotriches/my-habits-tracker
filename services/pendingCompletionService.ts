@@ -30,15 +30,19 @@ export async function completeHabitFromNotification(
   try {
     const { data: habitData, error: habitError } = await supabase
       .from('habits')
-      .select('id, has_target, is_active')
+      .select('id, has_target, is_active, archived_at')
       .eq('id', habitId)
       .maybeSingle();
     if (habitError) throw habitError;
 
-    const habit = habitData as Pick<Habit, 'id' | 'has_target' | 'is_active'> | null;
-    // Sem linha: excluído ou de outra conta (RLS). Meta numérica precisa de
-    // um valor, que a notificação não tem.
-    if (!habit || !habit.is_active || habit.has_target) return 'skipped';
+    const habit = habitData as Pick<
+      Habit,
+      'id' | 'has_target' | 'is_active' | 'archived_at'
+    > | null;
+    // Sem linha: excluído ou de outra conta (RLS). Arquivado: a notificação
+    // já estava na tela antes de arquivar. Meta numérica precisa de um
+    // valor, que a notificação não tem.
+    if (!habit || !habit.is_active || habit.archived_at || habit.has_target) return 'skipped';
 
     const { data: existing, error: existingError } = await supabase
       .from('completions')

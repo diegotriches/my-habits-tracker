@@ -118,6 +118,7 @@ export async function buildBackup(userId: string): Promise<BackupFile> {
       frequency_goal_period: h.frequency_goal_period,
       frequency_goal_custom_days: h.frequency_goal_custom_days,
       created_at: h.created_at,
+      archived_at: h.archived_at,
       completions: completions
         .filter((c) => c.habit_id === h.id)
         .map((c) => ({ completed_at: c.completed_at, value_achieved: c.value_achieved })),
@@ -243,6 +244,8 @@ export async function importBackup(backup: BackupFile, userId: string): Promise<
         frequency_goal_period: h.frequency_goal_period,
         frequency_goal_custom_days: h.frequency_goal_custom_days,
         created_at: h.created_at,
+        // Hábito novo vem como estava; um já existente mantém o estado atual.
+        archived_at: h.archived_at,
         is_active: true,
       };
       const { data, error } = await supabase.from('habits').insert(insert).select('id').single();

@@ -1,11 +1,13 @@
 // hooks/useHabits.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { FrequencyGoalPeriod, Habit, HabitInsert, ReminderUpdate } from '@/types/database';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { readCache, writeCache } from '@/services/offlineCache';
+import { emitHabitsChanged, HABITS_CHANGED_EVENT } from '@/services/habitEvents';
 
 const habitsTable = () => supabase.from('habits');
 
@@ -59,6 +61,7 @@ export const useHabits = () => {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
+        .is('archived_at', null) // arquivados ficam em settings/archived
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -78,6 +81,15 @@ export const useHabits = () => {
     if (user) {
       fetchHabits();
     }
+  }, [user, fetchHabits]);
+
+  // Outra tela mudou a lista (criou, editou, excluiu, arquivou, restaurou).
+  useEffect(() => {
+    if (!user) return;
+    const subscription = DeviceEventEmitter.addListener(HABITS_CHANGED_EVENT, () => {
+      void fetchHabits();
+    });
+    return () => subscription.remove();
   }, [user, fetchHabits]);
 
   const getHabit = async (habitId: string) => {
@@ -155,6 +167,7 @@ export const useHabits = () => {
       }
 
       setHabits((prevHabits) => [data as Habit, ...prevHabits]);
+      emitHabitsChanged();
 
       return { data, error: null };
     } catch (err) {
@@ -193,6 +206,7 @@ export const useHabits = () => {
       }
 
       setHabits((prevHabits) => prevHabits.map((h) => (h.id === habitId ? (data as Habit) : h)));
+      emitHabitsChanged();
 
       return { data, error: null };
     } catch (err) {
@@ -219,38 +233,12 @@ export const useHabits = () => {
       await cleanupHabitNotifications(habitId);
 
       setHabits((prevHabits) => prevHabits.filter((h) => h.id !== habitId));
+      emitHabitsChanged();
 
       return { error: null };
     } catch (err) {
       return {
         error: err instanceof Error ? err.message : 'Erro ao deletar hábito',
-      };
-    }
-  };
-
-  const toggleHabitActive = async (habitId: string, isActive: boolean) => {
-    try {
-      const { error: updateError } = await habitsTable()
-        .update({ is_active: isActive })
-        .eq('id', habitId);
-
-      if (updateError) {
-        return { error: updateError.message };
-      }
-
-      if (isActive) {
-        const { data } = await getHabit(habitId);
-        if (data) {
-          setHabits((prevHabits) => [data as Habit, ...prevHabits]);
-        }
-      } else {
-        setHabits((prevHabits) => prevHabits.filter((h) => h.id !== habitId));
-      }
-
-      return { error: null };
-    } catch (err) {
-      return {
-        error: err instanceof Error ? err.message : 'Erro ao atualizar status',
       };
     }
   };
@@ -267,7 +255,6 @@ export const useHabits = () => {
     createHabit,
     updateHabit,
     deleteHabit,
-    toggleHabitActive,
     refresh,
   };
 };

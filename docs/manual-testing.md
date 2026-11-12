@@ -165,3 +165,18 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Com o **TalkBack** ligado (Configurações → Acessibilidade), na home: tocar num dia anuncia, por exemplo, "hoje, quarta-feira, 11 de novembro, não feito, toque para marcar"; num hábito com meta, "60% da meta"; num negativo, "evitado"
 - [ ] Com o TalkBack, o nome do hábito anuncia "X de Y nesta semana, N dias seguidos" e o resumo do dia "3 de 5 hábitos feitos hoje"
 - [ ] Com o TalkBack, no calendário dos detalhes os dias também são anunciados com o estado
+
+## 19. Arquivar hábitos
+
+Pré-requisito: migration `20261112164950_habit_archiving.sql` aplicada.
+
+- [ ] Criar um hábito: ele aparece na home ao voltar, **sem** puxar para atualizar; excluir um hábito: some da home ao voltar
+- [ ] Detalhes → ⋯ → **Arquivar**: confirmação explica que o histórico fica guardado; ao confirmar, volta para a home e o hábito sumiu (e saiu do "X de Y hoje")
+- [ ] Hábito arquivado com lembrete: o lembrete **não** toca; abrir o app de novo (ressincronização) também não o reagenda
+- [ ] Perfil → **Hábitos arquivados**: o hábito aparece com a data; sem arquivados, aparece a explicação de como arquivar
+- [ ] Tocar no arquivado abre os detalhes com a faixa "Arquivado em ..." e o botão Restaurar; sem o botão de Notificações; o menu ⋯ mostra Restaurar e Excluir (sem Editar)
+- [ ] **Restaurar** (na lista ou nos detalhes): toast, o hábito volta à home, o lembrete volta a tocar no horário e o streak considera os dias perdidos enquanto estava arquivado
+- [ ] Hábito com meta numérica e notificações de progresso: param ao arquivar e voltam ao restaurar
+- [ ] Sem internet: arquivar e restaurar avisam que precisam de conexão
+- [ ] Exportar backup com um hábito arquivado e importar em outra conta: ele chega arquivado
+- [ ] Notificação de um hábito já na tela antes de arquivar: tocar em "Feito" não registra nada

@@ -29,6 +29,6 @@ Ordem combinada: **A → B → C → D**. As correções primeiro; depois testes
 
 ## D. Funcionalidades
 
-- [ ] **Arquivar hábitos**: a exclusão já é lógica (`is_active = false`); oferecer "Arquivar" e uma lista de arquivados para restaurar.
+- [x] **Arquivar hábitos**: a exclusão já é lógica (`is_active = false`); oferecer "Arquivar" e uma lista de arquivados para restaurar. Branch `feat/archive-habits`: coluna `archived_at` (migration), "Arquivar"/"Restaurar" nos detalhes, tela Perfil → Hábitos arquivados, lembretes pausados e reagendados ao restaurar, backup preserva o estado. De quebra: a home passou a se atualizar ao criar/excluir hábitos (`HABITS_CHANGED_EVENT`).
 - [ ] **Visão geral de estatísticas**: mapa de calor do ano (estilo GitHub) com todos os hábitos.
 - [ ] **Widget na tela inicial (Android)**: marcar sem abrir o app. Nativo e trabalhoso — decidir quando chegar aqui.

@@ -18,6 +18,8 @@ import {
   Clock,
   Edit,
   Trash2,
+  Archive,
+  ArchiveRestore,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -134,6 +136,8 @@ export const Icons = {
   // Actions
   edit: Edit,
   trash: Trash2,
+  archive: Archive,
+  restore: ArchiveRestore,
   more: MoreVertical,
   filter: Filter,
   search: Search,

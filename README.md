@@ -132,7 +132,8 @@ eas update --branch preview --platform android --message "descrição da mudanç
 
 Cada tela grande segue o padrão: **hook(s) para lógica + componentes memoizados para UI**, mantendo o arquivo de tela como orquestrador fino. Exemplos:
 
-- `app/habits/[id].tsx` → `useHabitDetails`, `useHabitCalendarActions`, `useHabitProgressNotifications`, `useDeleteHabitConfirm`, `useActionsMenu`
+- `app/habits/[id].tsx` → `useHabitDetails`, `useHabitCalendarActions`, `useHabitProgressNotifications`, `useDeleteHabitConfirm`, `useArchiveHabitActions`, `useActionsMenu`
+- `app/settings/archived.tsx` → `useArchivedHabits`, `useArchiveHabitActions`
 - `app/habits/edit/[id].tsx` → `useEditHabitForm`
 - `app/habits/create.tsx` → `useCreateHabitForm`
 - `app/(tabs)/index.tsx` → `useHabitCompletionActions`
@@ -170,11 +171,20 @@ Limites conhecidos do modo offline: os detalhes de um hábito nunca aberto onlin
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
 
+### Arquivar hábitos
+
+No menu ⋯ dos detalhes, **Arquivar** tira o hábito da home e para os lembretes sem apagar nada; **Perfil → Hábitos arquivados** lista os arquivados, que abrem os detalhes (histórico completo, marcações permitidas) e podem ser restaurados. É diferente de **Excluir**, que desativa o hábito (`is_active = false`) e não tem volta pelo app.
+
+- Coluna `habits.archived_at` (migration `20261112164950_habit_archiving.sql`). Hábito "em uso" = `is_active and archived_at is null`.
+- Arquivar (`services/habitArchiveService.ts`) cancela os alarmes e as notificações de progresso, mas deixa os lembretes ativos no banco: a ressincronização ignora hábitos arquivados e, ao restaurar, reagenda tudo como estava. Restaurar também recalcula o streak (enquanto arquivado, os dias perdidos não o zeram).
+- O backup leva o `archived_at`: um hábito arquivado continua arquivado ao ser importado (backups antigos, sem o campo, vêm não arquivados).
+- `HABITS_CHANGED_EVENT` (`services/habitEvents.ts`) avisa as outras instâncias do `useHabits` quando a lista muda — antes, a home só mostrava um hábito novo, excluído ou arquivado depois de puxar para atualizar.
+
 ### Backup e exportação
 
 Em Dados e Privacidade (`DataTransferCard`, `services/dataTransferService.ts`):
 
-- **Exportar backup** gera um JSON (`format: "my-habits-tracker/backup"`, `version`) com hábitos ativos, conclusões e lembretes — **sem ids do banco**, para poder ser importado em qualquer conta. Ao mudar o formato, suba `BACKUP_VERSION` e mantenha a leitura das versões anteriores em `parseBackup`.
+- **Exportar backup** gera um JSON (`format: "my-habits-tracker/backup"`, `version`) com hábitos ativos (inclusive arquivados), conclusões e lembretes — **sem ids do banco**, para poder ser importado em qualquer conta. Ao mudar o formato, suba `BACKUP_VERSION` e mantenha a leitura das versões anteriores em `parseBackup`.
 - **Exportar histórico** gera um CSV (`;`, com BOM, para o Excel em pt-BR) com uma linha por conclusão. Não é reimportável.
 - **Importar** valida o arquivo (hábitos inválidos são pulados e contados), mostra um resumo e **mescla por nome**: hábito com o mesmo nome de um existente recebe só os dias que faltam e os lembretes de horários que ainda não tem (até 5). Depois recalcula streaks e ressincroniza os alarmes. É idempotente: importar o mesmo arquivo de novo — inclusive para completar uma importação que falhou no meio — não duplica nada.
 - Arquivos: `expo-file-system` (grava no cache), `expo-sharing` (compartilhar) e `expo-document-picker` (escolher o arquivo). As consultas são paginadas (limite de 1000 linhas do Supabase).

@@ -44,6 +44,8 @@ class ProgressNotificationSchedulerService {
       const habitData = habit as Habit;
 
       await this.cancelProgressNotifications(habitId);
+      // Arquivado não recebe notificações; restaurar chama este método de novo.
+      if (habitData.archived_at) return true;
 
       const notificationIds: {
         morning?: string;

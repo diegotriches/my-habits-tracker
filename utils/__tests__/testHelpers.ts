@@ -30,6 +30,7 @@ export function makeHabit(overrides: Partial<Habit> = {}): Habit {
     frequency_goal_period: null,
     frequency_goal_custom_days: null,
     is_active: true,
+    archived_at: null,
     created_at: local('2026-10-01').toISOString(),
     updated_at: local('2026-10-01').toISOString(),
     ...overrides,

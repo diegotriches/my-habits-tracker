@@ -15,10 +15,14 @@ import { useHabitDetails } from '@/hooks/useHabitDetails';
 import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeleteHabitConfirm } from '@/hooks/useDeleteHabitConfirm';
+import { useArchiveHabitActions } from '@/hooks/useArchiveHabitActions';
 import { useHabitProgressNotifications } from '@/hooks/useHabitProgressNotifications';
 import { useHabitCalendarActions } from '@/hooks/useHabitCalendarActions';
 import { useRegisterProgressAction } from '@/hooks/useRegisterProgressAction';
 import { hapticFeedback } from '@/utils/haptics';
+import { capitalizeFirst } from '@/utils/text';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -125,8 +129,7 @@ export default function HabitDetailsScreen() {
     router.push(`/habits/edit/${id}` as any);
   }, [id]);
 
-  const handleBack = useCallback(() => {
-    hapticFeedback.light();
+  const leaveScreen = useCallback(() => {
     // Aberto pela notificação com o app fechado, não há tela anterior.
     if (router.canGoBack()) {
       router.back();
@@ -135,19 +138,59 @@ export default function HabitDetailsScreen() {
     }
   }, []);
 
-  const actionsMenuItems: HabitActionsMenuItem[] = useMemo(
-    () => [
+  const handleBack = useCallback(() => {
+    hapticFeedback.light();
+    leaveScreen();
+  }, [leaveScreen]);
+
+  // Arquivar volta para a tela anterior (o hábito some da home); restaurar
+  // fica aqui e recarrega o hábito.
+  const handleRestored = useCallback(() => {
+    void refetchHabit();
+    showResultMessage('Hábito restaurado — de volta à tela inicial');
+  }, [refetchHabit, showResultMessage]);
+  const {
+    busy: archiving,
+    confirmArchive,
+    restore,
+  } = useArchiveHabitActions({ onArchived: leaveScreen, onRestored: handleRestored });
+
+  const isArchived = !!habit?.archived_at;
+  const habitName = habit?.name;
+  const actionsMenuItems: HabitActionsMenuItem[] = useMemo(() => {
+    const deleteItem: HabitActionsMenuItem = {
+      key: 'delete',
+      icon: 'trash',
+      label: 'Excluir',
+      color: colors.danger,
+      onPress: confirmDelete,
+    };
+    if (isArchived) {
+      return [
+        { key: 'restore', icon: 'restore', label: 'Restaurar', onPress: () => void restore(id) },
+        deleteItem,
+      ];
+    }
+    return [
       { key: 'edit', icon: 'edit', label: 'Editar', onPress: handleEdit },
       {
-        key: 'delete',
-        icon: 'trash',
-        label: 'Excluir',
-        color: colors.danger,
-        onPress: confirmDelete,
+        key: 'archive',
+        icon: 'archive',
+        label: 'Arquivar',
+        onPress: () => confirmArchive(id, habitName),
       },
-    ],
-    [handleEdit, confirmDelete, colors.danger]
-  );
+      deleteItem,
+    ];
+  }, [
+    isArchived,
+    id,
+    habitName,
+    handleEdit,
+    confirmArchive,
+    restore,
+    confirmDelete,
+    colors.danger,
+  ]);
 
   if (loading) {
     return (
@@ -236,7 +279,7 @@ export default function HabitDetailsScreen() {
           <HabitActionsMenu
             items={actionsMenuItems}
             topOffset={insets.top + 56}
-            loading={deleting}
+            loading={deleting || archiving}
           />
         </View>
       </View>
@@ -245,6 +288,36 @@ export default function HabitDetailsScreen() {
         style={[styles.content, { backgroundColor: tintBg }]}
         showsVerticalScrollIndicator={false}
       >
+        {habit.archived_at && (
+          <View
+            style={[
+              styles.archivedBanner,
+              { backgroundColor: colors.surface, borderColor: tintBorder },
+            ]}
+          >
+            <Icon name="archive" size={20} color={colors.textSecondary} />
+            <Text style={[styles.archivedText, { color: colors.textSecondary }]}>
+              {capitalizeFirst(
+                format(new Date(habit.archived_at), "'arquivado em' d 'de' MMMM 'de' yyyy", {
+                  locale: ptBR,
+                })
+              )}
+              . Fora da tela inicial e sem lembretes; o histórico continua aqui.
+            </Text>
+            <TouchableOpacity
+              onPress={() => void restore(id)}
+              disabled={archiving}
+              accessibilityRole="button"
+              accessibilityLabel={`Restaurar ${habit.name}`}
+              style={[styles.archivedButton, { backgroundColor: colors.primary }]}
+            >
+              <Text style={[styles.archivedButtonText, { color: colors.textInverse }]}>
+                Restaurar
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <HabitInfoCard
           habit={habit}
           isNegative={isNegative}
@@ -338,31 +411,33 @@ export default function HabitDetailsScreen() {
           />
         </View>
 
-        {/* Notificações — Botão resumo */}
-        <TouchableOpacity
-          style={[
-            styles.notificationButton,
-            { backgroundColor: colors.surface, borderColor: tintBorder },
-          ]}
-          onPress={() => {
-            hapticFeedback.light();
-            setShowNotificationsModal(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.notifIconCircle, { backgroundColor: themeColor + '15' }]}>
-            <Icon name="bell" size={20} color={themeColor} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.notifButtonLabel, { color: colors.textPrimary }]}>
-              Notificações
-            </Text>
-            <Text style={[styles.notifButtonSummary, { color: colors.textSecondary }]}>
-              {notificationSummary}
-            </Text>
-          </View>
-          <Icon name="chevronRight" size={18} color={colors.textTertiary} />
-        </TouchableOpacity>
+        {/* Notificações — Botão resumo (arquivado não tem lembretes) */}
+        {!habit.archived_at && (
+          <TouchableOpacity
+            style={[
+              styles.notificationButton,
+              { backgroundColor: colors.surface, borderColor: tintBorder },
+            ]}
+            onPress={() => {
+              hapticFeedback.light();
+              setShowNotificationsModal(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.notifIconCircle, { backgroundColor: themeColor + '15' }]}>
+              <Icon name="bell" size={20} color={themeColor} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.notifButtonLabel, { color: colors.textPrimary }]}>
+                Notificações
+              </Text>
+              <Text style={[styles.notifButtonSummary, { color: colors.textSecondary }]}>
+                {notificationSummary}
+              </Text>
+            </View>
+            <Icon name="chevronRight" size={18} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )}
 
         {overallStats && (
           <HabitOverallStats
@@ -398,6 +473,29 @@ export default function HabitDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  archivedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  archivedText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  archivedButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  archivedButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 14 },

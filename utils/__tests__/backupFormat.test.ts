@@ -112,6 +112,15 @@ describe('parseBackup', () => {
     expect(backup.habits[0].frequency_days).toBeNull();
   });
 
+  it('mantém a data de arquivamento; backups antigos (sem o campo) vêm não arquivados', () => {
+    const archived = parseBackup(file([habit({ archived_at: '2026-11-01T12:00:00.000Z' })]));
+    expect(archived.backup.habits[0].archived_at).toBe('2026-11-01T12:00:00.000Z');
+    expect(parseBackup(file([habit()])).backup.habits[0].archived_at).toBeNull();
+    expect(
+      parseBackup(file([habit({ archived_at: 'ontem' })])).backup.habits[0].archived_at
+    ).toBeNull();
+  });
+
   it('usa padrões para cor e ícone ausentes', () => {
     const { backup } = parseBackup(file([habit({ color: undefined, icon: 42 })]));
     expect(backup.habits[0]).toMatchObject({ color: '#3B82F6', icon: 'star' });

@@ -206,6 +206,21 @@ export default function ProfileScreen() {
             <Icon name="chevronRight" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
 
+          {/* Hábitos arquivados */}
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: colors.surface }]}
+            onPress={() => router.push('/settings/archived')}
+            accessibilityRole="button"
+          >
+            <View style={styles.settingLeft}>
+              <Icon name="archive" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>
+                Hábitos arquivados
+              </Text>
+            </View>
+            <Icon name="chevronRight" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+
           {/* Dados e Privacidade */}
           <TouchableOpacity
             style={[styles.settingItem, { backgroundColor: colors.surface }]}
