@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { hapticFeedback } from '@/utils/haptics';
+import { errorMessageFor } from '@/utils/networkErrors';
 
 export function useDeleteHabitConfirm(
   habitId: string,
@@ -28,7 +29,7 @@ export function useDeleteHabitConfirm(
 
             if (error) {
               hapticFeedback.error();
-              Alert.alert('Erro', error);
+              Alert.alert('Erro', errorMessageFor(error, error));
             } else {
               hapticFeedback.success();
               Alert.alert('Sucesso', 'Hábito deletado com sucesso', [

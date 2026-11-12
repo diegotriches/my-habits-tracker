@@ -48,11 +48,16 @@ Resolve perder a conexão com o app aberto. Branch `feat/offline-outbox`.
 
 Limitações conhecidas desta fase: com operações pendentes de uma sessão anterior, a home mostra o estado do banco até a fila ser enviada (há um refetch automático em seguida); o toast de hoje mostra só "Completado!" (antes trazia "N dias seguidos", que dependia da resposta do servidor).
 
-### Fase 2 — Abrir o app offline (só JS)
-- [ ] Cache de hábitos, streaks e conclusões recentes, atualizado a cada busca bem-sucedida
-- [ ] Home e detalhes carregam do cache primeiro e aplicam a fila por cima
-- [ ] Cache limpo no logout e na exclusão de conta
-- [ ] Ações fora do escopo (criar/editar hábito etc.) mostram mensagem clara quando offline
+### Fase 2 — Abrir o app offline (só JS) — implementada, aguardando teste no aparelho
+Branch `feat/offline-cache`.
+- [x] Sessão: com o token expirado e sem rede, o app entra com a sessão salva (`readStoredSession`) em vez de ir para o login; o token é renovado ao voltar para o primeiro plano
+- [x] Cache (`services/offlineCache.ts`, por usuário e com versão) de hábitos, streaks, perfil, últimas 8 semanas da home e detalhes de cada hábito aberto, atualizado a cada busca bem-sucedida
+- [x] Home e detalhes carregam do cache primeiro e aplicam a fila por cima (resolve também a limitação da fase 1 ao reabrir o app)
+- [x] Cache limpo no logout (a exclusão de conta já limpa todo o AsyncStorage)
+- [x] Criar, editar e excluir hábito mostram "Sem conexão..." quando a falha é de rede
+- [ ] Testes no aparelho (seção 11 de `docs/manual-testing.md`)
+
+Limitações conhecidas desta fase: detalhes de um hábito nunca aberto online não têm cache (mostram a tela de erro de sempre); lembretes e perfil ainda mostram as mensagens genéricas de erro offline (a fase 3, com NetInfo, pode avisar antes de tentar); streaks vencidos só zeram na próxima sessão online; caches de hábitos excluídos ficam até o logout.
 
 ### Fase 3 — Reconexão e indicador (nativo: exige build)
 - [ ] Adicionar `@react-native-community/netinfo` e drenar a fila quando a conexão voltar

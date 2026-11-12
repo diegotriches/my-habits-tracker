@@ -5,6 +5,7 @@ import { useHabits } from '@/hooks/useHabits';
 import { useAuth } from '@/hooks/useAuth';
 import { Habit, FrequencyGoalPeriod } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
+import { errorMessageFor } from '@/utils/networkErrors';
 import { reminderSyncService } from '@/services/reminderSyncService';
 
 const TARGET_UNITS = {
@@ -236,7 +237,7 @@ export function useEditHabitForm(habitId: string) {
 
       if (habitError) {
         setSaving(false);
-        Alert.alert('Erro', habitError);
+        Alert.alert('Erro', errorMessageFor(habitError, habitError));
         return;
       }
 

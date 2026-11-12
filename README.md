@@ -126,7 +126,7 @@ Como consequência, **não há refetch completo após cada sucesso individual** 
 
 Na home, as mutações passam por `applyOptimistic(op)` do `useWeeklyCompletions`, que devolve um `settle(ok)` a ser chamado quando a fila resolver a operação. Enquanto um refetch puder ter lido o banco antes da gravação, a mutação é reaplicada sobre a resposta — assim, marcar dias e logo em seguida trocar de semana ou puxar para atualizar não "desmarca" nada na tela. Respostas de buscas antigas (fora de ordem) são descartadas. Na tela de detalhes, que só busca ao abrir, o `useHabitDetails` expõe setters simples (`addOptimisticCompletion` / `removeCompletionById` / `removeCompletionForDate`).
 
-Ainda não dá para **abrir** o app sem conexão (a home busca tudo do Supabase ao iniciar) — ver as próximas fases em [docs/offline-mode.md](docs/offline-mode.md).
+O app também **abre sem conexão**: hábitos, streaks, perfil, as últimas 8 semanas da home e os detalhes já vistos ficam num cache de leitura (`services/offlineCache.ts`, por usuário e com versão — suba `CACHE_VERSION` ao mudar o formato dos dados), mostrado na hora e atualizado a cada busca. A fila é aplicada por cima do cache. Com o token expirado e sem rede, o `AuthContext` entra com a sessão salva no aparelho (`readStoredSession`) em vez de mandar para o login; ela é renovada quando a conexão volta. Criar/editar/excluir hábitos continuam exigindo conexão. Próximas fases em [docs/offline-mode.md](docs/offline-mode.md).
 
 ### Sistema de notificações
 

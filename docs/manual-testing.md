@@ -91,3 +91,13 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Marcar offline, **fechar o app** (recentes), religar a rede e abrir: a home se atualiza sozinha com as marcações enviadas
 - [ ] Marcar hoje offline às 23:5x e enviar depois da meia-noite: a conclusão fica no dia em que foi marcada
 - [ ] Excluir um hábito em outro aparelho com uma marcação dele pendente: ao enviar, a marcação é descartada sem travar as demais
+
+## 11. Abrir o app offline (cache de leitura)
+
+- [ ] Com o app usado online antes, fechar o app, ativar o modo avião e abrir: entra direto na home (sem ir para o login), com hábitos, semana atual, streaks, nome e avatar
+- [ ] Mesmo teste mais de 1 hora depois do último uso online (token expirado): continua entrando sem login
+- [ ] Offline, abrir os detalhes de um hábito já visto: abre com calendário e estatísticas; um hábito nunca aberto mostra a tela de erro
+- [ ] Offline, marcar/desmarcar dias, fechar e reabrir o app ainda offline: as marcações continuam na tela
+- [ ] Religar a rede e voltar ao app: as marcações vão para o banco e a tela se atualiza
+- [ ] Offline, tentar criar, editar e excluir um hábito: aparece "Sem conexão. Esta ação precisa de internet..."
+- [ ] Sair da conta e entrar com outra: nada da conta anterior aparece

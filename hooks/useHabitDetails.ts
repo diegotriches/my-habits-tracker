@@ -3,6 +3,14 @@ import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { Habit, Completion, Streak } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { applyPendingOps, completionOutbox } from '@/services/completionOutbox';
+import { readCache, writeCache } from '@/services/offlineCache';
+
+interface HabitDetailsCache {
+  habit: Habit;
+  completions: Completion[];
+  streak: Streak | null;
+}
 import { 
   startOfWeek, 
   addDays,
@@ -106,9 +114,34 @@ export function useHabitDetails(habitId: string) {
   }, [user, habitId]);
 
   const fetchAllData = async () => {
+    const userId = user?.id;
+    let showedCache = false;
+
+    // Marcações ainda na fila de saída (feitas offline, inclusive em sessões
+    // anteriores) entram por cima dos dados, antes das estatísticas.
+    const withPending = async (completions: Completion[]) => {
+      if (!userId) return completions;
+      const queued = (await completionOutbox.getPendingOps(userId)).filter(op => op.habitId === habitId);
+      return applyPendingOps(completions, queued);
+    };
+
     try {
       setLoading(true);
       setError(null);
+
+      // Cache offline primeiro: a tela abre na hora, mesmo sem rede.
+      const cached = userId ? await readCache<HabitDetailsCache>(`habit:${habitId}`, userId) : null;
+      if (cached) {
+        const completions = await withPending(cached.completions);
+        setData({
+          habit: cached.habit,
+          completions,
+          streak: cached.streak,
+          ...computeDerivedFields(cached.habit, completions),
+        });
+        setLoading(false);
+        showedCache = true;
+      }
 
       const { data: habit, error: habitError } = await supabase
         .from('habits')
@@ -136,16 +169,26 @@ export function useHabitDetails(habitId: string) {
         throw streakError;
       }
 
-      const derived = computeDerivedFields(habit as Habit, (completions as Completion[]) || []);
-
-      setData({
+      const fresh: HabitDetailsCache = {
         habit: habit as Habit,
         completions: (completions as Completion[]) || [],
         streak: streak ? (streak as Streak) : null,
-        ...derived,
+      };
+      if (userId) void writeCache(`habit:${habitId}`, userId, fresh);
+
+      const shownCompletions = await withPending(fresh.completions);
+      setData({
+        ...fresh,
+        completions: shownCompletions,
+        ...computeDerivedFields(fresh.habit, shownCompletions),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao buscar detalhes');
+      // Com o cache na tela (ex.: offline), a falha não vira tela de erro.
+      if (showedCache) {
+        console.warn('Detalhes do hábito: usando o cache offline', err);
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro ao buscar detalhes');
+      }
     } finally {
       setLoading(false);
     }

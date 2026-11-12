@@ -1,7 +1,8 @@
 // contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/services/supabase';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { supabase, readStoredSession } from '@/services/supabase';
+import { clearOfflineCache } from '@/services/offlineCache';
+import { User, Session, AuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 
@@ -40,7 +41,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         console.log('🔍 Fetching initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
+        // Offline com o token expirado: a renovação falha por rede, mas a
+        // sessão continua salva. Entra com ela (o app abre com o cache
+        // offline) em vez de mandar para o login; o autoRefresh a renova
+        // quando a conexão voltar e o listener abaixo atualiza o estado.
+        if (error && isAuthRetryableFetchError(error)) {
+          const stored = await readStoredSession();
+          if (stored) {
+            console.log('📴 Sem conexão: usando a sessão salva no aparelho');
+            setAuthState({ user: stored.user, session: stored, loading: false, error: null });
+            return;
+          }
+        }
+
         if (error) throw error;
         
         console.log('📊 Initial session:', {
@@ -295,6 +309,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      // Dados da conta que saiu não ficam no aparelho.
+      await clearOfflineCache();
 
       setAuthState({
         user: null,

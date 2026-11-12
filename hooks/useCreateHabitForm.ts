@@ -12,6 +12,7 @@ import { getScheduledWeekDays } from '@/utils/habitHelpers';
 import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
+import { errorMessageFor } from '@/utils/networkErrors';
 import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
 
 const remindersTable = () => supabase.from('reminders');
@@ -336,7 +337,7 @@ export function useCreateHabitForm() {
     if (error || !habit) {
       setLoading(false);
       hapticFeedback.error();
-      setErrorMessage('Não foi possível criar o hábito. Tente novamente.');
+      setErrorMessage(errorMessageFor(error, 'Não foi possível criar o hábito. Tente novamente.'));
       setShowErrorToast(true);
       return;
     }

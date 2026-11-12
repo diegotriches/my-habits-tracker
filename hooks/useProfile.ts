@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { Profile } from '@/types/database';
 import { useAuth } from './useAuth';
+import { readCache, writeCache } from '@/services/offlineCache';
 
 export const useProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -17,6 +18,13 @@ export const useProfile = () => {
       setLoading(true);
       setError(null);
 
+      // Cache offline: nome e avatar do cabeçalho aparecem mesmo sem rede.
+      const cached = await readCache<Profile>('profile', user.id);
+      if (cached) {
+        setProfile(prev => prev ?? cached);
+        setLoading(false);
+      }
+
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -27,6 +35,7 @@ export const useProfile = () => {
       if (!data) throw new Error('Perfil não encontrado');
 
       setProfile(data as Profile);
+      void writeCache('profile', user.id, data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar perfil');
     } finally {

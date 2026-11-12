@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { Completion } from '@/types/database';
 import { useAuth } from './useAuth';
-import { startOfWeek, endOfWeek, format, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, format, isWithinInterval, parseISO, subWeeks } from 'date-fns';
+import { applyPendingOps, completionOutbox } from '@/services/completionOutbox';
+import { pruneCache, readCache, writeCache } from '@/services/offlineCache';
+
+// Semanas guardadas no cache offline (a atual e as anteriores).
+const CACHED_WEEKS = 8;
 
 /** Mutação otimista: marcar (add) ou desmarcar (remove) um dia. */
 export type OptimisticOp =
@@ -70,6 +75,43 @@ export const useWeeklyCompletions = () => {
       const weekStart = startOfWeek(target, { weekStartsOn: 0 });
       const weekEnd = endOfWeek(target, { weekStartsOn: 0 });
 
+      const weekKey = `week:${format(weekStart, 'yyyy-MM-dd')}`;
+
+      // O que a tela mostra = dados (cache ou banco) + marcações ainda na fila
+      // de saída (inclusive de sessões anteriores) + mutações otimistas desta
+      // sessão que essa leitura pode não refletir. `fromServer` decide se dá
+      // para esquecer as mutações já gravadas: só uma leitura do banco
+      // iniciada depois da gravação garante que ela está lá.
+      const present = async (data: Completion[], fromServer: boolean) => {
+        const queued = (await completionOutbox.getPendingOps(userId)).filter(op =>
+          isWithinInterval(parseISO(op.day), { start: weekStart, end: weekEnd })
+        );
+        let next = applyPendingOps(data, queued);
+        for (const [key, pending] of pendingOpsRef.current) {
+          if (fromServer && pending.settledAtFetch !== null && pending.settledAtFetch < seq) {
+            // Esta busca começou depois da gravação: o banco já reflete.
+            pendingOpsRef.current.delete(key);
+            continue;
+          }
+          const { op } = pending;
+          if (
+            op.kind === 'add' &&
+            !isWithinInterval(new Date(op.completion.completed_at), { start: weekStart, end: weekEnd })
+          ) {
+            continue; // marcação de outra semana
+          }
+          next = applyOp(next, op);
+        }
+        return next;
+      };
+
+      // Cache offline primeiro: a semana aparece na hora, mesmo sem rede.
+      const cached = await readCache<Completion[]>(weekKey, userId);
+      if (cached && seq === fetchSeqRef.current) {
+        const shown = await present(cached, false);
+        if (seq === fetchSeqRef.current) setCompletions(shown);
+      }
+
       const { data, error: fetchError } = await supabase
         .from('completions')
         .select(`
@@ -84,25 +126,13 @@ export const useWeeklyCompletions = () => {
       if (seq !== fetchSeqRef.current) return;
       if (fetchError) throw fetchError;
 
-      // Reaplica as mutações otimistas que esta resposta pode não refletir,
-      // para o refetch não "desfazer" na tela um dia recém-marcado.
-      let next = (data as Completion[]) || [];
-      for (const [key, pending] of pendingOpsRef.current) {
-        if (pending.settledAtFetch !== null && pending.settledAtFetch < seq) {
-          // Esta busca começou depois da gravação: o banco já reflete.
-          pendingOpsRef.current.delete(key);
-          continue;
-        }
-        const { op } = pending;
-        if (
-          op.kind === 'add' &&
-          !isWithinInterval(new Date(op.completion.completed_at), { start: weekStart, end: weekEnd })
-        ) {
-          continue; // marcação de outra semana
-        }
-        next = applyOp(next, op);
-      }
+      const fresh = (data as Completion[]) || [];
+      void writeCache(weekKey, userId, fresh);
+      const oldestKept = format(startOfWeek(subWeeks(new Date(), CACHED_WEEKS - 1), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+      void pruneCache('week:', key => key.slice('week:'.length) >= oldestKept);
 
+      const next = await present(fresh, true);
+      if (seq !== fetchSeqRef.current) return;
       setCompletions(next);
       setError(null);
     } catch (err) {

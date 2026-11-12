@@ -1,10 +1,11 @@
 // hooks/useHabits.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { FrequencyGoalPeriod, Habit, HabitInsert, ReminderUpdate } from '@/types/database';
 import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
+import { readCache, writeCache } from '@/services/offlineCache';
 
 const habitsTable = () => supabase.from('habits');
 
@@ -32,18 +33,36 @@ export const useHabits = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Só regrava o cache depois de uma busca bem-sucedida: antes disso a lista
+  // é a inicial (vazia) ou veio do próprio cache.
+  const loadedFromServerRef = useRef(false);
+
   useEffect(() => {
     if (user) {
       fetchHabits();
     }
   }, [user]);
 
+  // Cache offline: mantém a última lista conhecida, inclusive depois de
+  // criar/editar/excluir (que só acontecem online).
+  useEffect(() => {
+    if (user?.id && loadedFromServerRef.current) void writeCache('habits', user.id, habits);
+  }, [habits, user?.id]);
+
   const fetchHabits = async () => {
     if (!user?.id) return;
+    const userId = user.id;
 
     try {
       setLoading(true);
       setError(null);
+
+      // Mostra o cache na hora (abre offline); a busca abaixo atualiza.
+      const cached = await readCache<Habit[]>('habits', userId);
+      if (cached) {
+        setHabits(prev => (prev.length > 0 ? prev : cached));
+        setLoading(false);
+      }
 
       const { data, error: fetchError } = await habitsTable()
         .select('*')
@@ -53,6 +72,7 @@ export const useHabits = () => {
 
       if (fetchError) throw fetchError;
 
+      loadedFromServerRef.current = true;
       setHabits(data as Habit[] || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');

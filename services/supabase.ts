@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { AppState } from 'react-native';
+import { createClient, Session } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -18,6 +19,35 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+// Renova o token só com o app em primeiro plano (recomendação do Supabase
+// para React Native) — e logo ao voltar, o que também cobre voltar a ficar
+// online depois de abrir o app offline com o token expirado.
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') supabase.auth.startAutoRefresh();
+  else supabase.auth.stopAutoRefresh();
+});
+
+// Chave padrão em que o supabase-js guarda a sessão (sb-<ref>-auth-token).
+// Não configure outra storageKey no createClient: deslogaria todo mundo.
+const AUTH_STORAGE_KEY = `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`;
+
+/**
+ * Lê a sessão salva no aparelho sem tentar renová-la. Usada para abrir o app
+ * offline: com o token expirado e sem rede, o getSession() devolve null (a
+ * renovação falha), embora a sessão continue salva e válida para renovar
+ * assim que houver conexão.
+ */
+export async function readStoredSession(): Promise<Session | null> {
+  try {
+    const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw) as Session;
+    return session?.user ? session : null;
+  } catch {
+    return null;
+  }
+}
 
 // Helper para verificar se está autenticado
 export const isAuthenticated = async () => {

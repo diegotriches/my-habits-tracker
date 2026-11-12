@@ -4,6 +4,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { endOfDay, format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { retroactiveCompletionService } from './retroactiveCompletionService';
+import { Completion } from '@/types/database';
 
 /**
  * Fila de saída das marcações (modo offline, fase 1 — ver docs/offline-mode.md).
@@ -180,6 +181,45 @@ async function runFlush(): Promise<void> {
 }
 
 /**
+ * Aplica as operações ainda não enviadas sobre uma lista de conclusões (vinda
+ * do cache offline ou do banco), para a tela refletir o que o usuário fez —
+ * inclusive em sessões anteriores do app. Mesma regra do envio: desmarcar
+ * remove o dia; marcar adiciona (ou, com meta, troca o valor).
+ */
+export function applyPendingOps(completions: Completion[], ops: CompletionOp[]): Completion[] {
+  let result = completions;
+  for (const op of ops) {
+    const inSlot = (c: Completion) =>
+      c.habit_id === op.habitId && format(new Date(c.completed_at), 'yyyy-MM-dd') === op.day;
+
+    if (op.kind === 'uncomplete') {
+      result = result.filter(c => !inSlot(c));
+      continue;
+    }
+
+    const index = result.findIndex(inSlot);
+    if (index >= 0) {
+      if (op.value !== null) {
+        result = result.map((c, i) => (i === index ? { ...c, value_achieved: op.value } : c));
+      }
+      continue;
+    }
+    result = [
+      {
+        id: `pending-${op.id}`,
+        habit_id: op.habitId,
+        completed_at: op.completedAt,
+        value_achieved: op.value,
+        was_synced: false,
+        created_at: op.createdAt,
+      },
+      ...result,
+    ];
+  }
+  return result;
+}
+
+/**
  * Dia local e completed_at de uma marcação em `date`: hoje grava a hora atual
  * (como o fluxo de hoje sempre fez); dias passados, o início do dia.
  */
@@ -237,6 +277,11 @@ export const completionOutbox = {
       flushing = null;
     });
     return flushing;
+  },
+
+  /** Operações deste usuário que aguardam envio, na ordem da fila. */
+  async getPendingOps(userId: string): Promise<CompletionOp[]> {
+    return (await readQueue()).filter(op => op.userId === userId);
   },
 
   /** Quantas operações aguardam envio. */

@@ -4,6 +4,7 @@ import { supabase } from '@/services/supabase';
 import { Streak, Habit } from '@/types/database';
 import { useAuth } from './useAuth';
 import { retroactiveCompletionService } from '@/services/retroactiveCompletionService';
+import { readCache, writeCache } from '@/services/offlineCache';
 
 const streaksTable = () => supabase.from('streaks');
 
@@ -21,6 +22,10 @@ export const useStreaks = () => {
       setLoading(true);
       setError(null);
 
+      // Cache offline: mostra os últimos streaks conhecidos na hora.
+      const cached = await readCache<Streak[]>('streaks', user.id);
+      if (cached) setStreaks(prev => (prev.length > 0 ? prev : cached));
+
       const { data, error: fetchError } = await streaksTable()
         .select('*')
         .in('habit_id', habitIds);
@@ -28,6 +33,7 @@ export const useStreaks = () => {
       if (fetchError) throw fetchError;
 
       setStreaks(data as Streak[] || []);
+      void writeCache('streaks', user.id, data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar streaks');
     } finally {
