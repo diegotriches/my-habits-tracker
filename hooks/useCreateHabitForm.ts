@@ -9,7 +9,7 @@ import { progressNotificationScheduler } from '@/services/progressNotificationSc
 import { supabase } from '@/services/supabase';
 import { FrequencyGoalPeriod, Reminder } from '@/types/database';
 import { getScheduledWeekDays } from '@/utils/habitHelpers';
-import { HABIT_COLORS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
+import { HABIT_COLORS, MAX_REMINDERS, MIN_NAME_LENGTH, MAX_NAME_LENGTH, MAX_DESCRIPTION_LENGTH, getAllTargetUnits } from '@/constants/HabitForm';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
@@ -18,7 +18,8 @@ import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilitySer
 
 const remindersTable = () => supabase.from('reminders');
 
-export const MAX_REMINDERS = 5;
+// Reexportado: componentes ainda importam daqui.
+export { MAX_REMINDERS };
 
 type FrequencyType = 'daily' | 'weekly' | 'custom';
 

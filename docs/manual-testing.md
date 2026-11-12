@@ -109,3 +109,14 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 - [ ] Abrir o app offline e depois reconectar: os lembretes são ressincronizados (log `Lembretes ressincronizados` após `Conexao restabelecida`)
 - [ ] Offline, tentar: criar/editar/excluir hábito, criar/editar/ativar/excluir lembrete, editar nome, trocar avatar, mudar notificações de progresso e excluir conta → em todos aparece "Sem conexão" antes de qualquer outra coisa, e nada muda
 - [ ] Wi-Fi conectado mas sem internet (ex.: roteador sem link): o app também se considera offline
+
+## 13. Backup e exportação (build nova: módulos de arquivo são nativos)
+
+- [ ] Dados e Privacidade → Exportar backup: abre o compartilhamento com `habitos-backup-AAAA-MM-DD.json`; salvar no Drive/Arquivos funciona
+- [ ] Exportar histórico: o CSV abre no Excel/Sheets com colunas separadas e acentos corretos
+- [ ] Importar o backup na **mesma conta**: o resumo mostra 0 novos e N já existentes; ao confirmar, nada é duplicado (0 conclusões adicionadas)
+- [ ] Importar numa **conta descartável** vazia: hábitos, conclusões e lembretes aparecem; os lembretes tocam no horário; os streaks estão corretos
+- [ ] Importar um arquivo qualquer (não-backup): aparece "Arquivo inválido" e nada muda
+- [ ] Offline, tocar em exportar/importar: aparece "Sem conexão"
+- [ ] Histórico grande (mais de 1000 conclusões no total): exporta tudo (confira a contagem de linhas do CSV)
+- [ ] Depois de importar, a home já mostra os hábitos novos sem precisar puxar para atualizar

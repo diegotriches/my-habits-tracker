@@ -21,6 +21,7 @@ import { useConnectivity } from '@/hooks/useConnectivity';
 import { OfflineStatusBanner } from '@/components/ui/OfflineStatusBanner';
 import { COMPLETIONS_SYNCED_EVENT } from '@/services/pendingCompletionService';
 import { OUTBOX_SYNCED_EVENT } from '@/services/completionOutbox';
+import { DATA_IMPORTED_EVENT } from '@/services/dataTransferService';
 import { Habit } from '@/types/database';
 import { isHabitDueToday } from '@/utils/habitHelpers';
 import { router } from 'expo-router';
@@ -138,6 +139,12 @@ export default function HomeScreen() {
       refetchProfile(),
     ]);
   }, [refetchHabits, refetchWeeklyCompletions, selectedWeekStart, refetchProfile]);
+
+  // Depois de importar um backup, hábitos e marcações mudam de uma vez.
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(DATA_IMPORTED_EVENT, () => { void handleRefresh(); });
+    return () => subscription.remove();
+  }, [handleRefresh]);
 
   // Conclusões que chegam ao banco sem esta tela ter feito a marcação — pelo
   // botão "Feito" da notificação ou por operações da fila de saída de uma

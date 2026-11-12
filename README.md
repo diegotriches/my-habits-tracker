@@ -107,6 +107,8 @@ eas update --branch preview --platform android --message "descrição da mudanç
 ```
 > Use sempre `--platform android` — o export da versão Web está atualmente quebrado (ver [Problemas conhecidos](#problemas-conhecidos)).
 
+> O `runtimeVersion` usa a política **`fingerprint`**: o Expo calcula a versão a partir do código nativo, e um OTA só chega às builds com o mesmo nativo. Depois de qualquer mudança nativa, **gere e distribua a build nova antes de publicar OTAs** — eles não chegam às builds antigas (que quebrariam ao carregar um JS que importa módulos nativos que elas não têm). O `android/` local não entra no cálculo (o `@expo/fingerprint` o trata como gerado, por estar no `.gitignore`); para conferir a versão: `npx expo-updates runtimeversion:resolve --platform android`.
+
 ## Padrão de arquitetura
 
 Cada tela grande segue o padrão: **hook(s) para lógica + componentes memoizados para UI**, mantendo o arquivo de tela como orquestrador fino. Exemplos:
@@ -148,6 +150,15 @@ Limites conhecidos do modo offline: os detalhes de um hábito nunca aberto onlin
 - **Ressincronização ao abrir o app** (`services/reminderSyncService.ts`, chamado pelo `NotificationHandler` após a permissão): os alarmes vivem só no aparelho e se perdem ao reinstalar o app, limpar os dados ou trocar de celular, enquanto os lembretes continuam ativos no banco. A cada login/abertura, o app cancela os alarmes persistidos e reagenda os lembretes ativos dos hábitos ativos — o que também limpa órfãos (lembretes excluídos em outro aparelho, ids legados). Se a busca no banco falhar (ex.: offline), nada é alterado. Também roda depois de salvar a edição de um hábito, já que o nome e a meta numérica ("Feito" x "Registrar") vão gravados no alarme. Só Android
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
+
+### Backup e exportação
+
+Em Dados e Privacidade (`DataTransferCard`, `services/dataTransferService.ts`):
+
+- **Exportar backup** gera um JSON (`format: "my-habits-tracker/backup"`, `version`) com hábitos ativos, conclusões e lembretes — **sem ids do banco**, para poder ser importado em qualquer conta. Ao mudar o formato, suba `BACKUP_VERSION` e mantenha a leitura das versões anteriores em `parseBackup`.
+- **Exportar histórico** gera um CSV (`;`, com BOM, para o Excel em pt-BR) com uma linha por conclusão. Não é reimportável.
+- **Importar** valida o arquivo (hábitos inválidos são pulados e contados), mostra um resumo e **mescla por nome**: hábito com o mesmo nome de um existente recebe só os dias que faltam e os lembretes de horários que ainda não tem (até 5). Depois recalcula streaks e ressincroniza os alarmes. É idempotente: importar o mesmo arquivo de novo — inclusive para completar uma importação que falhou no meio — não duplica nada.
+- Arquivos: `expo-file-system` (grava no cache), `expo-sharing` (compartilhar) e `expo-document-picker` (escolher o arquivo). As consultas são paginadas (limite de 1000 linhas do Supabase).
 
 ### Exclusão de conta
 

@@ -1,6 +1,7 @@
 export const MIN_NAME_LENGTH = 3;
 export const MAX_NAME_LENGTH = 50;
 export const MAX_DESCRIPTION_LENGTH = 200;
+export const MAX_REMINDERS = 5; // lembretes por hábito
 
 export const TARGET_UNITS = {
   volume: ['litros', 'ml', 'copos'],

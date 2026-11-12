@@ -1,5 +1,6 @@
 // app/settings/privacy.tsx
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
+import { DataTransferCard } from '@/components/account/DataTransferCard';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
@@ -108,6 +109,12 @@ export default function PrivacySettingsScreen() {
             <View style={styles.rightItem}>
               <Icon name="check" size={14} color={colors.success} />
               <Text style={[styles.rightText, { color: colors.textSecondary }]}>
+                Levar seus dados para outro serviço (portabilidade)
+              </Text>
+            </View>
+            <View style={styles.rightItem}>
+              <Icon name="check" size={14} color={colors.success} />
+              <Text style={[styles.rightText, { color: colors.textSecondary }]}>
                 Solicitar a exclusão de seus dados
               </Text>
             </View>
@@ -120,6 +127,9 @@ export default function PrivacySettingsScreen() {
           </View>
         </View>
 
+        {/* Backup e exportação (portabilidade) */}
+        <DataTransferCard />
+
         {/* Zona de Perigo */}
         <View style={[styles.dangerZone, { backgroundColor: colors.surface, borderColor: '#fee2e2' }]}>
           <View style={styles.dangerZoneHeader}>
@@ -127,7 +137,7 @@ export default function PrivacySettingsScreen() {
             <Text style={styles.dangerZoneTitle}>Zona de Perigo</Text>
           </View>
           <Text style={[styles.dangerZoneDescription, { color: colors.textSecondary }]}>
-            A exclusão da conta é permanente e não pode ser desfeita. Todos os seus dados serão apagados, incluindo hábitos, completions, streaks e pontos.
+            A exclusão da conta é permanente e não pode ser desfeita. Todos os seus dados serão apagados, incluindo hábitos, conclusões, streaks e lembretes.
           </Text>
           <DeleteAccountButton />
         </View>
