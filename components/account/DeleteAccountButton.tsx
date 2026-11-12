@@ -13,8 +13,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/services/supabase';
+import { deleteAccount } from '@/services/accountDeletionService';
 import { useAuth } from '@/hooks/useAuth';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -67,51 +66,9 @@ export function DeleteAccountButton() {
         throw new Error('Usuário não autenticado');
       }
 
-      // 1. Deletar dados do Supabase (ordem importante por causa das foreign keys)
-      // `completions` não tem user_id: o dono é o hábito. (Antes apontava
-      // para a tabela inexistente `habit_completions`, e o erro era ignorado.)
-      console.log('🗑️ Deletando completions...');
-      const { data: userHabits } = await supabase
-        .from('habits')
-        .select('id')
-        .eq('user_id', user.id);
-      const habitIds = (userHabits ?? []).map(h => h.id);
-
-      const { error: completionsError } = habitIds.length > 0
-        ? await supabase.from('completions').delete().in('habit_id', habitIds)
-        : { error: null };
-
-      if (completionsError) {
-        console.error('Erro ao deletar completions:', completionsError);
-      }
-
-      console.log('🗑️ Deletando hábitos...');
-      const { error: habitsError } = await supabase
-        .from('habits')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (habitsError) {
-        console.error('Erro ao deletar hábitos:', habitsError);
-      }
-
-      console.log('🗑️ Deletando perfil...');
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id);
-
-      if (profileError) {
-        console.error('Erro ao deletar perfil:', profileError);
-      }
-
-      // 2. Limpar AsyncStorage
-      console.log('🗑️ Limpando dados locais...');
-      await AsyncStorage.clear();
-
-      // 3. Fazer logout
-      console.log('👋 Fazendo logout...');
-      await supabase.auth.signOut();
+      // Só chega aqui se o servidor confirmou a exclusão de tudo, inclusive
+      // do usuário no Supabase Auth; senão cai no catch e nada é apagado.
+      await deleteAccount();
 
       console.log('✅ Conta excluída com sucesso!');
 

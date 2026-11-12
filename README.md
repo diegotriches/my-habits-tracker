@@ -140,6 +140,16 @@ Na home, as mutações passam por `applyOptimistic(op)` do `useWeeklyCompletions
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
 
+### Exclusão de conta
+
+A exclusão roda na Edge Function `supabase/functions/delete-account` — remover o usuário do Supabase Auth exige a chave de serviço, que não pode ir para o app. Ela identifica o usuário pelo token da sessão, apaga os dados de todas as tabelas, o avatar (`avatars/<id>/`) e, por último, o usuário do Auth (se algo falhar no meio, dá para tentar de novo). Só depois que ela confirma, o app (`services/accountDeletionService.ts`) cancela os alarmes do aparelho, limpa o AsyncStorage e descarta a sessão.
+
+Ao criar uma tabela nova com dados do usuário, inclua-a na função. Deploy (fica fora do `tsc` do app, que não entende os imports do Deno):
+
+```bash
+npx supabase functions deploy delete-account --project-ref <ref> --use-api
+```
+
 ## Problemas conhecidos
 
 - **Export Web quebrado**: `eas update` sem `--platform android` falha, porque o cliente Supabase acessa `AsyncStorage`/`window` durante a renderização estática (SSR) do `expo-router`, e `window` não existe em Node. Não afeta Android/iOS.
@@ -150,7 +160,6 @@ Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilh
 
 - Prompt de desativação de otimização de bateria (ver acima)
 - Testar upload de avatar e edição de perfil de ponta a ponta
-- Exclusão de conta incompleta (`components/account/DeleteAccountButton.tsx`): não remove o usuário do Supabase Auth (exige chave de serviço — ex.: Edge Function), ignora erros e deixa lembretes, streaks, notificações de progresso e alarmes; mesmo assim diz que tudo foi excluído
 
 ## Contribuindo
 
