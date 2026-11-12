@@ -2,7 +2,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Completion, Habit, Streak } from '@/types/database';
-import { getDayShortName } from '@/utils/habitHelpers';
+import { getDayShortName, getDaysPerWeek } from '@/utils/habitHelpers';
 import { hapticFeedback } from '@/utils/haptics';
 import { addDays, isFuture, isSameDay, startOfWeek, addWeeks, subWeeks } from 'date-fns';
 import React, { useRef } from 'react';
@@ -134,10 +134,10 @@ export function HabitWeeklyRow({
 
   const getWeeklyProgress = (): { completedDays: number; expectedDays: number; progress: number } => {
     const completedDays = weekDays.filter(day => isCompletedOnDay(day)).length;
-    const expectedDays = habit.frequency_type === 'daily'
-      ? 7
-      : habit.frequency_days?.length || 7;
-    const progress = expectedDays > 0 ? (completedDays / expectedDays) * 100 : 0;
+    // Respeita a meta semanal (ex.: 3x por semana mostrava x/7).
+    const expectedDays = getDaysPerWeek(habit);
+    // Com meta semanal dá para passar dela (4/3): a barra para em 100%.
+    const progress = expectedDays > 0 ? Math.min((completedDays / expectedDays) * 100, 100) : 0;
     return { completedDays, expectedDays, progress };
   };
 

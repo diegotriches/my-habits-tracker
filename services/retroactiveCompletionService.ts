@@ -12,6 +12,7 @@ import {
   subDays,
   isAfter,
   isBefore,
+  differenceInCalendarWeeks,
 } from 'date-fns';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 
@@ -213,17 +214,9 @@ export const retroactiveCompletionService = {
         bestStreak = result.bestStreak;
       }
 
-      // 4. Preservar melhor streak existente
-      const { data: existingStreak } = await supabase
-        .from('streaks')
-        .select('best_streak')
-        .eq('habit_id', habitId)
-        .maybeSingle();
-
-      bestStreak = Math.max(
-        bestStreak,
-        existingStreak?.best_streak || 0
-      );
+      // O best_streak é recalculado de todo o histórico. Antes ele era
+      // combinado com Math.max ao valor salvo e nunca diminuía — nem
+      // depois de desmarcar um dia marcado por engano.
 
       const lastCompletionDate = format(
         startOfDay(new Date(completions[0].completed_at)),
@@ -396,8 +389,10 @@ function calculateWeeklyGoalStreak(
 
   const today = new Date();
 
-  // Contar completions por semana (últimas 53 semanas + atual)
-  const weeksToCheck = 53;
+  // Contar completions por semana, da semana da primeira conclusão até a
+  // atual — todo o histórico, para o best_streak não perder recordes antigos.
+  const earliest = completedDates.reduce((min, d) => (d < min ? d : min), today);
+  const weeksToCheck = differenceInCalendarWeeks(today, earliest, { weekStartsOn: 0 }) + 1;
   const weeklyData: { weekStart: Date; count: number }[] = [];
 
   for (let i = 0; i < weeksToCheck; i++) {
