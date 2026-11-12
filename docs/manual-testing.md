@@ -62,3 +62,12 @@ Instale a build nova **por cima** da versão publicada (sem desinstalar), num ap
 ## 7. Perfil
 
 - [ ] Upload de avatar e edição de perfil de ponta a ponta
+
+## 8. Card semanal e recorde de streak
+
+- [ ] Hábito com meta semanal (ex.: "3x por semana"): o card da home mostra **x/3** e a barra fica verde ao chegar a 3; com 4 conclusões mostra **4/3** e a barra não passa da borda
+- [ ] Hábitos sem meta continuam **x/7** (diários) e **x/(nº de dias)** (dias específicos)
+- [ ] Recorde: num hábito diário, marcar dias seguidos até passar o recorde (confira nos detalhes) e desmarcar o último → o recorde volta ao valor anterior
+- [ ] Recorde de um hábito com meta semanal continua correto (não cai para zero)
+- [ ] Recordes podem cair uma vez para o valor real ao abrir a home (os antigos podiam estar inflados) — confira se os valores fazem sentido
+- [ ] Detalhes de um hábito com dias específicos: os dias aparecem em ordem (Seg, Qua, Sex) e a edição mostra os mesmos dias marcados
