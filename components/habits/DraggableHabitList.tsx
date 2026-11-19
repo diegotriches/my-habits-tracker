@@ -23,6 +23,8 @@ interface DraggableHabitListProps {
   onOrderChange: (newOrder: string[]) => void;
   renderItem: (habit: Habit) => React.ReactNode;
   ListHeaderComponent?: React.ReactElement;
+  /** Fica depois dos hábitos e fora do arrastar (ex.: "Novo hábito"). */
+  ListFooterComponent?: React.ReactElement;
   refreshControl?: React.ReactElement;
   contentContainerStyle?: object;
 }
@@ -33,6 +35,7 @@ export function DraggableHabitList({
   onOrderChange,
   renderItem,
   ListHeaderComponent,
+  ListFooterComponent,
   refreshControl,
   contentContainerStyle,
 }: DraggableHabitListProps) {
@@ -197,6 +200,7 @@ export function DraggableHabitList({
               </View>
             ) : undefined
           }
+          ListFooterComponent={ListFooterComponent}
           contentContainerStyle={contentContainerStyle}
           onScroll={(e) => {
             scrollOffsetY.current = e.nativeEvent.contentOffset.y;

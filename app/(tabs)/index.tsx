@@ -5,7 +5,7 @@ import { WeekNavigator } from '@/components/habits/WeekNavigator';
 import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { AddHabitRow } from '@/components/habits/AddHabitRow';
 import { Icon } from '@/components/ui/Icon';
 import { Confetti } from '@/components/ui/Confetti';
 import { SuccessToast } from '@/components/ui/SuccessToast';
@@ -167,7 +167,7 @@ export default function HomeScreen() {
     refetchWeeklyCompletions(selectedWeekStart);
   }, [selectedWeekStart, refetchWeeklyCompletions]);
 
-  const handleCreateHabit = useCallback(() => router.push('/habits/create' as any), []);
+  const handleCreateHabit = useCallback(() => router.push('/habits/create'), []);
   const handleHabitPress = useCallback(
     (habitId: string) => router.push(`/habits/${habitId}` as any),
     []
@@ -307,8 +307,21 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerRight}>
+          {/* Atalho para criar com a lista longa (a linha "Novo hábito" fica no
+              fim). Com a lista vazia, a própria tela já mostra o botão. */}
+          {habits.length > 0 && (
+            <TouchableOpacity
+              style={[styles.headerIconButton, { backgroundColor: colors.surface }]}
+              onPress={handleCreateHabit}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Novo hábito"
+            >
+              <Icon name="add" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={[styles.statsButton, { backgroundColor: colors.surface }]}
+            style={[styles.headerIconButton, { backgroundColor: colors.surface }]}
             onPress={() => router.push('/stats')}
             activeOpacity={0.7}
             accessibilityRole="button"
@@ -345,13 +358,18 @@ export default function HomeScreen() {
       />
 
       {habits.length === 0 ? (
-        <EmptyState
-          icon="target"
-          title="Nenhum hábito ainda"
-          subtitle="Crie seu primeiro hábito e comece sua jornada de transformação!"
-          buttonText="Criar Primeiro Hábito"
-          onButtonPress={handleCreateHabit}
-        />
+        // Primeiro uso: o botão fica onde ficará depois — abaixo dos hábitos —,
+        // para o usuário aprender desde já onde se cria um hábito.
+        <View style={styles.listContent}>
+          <Text style={[styles.welcomeTitle, { color: colors.textPrimary }]}>
+            Comece pelo primeiro hábito
+          </Text>
+          <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
+            Escolha algo pequeno para fazer todos os dias. Os próximos hábitos você cria aqui
+            embaixo da lista, sempre neste mesmo lugar.
+          </Text>
+          <AddHabitRow variant="prominent" onPress={handleCreateHabit} />
+        </View>
       ) : (
         <DraggableHabitList
           habits={habits}
@@ -379,17 +397,10 @@ export default function HomeScreen() {
               <WeekNavigator weekStart={selectedWeekStart} onWeekChange={handleWeekChange} />
             </View>
           }
+          ListFooterComponent={<AddHabitRow onPress={handleCreateHabit} />}
           contentContainerStyle={styles.listContent}
         />
       )}
-
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={handleCreateHabit}
-        activeOpacity={0.8}
-      >
-        <Icon name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -407,8 +418,8 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 14, marginBottom: 4 },
   title: { fontSize: 24, fontWeight: 'bold' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  statsButton: {
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -427,20 +438,7 @@ const styles = StyleSheet.create({
   avatarInitial: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   todayBar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   todayText: { fontSize: 13, fontWeight: '500' },
-  fab: {
-    position: 'absolute',
-    bottom: 70,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  listContent: { padding: 20, paddingBottom: 120 },
+  listContent: { padding: 20, paddingBottom: 40 },
+  welcomeTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  welcomeText: { fontSize: 15, lineHeight: 21, marginBottom: 20 },
 });

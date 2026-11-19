@@ -181,6 +181,13 @@ Limites conhecidos do modo offline: os detalhes de um hábito nunca aberto onlin
 
 Se mexer em qualquer coisa relacionada a alarmes/lembretes, teste os dois gatilhos (reboot real e reinstalação do app), não só o agendamento inicial.
 
+### Criar hábitos na home
+
+Não há botão flutuante: depois de montar a lista, criar hábito é raro, e o botão cobria o último card. A criação fica em dois lugares:
+
+- **"Novo hábito" como última linha da lista** (`AddHabitRow`, rodapé do `DraggableHabitList`, fora do arrastar). No primeiro uso, com a lista vazia, a mesma linha aparece em destaque e no mesmo lugar, para o usuário aprender onde fica.
+- **"+" no cabeçalho**, ao lado das estatísticas, como atalho quando a lista é longa (só aparece com algum hábito criado).
+
 ### Estatísticas do ano
 
 O ícone de gráfico no cabeçalho da home abre `app/stats`: o ano em 12 mini-calendários (cabem na tela sem rolagem lateral), com a cor de cada dia indicando quanto dos hábitos programados foi feito, um filtro por hábito (inclusive arquivados), os totais do ano (conclusões, dias completos, aproveitamento) e o detalhe do dia tocado.

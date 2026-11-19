@@ -201,3 +201,14 @@ Pré-requisito: migration `20261112164950_habit_archiving.sql` aplicada.
 - [ ] Hábito ativo com notificações de progresso: continuam disparando normalmente depois de abrir o app (a limpeza não as remove)
 - [ ] Criar um hábito com notificações de progresso logo depois de abrir o app: elas continuam agendadas
 - [ ] Desinstalar e reinstalar o app (o backup do Android restaura os agendamentos): ao entrar, só tocam lembretes e notificações de hábitos ativos
+
+## 22. Criar hábitos na home
+
+- [ ] Conta sem hábitos (ou excluir/arquivar todos): a home mostra "Comece pelo primeiro hábito" e o botão "Criar primeiro hábito" em destaque; sem "+" no cabeçalho
+- [ ] Depois do primeiro hábito: o botão vira a linha tracejada "Novo hábito" logo abaixo dele, e o "+" aparece no cabeçalho
+- [ ] Não há mais botão flutuante cobrindo o último card
+- [ ] Com muitos hábitos, a linha "Novo hábito" fica no fim da lista (rolar até o fim) e o "+" do cabeçalho abre a criação
+- [ ] Arrastar para reordenar continua funcionando; a linha "Novo hábito" não se move nem pode ser arrastada
+- [ ] Cabeçalho em tela estreita e com fonte grande: o título, os dois ícones e o avatar cabem sem sobrepor
+- [ ] Tema escuro: a borda tracejada continua visível
+- [ ] Com o TalkBack: "Novo hábito, botão" (e "Criar o primeiro hábito, botão" na lista vazia)
