@@ -22,6 +22,7 @@ import { hapticFeedback } from '@/utils/haptics';
 import { errorMessageFor } from '@/utils/networkErrors';
 import { ensureOnline } from '@/services/network';
 import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 const remindersTable = () => supabase.from('reminders');
 
@@ -488,6 +489,9 @@ export function useCreateHabitForm() {
         console.warn('Erro ao criar configuração padrão:', e);
       }
     }
+
+    // Inclui o hábito novo no plano salvo (usado ao marcar hoje).
+    reminderSyncService.syncCurrentUser();
 
     setLoading(false);
     hapticFeedback.success();

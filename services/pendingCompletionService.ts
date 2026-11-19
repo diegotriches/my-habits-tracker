@@ -1,10 +1,11 @@
 // services/pendingCompletionService.ts
 import { DeviceEventEmitter } from 'react-native';
-import { endOfDay, startOfDay } from 'date-fns';
+import { endOfDay, isSameDay, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
 import { streakService } from './streakService';
 import { completionOutbox } from './completionOutbox';
+import { todayReminderService } from './todayReminderService';
 import { CompletionInsert, Habit } from '@/types/database';
 
 /** Emitido quando conclusões vindas da notificação foram gravadas no banco. */
@@ -102,12 +103,27 @@ async function drainNativeQueue(): Promise<void> {
 
     const processed: string[] = [];
     const changedHabits = new Set<string>();
+    const doneToday = new Set<string>();
 
     for (const item of pending) {
-      const result = await completeHabitFromNotification(item.habitId, new Date(item.completedAt));
+      const completedAt = new Date(item.completedAt);
+      const result = await completeHabitFromNotification(item.habitId, completedAt);
       if (result === 'retry') continue;
       processed.push(item.id);
       if (result === 'completed') changedHabits.add(item.habitId);
+      if (isSameDay(completedAt, new Date())) doneToday.add(item.habitId);
+    }
+
+    // "Feito" de hoje: os outros lembretes do hábito hoje não tocam mais.
+    if (doneToday.size > 0) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        for (const habitId of doneToday) {
+          await todayReminderService.markDoneToday(session.user.id, habitId);
+        }
+      }
     }
 
     await exactAlarmService.removePendingCompletions(processed);

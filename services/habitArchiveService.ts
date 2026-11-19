@@ -31,6 +31,8 @@ export async function archiveHabit(habitId: string): Promise<Result> {
     // já não reagenda os lembretes de hábitos arquivados.
     console.warn('Erro ao cancelar os lembretes do hábito arquivado:', e);
   }
+  // Tira o hábito do plano salvo (marcá-lo nos detalhes não reagenda nada).
+  reminderSyncService.syncCurrentUser();
 
   emitHabitsChanged();
   return { error: null };
@@ -44,8 +46,8 @@ export async function restoreHabit(habitId: string, userId: string): Promise<Res
     // Enquanto arquivado, o streak não era zerado pelos dias perdidos (o
     // checkExpiredStreaks só olha os hábitos da home).
     await streakService.recalculateStreak(habitId);
+    // Reagenda os lembretes e renova as notificações de progresso.
     await reminderSyncService.syncReminders(userId);
-    await progressNotificationScheduler.scheduleProgressNotifications(habitId, userId);
   } catch (e) {
     console.warn('Erro ao reativar os lembretes do hábito restaurado:', e);
   }

@@ -8,6 +8,7 @@ import { notificationService } from '@/services/notificationService';
 import { progressNotificationScheduler } from '@/services/progressNotificationScheduler';
 import { readCache, writeCache } from '@/services/offlineCache';
 import { emitHabitsChanged, HABITS_CHANGED_EVENT } from '@/services/habitEvents';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 const habitsTable = () => supabase.from('habits');
 
@@ -231,6 +232,7 @@ export const useHabits = () => {
       // remove os lembretes: cancela alarmes/notificações e desativa os
       // registros para que não voltem a ser agendados.
       await cleanupHabitNotifications(habitId);
+      reminderSyncService.syncCurrentUser();
 
       setHabits((prevHabits) => prevHabits.filter((h) => h.id !== habitId));
       emitHabitsChanged();

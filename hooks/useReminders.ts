@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/services/supabase';
 import { notificationService, NotificationSound } from '@/services/notificationService';
 import { maybePromptAfterFirstReminder } from '@/services/reminderReliabilityService';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 export interface Reminder {
   id: string;
@@ -145,6 +146,8 @@ export function useReminders(habitId?: string) {
       };
 
       setReminders((prev) => [...prev, newReminder]);
+      // Pula hoje se o hábito já foi feito e atualiza o plano salvo.
+      reminderSyncService.syncCurrentUser();
 
       console.log('✅ Lembrete criado com sucesso');
       // Aviso único sobre bateria/alarmes exatos, se houver algo a ajustar.
@@ -243,6 +246,7 @@ export function useReminders(habitId?: string) {
           )
         );
 
+        reminderSyncService.syncCurrentUser();
         console.log('✅ Lembrete atualizado');
         return true;
       }
@@ -252,6 +256,7 @@ export function useReminders(habitId?: string) {
       if (error) throw error;
 
       setReminders((prev) => prev.map((r) => (r.id === reminderId ? { ...r, ...updates } : r)));
+      reminderSyncService.syncCurrentUser();
 
       console.log('✅ Lembrete atualizado');
       return true;
@@ -278,6 +283,7 @@ export function useReminders(habitId?: string) {
       if (error) throw error;
 
       setReminders((prev) => prev.filter((r) => r.id !== reminderId));
+      reminderSyncService.syncCurrentUser();
 
       console.log('✅ Lembrete excluído');
       return true;
@@ -311,6 +317,7 @@ export function useReminders(habitId?: string) {
       if (error) throw error;
 
       setReminders((prev) => prev.filter((r) => r.habit_id !== habitId));
+      reminderSyncService.syncCurrentUser();
 
       console.log('✅ Todos os lembretes do hábito excluídos');
       return true;

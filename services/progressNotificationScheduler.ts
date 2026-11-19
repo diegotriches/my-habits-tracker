@@ -2,16 +2,53 @@
 import * as Notifications from 'expo-notifications';
 import { supabase } from './supabase';
 import { progressCheckerService } from './progressChecker';
+import { endOfDay, startOfDay } from 'date-fns';
 import { Habit, ProgressNotification, NotificationPeriod } from '@/types/database';
+import { countsAsDone, ProgressPeriodTime, progressWindowDates } from '@/utils/reminderSchedule';
+
+/** Quantos dias à frente as notificações de progresso ficam agendadas. */
+export const PROGRESS_WINDOW_DAYS = 7;
+
+/** O que a janela precisa da configuração (cabe no plano salvo no aparelho). */
+export type ProgressPeriodsConfig = Pick<
+  ProgressNotification,
+  | 'enabled'
+  | 'morning_enabled'
+  | 'morning_time'
+  | 'afternoon_enabled'
+  | 'afternoon_time'
+  | 'evening_enabled'
+  | 'evening_time'
+>;
+
+function progressPeriods(config: ProgressPeriodsConfig): ProgressPeriodTime[] {
+  const periods: ProgressPeriodTime[] = [];
+  if (config.morning_enabled) periods.push({ period: 'morning', time: config.morning_time });
+  if (config.afternoon_enabled) periods.push({ period: 'afternoon', time: config.afternoon_time });
+  if (config.evening_enabled) periods.push({ period: 'evening', time: config.evening_time });
+  return periods;
+}
 
 class ProgressNotificationSchedulerService {
   // ---------------------------------------------------------------------------
-  // Agendar todas as notificações de progresso de um hábito
+  // Agendar as notificações de progresso de um hábito
   // ---------------------------------------------------------------------------
-  async scheduleProgressNotifications(habitId: string, userId: string): Promise<boolean> {
-    try {
-      console.log('Agendando notificacoes de progresso para:', habitId);
+  //
+  // Agendadas uma a uma para os próximos PROGRESS_WINDOW_DAYS dias (não como
+  // repetição diária), para poder pular o dia em que a meta já foi atingida.
+  // A janela é renovada a cada abertura do app, pela ressincronização
+  // (reminderSyncService) — sem abrir o app por uma semana, elas param.
 
+  /**
+   * Busca a configuração e o hábito e reagenda. `doneToday` omitido: consulta
+   * a conclusão de hoje no banco (sem conexão, considera não feito).
+   */
+  async scheduleProgressNotifications(
+    habitId: string,
+    _userId: string,
+    doneToday?: boolean
+  ): Promise<boolean> {
+    try {
       const { data: config, error: configError } = await supabase
         .from('habit_progress_notifications')
         .select('*')
@@ -21,13 +58,6 @@ class ProgressNotificationSchedulerService {
       if (configError || !config) {
         console.error('Configuracao nao encontrada:', configError);
         return false;
-      }
-
-      const progressConfig = config as ProgressNotification;
-
-      if (!progressConfig.enabled) {
-        console.log('Notificacoes de progresso desabilitadas');
-        return true;
       }
 
       const { data: habit, error: habitError } = await supabase
@@ -41,59 +71,8 @@ class ProgressNotificationSchedulerService {
         return false;
       }
 
-      const habitData = habit as Habit;
-
-      await this.cancelProgressNotifications(habitId);
-      // Arquivado não recebe notificações; restaurar chama este método de novo.
-      if (habitData.archived_at) return true;
-
-      const notificationIds: {
-        morning?: string;
-        afternoon?: string;
-        evening?: string;
-      } = {};
-
-      if (progressConfig.morning_enabled) {
-        const id = await this.scheduleNotification(
-          habitData,
-          'morning',
-          progressConfig.morning_time
-        );
-        if (id) notificationIds.morning = id;
-      }
-
-      if (progressConfig.afternoon_enabled) {
-        const id = await this.scheduleNotification(
-          habitData,
-          'afternoon',
-          progressConfig.afternoon_time
-        );
-        if (id) notificationIds.afternoon = id;
-      }
-
-      if (progressConfig.evening_enabled) {
-        const id = await this.scheduleNotification(
-          habitData,
-          'evening',
-          progressConfig.evening_time
-        );
-        if (id) notificationIds.evening = id;
-      }
-
-      const { error: updateError } = await supabase
-        .from('habit_progress_notifications')
-        .update({
-          morning_notification_id: notificationIds.morning || null,
-          afternoon_notification_id: notificationIds.afternoon || null,
-          evening_notification_id: notificationIds.evening || null,
-        })
-        .eq('habit_id', habitId);
-
-      if (updateError) {
-        console.error('Erro ao salvar IDs:', updateError);
-      }
-
-      console.log('Notificacoes de progresso agendadas:', notificationIds);
+      const done = doneToday ?? (await this.fetchDoneToday(habit));
+      await this.scheduleWindow(habit, config, done);
       return true;
     } catch (error) {
       console.error('Erro ao agendar notificacoes de progresso:', error);
@@ -101,93 +80,88 @@ class ProgressNotificationSchedulerService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Agendar notificação individual de um período
-  // ---------------------------------------------------------------------------
-  private async scheduleNotification(
-    habit: Habit,
-    period: NotificationPeriod,
-    time: string
-  ): Promise<string | null> {
-    try {
-      const [hours, minutes] = time.split(':').map(Number);
-      console.log(`Agendando progresso: ${period} as ${time}`);
+  /**
+   * Reagenda a janela a partir de dados já carregados (sem banco) — usado pela
+   * ressincronização e ao marcar/desmarcar hoje, inclusive offline.
+   */
+  async scheduleWindow(
+    habit: Pick<Habit, 'id' | 'name' | 'is_active' | 'archived_at'>,
+    config: ProgressPeriodsConfig,
+    doneToday: boolean
+  ): Promise<number> {
+    await this.cancelProgressNotifications(habit.id);
+    // Arquivado/excluído/desligado não recebe notificações.
+    if (!config.enabled || !habit.is_active || habit.archived_at) return 0;
 
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Verificacao de progresso',
-          body: `Como esta seu progresso em "${habit.name}"?`,
-          data: {
-            habitId: habit.id,
-            habitName: habit.name,
-            period,
-            type: 'progress_check',
-            checkProgress: 'true',
+    const periods = progressPeriods(config);
+    let scheduled = 0;
+    for (const { period, date } of progressWindowDates(
+      periods,
+      new Date(),
+      doneToday,
+      PROGRESS_WINDOW_DAYS
+    )) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: 'Verificacao de progresso',
+            body: `Como esta seu progresso em "${habit.name}"?`,
+            data: {
+              habitId: habit.id,
+              habitName: habit.name,
+              period,
+              type: 'progress_check',
+              checkProgress: 'true',
+            },
+            sound: 'default',
           },
-          sound: 'default',
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: hours,
-          minute: minutes,
-        },
-      });
-
-      console.log(`Notificacao de progresso agendada: ${id}`);
-      return id;
-    } catch (error) {
-      console.error('Erro ao agendar notificacao de progresso:', error);
-      return null;
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },
+        });
+        scheduled++;
+      } catch (error) {
+        console.error('Erro ao agendar notificacao de progresso:', error);
+      }
     }
+    console.log(`Notificacoes de progresso agendadas (${habit.name}): ${scheduled}`);
+    return scheduled;
+  }
+
+  /** Se a meta de hoje já foi atingida (consulta o banco; erro = não). */
+  private async fetchDoneToday(habit: Habit): Promise<boolean> {
+    const now = new Date();
+    const { data, error } = await supabase
+      .from('completions')
+      .select('value_achieved')
+      .eq('habit_id', habit.id)
+      .gte('completed_at', startOfDay(now).toISOString())
+      .lte('completed_at', endOfDay(now).toISOString())
+      .limit(1);
+    if (error || !data || data.length === 0) return false;
+    return countsAsDone(habit, data[0].value_achieved);
   }
 
   // ---------------------------------------------------------------------------
   // Cancelar notificações de progresso de um hábito
   // ---------------------------------------------------------------------------
+  /**
+   * Cancela pelo que está agendado no aparelho (todas as da janela), e não
+   * pelos ids salvos no banco — que guardavam só uma por período e deixavam
+   * restos para trás.
+   */
   async cancelProgressNotifications(habitId: string): Promise<void> {
     try {
-      console.log('Cancelando notificacoes de progresso:', habitId);
-
-      const { data: config, error } = await supabase
-        .from('habit_progress_notifications')
-        .select('morning_notification_id, afternoon_notification_id, evening_notification_id')
-        .eq('habit_id', habitId)
-        .single();
-
-      if (error || !config) {
-        console.log('Nenhuma configuracao encontrada');
-        return;
-      }
-
-      const progressConfig = config as ProgressNotification;
-
-      const ids = [
-        progressConfig.morning_notification_id,
-        progressConfig.afternoon_notification_id,
-        progressConfig.evening_notification_id,
-      ].filter(Boolean) as string[];
-
-      for (const id of ids) {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      for (const n of scheduled) {
+        const data = n.content.data as Record<string, unknown> | undefined;
+        if (data?.habitId !== habitId || data?.type !== 'progress_check') continue;
         try {
-          await Notifications.cancelScheduledNotificationAsync(id);
-          console.log('Cancelado:', id);
+          await Notifications.cancelScheduledNotificationAsync(n.identifier);
         } catch (err) {
-          console.warn('Erro ao cancelar:', id, err);
+          console.warn('Erro ao cancelar:', n.identifier, err);
         }
       }
-
-      await supabase
-        .from('habit_progress_notifications')
-        .update({
-          morning_notification_id: null,
-          afternoon_notification_id: null,
-          evening_notification_id: null,
-        })
-        .eq('habit_id', habitId);
-
-      console.log('Notificacoes de progresso canceladas');
     } catch (error) {
-      console.error('Erro ao cancelar:', error);
+      console.error('Erro ao cancelar notificacoes de progresso:', error);
     }
   }
 

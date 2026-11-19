@@ -212,3 +212,19 @@ Pré-requisito: migration `20261112164950_habit_archiving.sql` aplicada.
 - [ ] Cabeçalho em tela estreita e com fonte grande: o título, os dois ícones e o avatar cabem sem sobrepor
 - [ ] Tema escuro: a borda tracejada continua visível
 - [ ] Com o TalkBack: "Novo hábito, botão" (e "Criar o primeiro hábito, botão" na lista vazia)
+
+## 23. Hábito já feito não é lembrado de novo no dia
+
+Use um hábito com lembrete daqui a alguns minutos (ex.: daqui a 5 min). Com o aparelho conectado, dá para conferir o horário agendado pelo `adb shell dumpsys alarm`.
+
+- [ ] Marcar o hábito hoje (home) antes do horário: o lembrete **não** toca hoje; no mesmo dia da semana seguinte, continua agendado
+- [ ] Desmarcar antes do horário: o lembrete volta a tocar hoje
+- [ ] Marcar pelos detalhes (calendário, dia de hoje): mesmo comportamento
+- [ ] Offline (modo avião): marcar hoje também pula o lembrete de hoje
+- [ ] Hábito com meta numérica: registrar um valor abaixo da meta **não** pula; atingir a meta pula o lembrete e as notificações de progresso do resto do dia
+- [ ] Notificações de progresso (8h/15h/21h): depois de atingir a meta, as de hoje não chegam; amanhã voltam normalmente
+- [ ] Dois lembretes no mesmo dia (ex.: 2 horários): tocar "Feito" no primeiro com o app **aberto ou em segundo plano**: o segundo não toca. Com o app **fechado**, o segundo ainda toca (limitação conhecida, ver README)
+- [ ] Marcar hoje e reiniciar o aparelho: o lembrete de hoje continua pulado
+- [ ] Marcar hoje em outro aparelho (ou no banco) e abrir o app: o lembrete de hoje é pulado na ressincronização
+- [ ] Ficar alguns dias sem marcar: lembretes e notificações de progresso continuam tocando todo dia
+- [ ] Criar/editar/excluir um lembrete e depois marcar o hábito: só o lembrete atual é afetado (nenhum lembrete apagado volta)

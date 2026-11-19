@@ -4,6 +4,7 @@
 import { endOfWeek, format, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
 import { Completion, Habit } from '@/types/database';
 import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { countsAsDone } from '@/utils/reminderSchedule';
 
 export interface TodaySummary {
   /** Hábitos que contam para hoje. */
@@ -45,11 +46,7 @@ export function computeTodaySummary(
   for (const habit of habits) {
     const mine = completions.filter((c) => c.habit_id === habit.id);
     const today = mine.find((c) => isSameDay(new Date(c.completed_at), now));
-    const doneToday =
-      !!today &&
-      (!habit.has_target ||
-        !habit.target_value ||
-        (today.value_achieved ?? 0) >= habit.target_value);
+    const doneToday = !!today && countsAsDone(habit, today.value_achieved);
 
     let countsToday: boolean;
     if (hasWeeklyGoal(habit)) {

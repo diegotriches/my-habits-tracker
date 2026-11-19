@@ -4,6 +4,7 @@ import { DeviceEventEmitter } from 'react-native';
 import { endOfDay, parseISO, startOfDay } from 'date-fns';
 import { supabase } from './supabase';
 import { streakService } from './streakService';
+import { todayReminderService } from './todayReminderService';
 import { CompletionOp } from '@/utils/completionOps';
 
 // Reexportados: as telas importam daqui.
@@ -199,6 +200,11 @@ export const completionOutbox = {
       return !sameSlot;
     });
     await writeQueue([...kept, op]);
+
+    // Marcou/desmarcou hoje: pula ou devolve os lembretes de hoje (offline também).
+    void todayReminderService.onOpEnqueued(op).catch((error) => {
+      console.warn('Erro ao ajustar os lembretes de hoje:', error);
+    });
 
     void completionOutbox.flush();
     return result;

@@ -4,8 +4,13 @@ import * as Notifications from 'expo-notifications';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
 import { notificationService } from './notificationService';
-import { Habit, Reminder, ReminderUpdate } from '@/types/database';
+import { Habit, ProgressNotification, Reminder, ReminderUpdate } from '@/types/database';
 import { findOrphanNotificationIds } from '@/utils/orphanNotifications';
+import { habitsDoneToday } from '@/utils/reminderSchedule';
+import { endOfDay, startOfDay } from 'date-fns';
+import { applyPendingOps, completionOutbox } from './completionOutbox';
+import { progressNotificationScheduler } from './progressNotificationScheduler';
+import { PlanHabit, todayReminderService } from './todayReminderService';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -41,6 +46,18 @@ export const reminderSyncService = {
    * durante uma sincronização, roda mais uma vez depois dela, porque a atual
    * pode ter lido o banco antes da mudança.
    */
+  /**
+   * Para depois de mudar lembretes, notificações de progresso ou a lista de
+   * hábitos: reagenda tudo (pulando hoje para quem já concluiu) e atualiza o
+   * plano salvo no aparelho — senão marcar o hábito usaria o plano antigo e
+   * poderia reagendar um lembrete apagado. Não espera a conclusão.
+   */
+  syncCurrentUser(): void {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) void reminderSyncService.syncReminders(session.user.id);
+    });
+  },
+
   /** Devolve se a última rodada conseguiu ler o banco (false: ex. offline). */
   syncReminders(userId: string): Promise<boolean> {
     if (inFlight) {
@@ -96,6 +113,52 @@ async function cancelOrphanNotifications(
   if (orphanIds.length > 0) console.log(`Notificações órfãs canceladas: ${orphanIds.length}`);
 }
 
+/**
+ * Hábitos concluídos hoje: o que está no banco mais as marcações ainda na
+ * fila de saída (feitas offline). Sem conseguir ler, ninguém é pulado — o
+ * pior caso é um lembrete a mais, nunca um a menos.
+ */
+async function fetchDoneToday(
+  userId: string,
+  habits: Pick<Habit, 'id' | 'has_target' | 'target_value'>[]
+): Promise<Set<string>> {
+  if (habits.length === 0) return new Set();
+  const now = new Date();
+  try {
+    const { data, error } = await supabase
+      .from('completions')
+      .select('*')
+      .in(
+        'habit_id',
+        habits.map((h) => h.id)
+      )
+      .gte('completed_at', startOfDay(now).toISOString())
+      .lte('completed_at', endOfDay(now).toISOString());
+    if (error) throw error;
+    const withPending = applyPendingOps(data ?? [], await completionOutbox.getPendingOps(userId));
+    return habitsDoneToday(habits, withPending, now);
+  } catch (error) {
+    console.warn('Erro ao ler as conclusões de hoje:', error);
+    return new Set();
+  }
+}
+
+/** Configurações de progresso dos hábitos em uso, por hábito. */
+async function fetchProgressConfigs(habitIds: string[]) {
+  const byHabit = new Map<string, ProgressNotification>();
+  if (habitIds.length === 0) return byHabit;
+  const { data, error } = await supabase
+    .from('habit_progress_notifications')
+    .select('*')
+    .in('habit_id', habitIds);
+  if (error) {
+    console.warn('Erro ao ler as configurações de progresso:', error);
+    return byHabit;
+  }
+  for (const config of data ?? []) byHabit.set(config.habit_id, config);
+  return byHabit;
+}
+
 async function runSync(userId: string): Promise<boolean> {
   try {
     // Sem permissão nada toca: nada a sincronizar, e isso não é falha.
@@ -105,7 +168,7 @@ async function runSync(userId: string): Promise<boolean> {
 
     const { data: habitsData, error: habitsError } = await supabase
       .from('habits')
-      .select('id, name, has_target')
+      .select('id, name, has_target, target_value, is_active, archived_at')
       .eq('user_id', userId)
       .eq('is_active', true)
       // Arquivado não toca; ao restaurar, esta mesma sincronização o reagenda.
@@ -114,7 +177,7 @@ async function runSync(userId: string): Promise<boolean> {
     // conseguir reagendar deixaria o usuário sem lembretes.
     if (habitsError) throw habitsError;
 
-    const habits = (habitsData ?? []) as Pick<Habit, 'id' | 'name' | 'has_target'>[];
+    const habits = habitsData ?? [];
     const habitsById = new Map(habits.map((h) => [h.id, h]));
 
     // Todas as plataformas: restos de hábitos excluídos/arquivados (ex.:
@@ -122,8 +185,19 @@ async function runSync(userId: string): Promise<boolean> {
     // backup do Android ao reinstalar).
     await cancelOrphanNotifications(scheduledNotifications, new Set(habitsById.keys()));
 
-    // Os alarmes nativos dos lembretes são só do Android.
-    if (Platform.OS !== 'android') return true;
+    // Hábitos já concluídos hoje não são lembrados de novo hoje.
+    const doneToday = await fetchDoneToday(userId, habits);
+
+    // Notificações de progresso: renova a janela dos próximos dias (todas as
+    // plataformas), sem as de hoje para quem já atingiu a meta.
+    const progressConfigs = await fetchProgressConfigs(habits.map((h) => h.id));
+    for (const habit of habits) {
+      const config = progressConfigs.get(habit.id);
+      // Também com as notificações desligadas: scheduleWindow cancela restos.
+      if (config) {
+        await progressNotificationScheduler.scheduleWindow(habit, config, doneToday.has(habit.id));
+      }
+    }
 
     let reminders: Reminder[] = [];
     if (habits.length > 0) {
@@ -138,6 +212,30 @@ async function runSync(userId: string): Promise<boolean> {
       if (remindersError) throw remindersError;
       reminders = (remindersData ?? []) as Reminder[];
     }
+
+    // Plano salvo no aparelho: permite pular/devolver o lembrete de hoje ao
+    // marcar/desmarcar, mesmo sem conexão (todayReminderService).
+    const planHabits: PlanHabit[] = habits.map((h) => ({
+      id: h.id,
+      name: h.name,
+      has_target: h.has_target,
+      target_value: h.target_value,
+      progress: progressConfigs.get(h.id) ?? null,
+    }));
+    await todayReminderService.savePlan({
+      userId,
+      habits: planHabits,
+      reminders: reminders.map((r) => ({
+        id: r.id,
+        habitId: r.habit_id,
+        time: r.time,
+        days: r.days_of_week ?? ALL_DAYS,
+        sound: r.sound ?? 'default',
+      })),
+    });
+
+    // Os alarmes nativos dos lembretes são só do Android.
+    if (Platform.OS !== 'android') return true;
 
     // Limpa tudo o que está persistido (inclui órfãos) e reagenda só o que
     // está ativo. O snooze pendente não é persistido e sobrevive.
@@ -156,7 +254,12 @@ async function runSync(userId: string): Promise<boolean> {
           reminder.time,
           days,
           reminder.id,
-          { sound: reminder.sound ?? 'default', hasTarget: habit.has_target, minLeadMs: 0 }
+          {
+            sound: reminder.sound ?? 'default',
+            hasTarget: habit.has_target,
+            minLeadMs: 0,
+            skipToday: doneToday.has(reminder.habit_id),
+          }
         );
         scheduled += alarmIds.length;
 

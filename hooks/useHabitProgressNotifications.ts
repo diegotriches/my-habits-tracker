@@ -7,6 +7,7 @@ import { hapticFeedback } from '@/utils/haptics';
 import { ProgressNotification } from '@/types/database';
 import { ProgressNotificationConfig } from '@/components/habits/ProgressNotificationSettings';
 import { ensureOnline } from '@/services/network';
+import { reminderSyncService } from '@/services/reminderSyncService';
 
 const DEFAULT_CONFIG: ProgressNotificationConfig = {
   enabled: false,
@@ -130,6 +131,8 @@ export function useHabitProgressNotifications(
           }
         }
 
+        // Atualiza o plano salvo (usado ao marcar hoje) com a configuração nova.
+        reminderSyncService.syncCurrentUser();
         hapticFeedback.success();
       } catch {
         hapticFeedback.error();
