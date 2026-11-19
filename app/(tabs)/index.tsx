@@ -12,7 +12,6 @@ import { SuccessToast } from '@/components/ui/SuccessToast';
 import { useCelebration } from '@/hooks/useCelebration';
 import { useWeeklyCompletions } from '@/hooks/useWeeklyCompletions';
 import { useHabits } from '@/hooks/useHabits';
-import { useHabitOrder } from '@/hooks/useHabitOrder';
 import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
@@ -47,7 +46,7 @@ import { useAuth } from '@/hooks/useAuth';
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { habits, loading: habitsLoading, refresh: refetchHabits } = useHabits();
+  const { habits, loading: habitsLoading, refresh: refetchHabits, reorderHabits } = useHabits();
 
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 0 })
@@ -80,10 +79,8 @@ export default function HomeScreen() {
   const connectivity = useConnectivity();
   const { isVisible: showConfetti, celebrate, closeCelebration } = useCelebration();
 
-  // Ordem arrastável — memoizado para não recalcular a cada render,
-  // só quando a lista de hábitos de fato mudar.
+  // Ordem arrastável: `habits` já vem na ordem da tela (banco + pendência).
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
-  const { orderedIds, updateOrder } = useHabitOrder(habitIds);
 
   // Resumo do dia: só na semana atual (a única em que "hoje" está na tela).
   const isCurrentWeek = isSameDay(
@@ -373,8 +370,8 @@ export default function HomeScreen() {
       ) : (
         <DraggableHabitList
           habits={habits}
-          orderedIds={orderedIds}
-          onOrderChange={updateOrder}
+          orderedIds={habitIds}
+          onOrderChange={reorderHabits}
           renderItem={renderHabit}
           refreshControl={
             <RefreshControl

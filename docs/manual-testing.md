@@ -228,3 +228,17 @@ Use um hábito com lembrete daqui a alguns minutos (ex.: daqui a 5 min). Com o a
 - [ ] Marcar hoje em outro aparelho (ou no banco) e abrir o app: o lembrete de hoje é pulado na ressincronização
 - [ ] Ficar alguns dias sem marcar: lembretes e notificações de progresso continuam tocando todo dia
 - [ ] Criar/editar/excluir um lembrete e depois marcar o hábito: só o lembrete atual é afetado (nenhum lembrete apagado volta)
+
+## 24. Ordem dos hábitos no banco
+
+Antes de testar, rode a migration `20261119120000_habit_sort_order.sql` no Supabase.
+
+- [ ] Primeira abertura depois da atualização: a ordem que já estava no aparelho é mantida (e passa a valer no banco: a coluna `sort_order` dos hábitos fica preenchida)
+- [ ] Reordenar e puxar para atualizar: a ordem não volta para a anterior
+- [ ] Reordenar e abrir as estatísticas/detalhes e voltar: a ordem continua
+- [ ] Criar um hábito novo: ele aparece no fim da lista, logo acima de "Novo hábito"
+- [ ] Offline (modo avião): reordenar, fechar e reabrir o app ainda offline — a ordem nova continua; ao reconectar, ela chega ao banco
+- [ ] Reordenar duas vezes seguidas, rápido: vale a última ordem (no app e no banco)
+- [ ] Arquivar e restaurar um hábito: ele volta para uma posição coerente (a que tinha, ou o fim)
+- [ ] Exportar o backup, importar em outra conta vazia: os hábitos vêm na mesma ordem
+- [ ] Sair e entrar com outra conta no mesmo aparelho: a ordem de uma conta não afeta a outra

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase, readStoredSession } from '@/services/supabase';
 import { clearOfflineCache } from '@/services/offlineCache';
 import { todayReminderService } from '@/services/todayReminderService';
+import { habitOrderService } from '@/services/habitOrderService';
 import { User, Session, AuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -322,6 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Dados da conta que saiu não ficam no aparelho.
       await clearOfflineCache();
       await todayReminderService.clear();
+      await habitOrderService.clear();
 
       setAuthState({
         user: null,

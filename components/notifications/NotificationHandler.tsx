@@ -8,6 +8,7 @@ import { notificationService } from '@/services/notificationService';
 import { exactAlarmService } from '@/services/exactAlarmService';
 import { reminderSyncService } from '@/services/reminderSyncService';
 import { pendingCompletionService } from '@/services/pendingCompletionService';
+import { habitOrderService } from '@/services/habitOrderService';
 import { isOfflineState } from '@/services/network';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -74,11 +75,16 @@ export function NotificationHandler() {
 
     // Botão "Feito" nativo: a conclusão fica na fila local até o JS enviá-la.
     pendingCompletionService.drain();
+    // Ordem dos hábitos arrastada sem conexão.
+    habitOrderService.flush(user.id);
     const unsubscribeComplete = exactAlarmService.onPendingCompletionsChanged(() => {
       pendingCompletionService.drain();
     });
     const appStateSubscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') pendingCompletionService.drain();
+      if (state === 'active') {
+        pendingCompletionService.drain();
+        habitOrderService.flush(user.id);
+      }
     });
 
     // Solicitar permissões e, com elas, reagendar os lembretes ativos — os
@@ -103,6 +109,7 @@ export function NotificationHandler() {
       if (wasOffline && !offline) {
         console.log('Conexao restabelecida: enviando pendencias');
         pendingCompletionService.drain();
+        habitOrderService.flush(user.id);
         if (!remindersSynced) syncReminders();
       }
       wasOffline = offline;

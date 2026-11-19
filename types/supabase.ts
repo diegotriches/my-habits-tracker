@@ -135,6 +135,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          sort_order: number | null
           target_unit: string | null
           target_value: number | null
           type: Database["public"]["Enums"]["habit_type"]
@@ -158,6 +159,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          sort_order?: number | null
           target_unit?: string | null
           target_value?: number | null
           type: Database["public"]["Enums"]["habit_type"]
@@ -181,6 +183,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          sort_order?: number | null
           target_unit?: string | null
           target_value?: number | null
           type?: Database["public"]["Enums"]["habit_type"]
@@ -339,7 +342,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      set_habit_order: { Args: { habit_ids: string[] }; Returns: undefined }
     }
     Enums: {
       frequency_goal_period: "week" | "month" | "custom"

@@ -121,6 +121,12 @@ describe('parseBackup', () => {
     ).toBeNull();
   });
 
+  it('mantém a posição na tela inicial; backups antigos (sem o campo) vêm sem ordem', () => {
+    expect(parseBackup(file([habit({ sort_order: 3 })])).backup.habits[0].sort_order).toBe(3);
+    expect(parseBackup(file([habit()])).backup.habits[0].sort_order).toBeNull();
+    expect(parseBackup(file([habit({ sort_order: '2' })])).backup.habits[0].sort_order).toBeNull();
+  });
+
   it('usa padrões para cor e ícone ausentes', () => {
     const { backup } = parseBackup(file([habit({ color: undefined, icon: 42 })]));
     expect(backup.habits[0]).toMatchObject({ color: '#3B82F6', icon: 'star' });

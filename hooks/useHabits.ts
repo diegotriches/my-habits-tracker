@@ -9,6 +9,8 @@ import { progressNotificationScheduler } from '@/services/progressNotificationSc
 import { readCache, writeCache } from '@/services/offlineCache';
 import { emitHabitsChanged, HABITS_CHANGED_EVENT } from '@/services/habitEvents';
 import { reminderSyncService } from '@/services/reminderSyncService';
+import { habitOrderService } from '@/services/habitOrderService';
+import { applyOrder, nextSortOrder, sortHabits } from '@/utils/habitOrder';
 
 const habitsTable = () => supabase.from('habits');
 
@@ -62,13 +64,20 @@ export const useHabits = () => {
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .is('archived_at', null) // arquivados ficam em settings/archived
-        .order('created_at', { ascending: false });
+        .is('archived_at', null); // arquivados ficam em settings/archived
 
       if (fetchError) throw fetchError;
 
+      // Ordem da tela inicial: a do banco, ou a arrastada que ainda não foi
+      // enviada (sem conexão), ou — uma vez — a que a versão antiga guardava
+      // só no aparelho.
+      const rows = data ?? [];
+      const pending =
+        (await habitOrderService.pendingOrder(userId)) ??
+        (await habitOrderService.adoptLegacyOrder(userId, rows));
+
       loadedFromServerRef.current = true;
-      setHabits((data as Habit[]) || []);
+      setHabits(pending ? applyOrder(rows, pending) : sortHabits(rows));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
     } finally {
@@ -146,6 +155,8 @@ export const useHabits = () => {
         color: habitData.color,
         icon: habitData.icon || 'star',
         is_active: true,
+        // Entra no fim da lista, junto do "Novo hábito".
+        sort_order: nextSortOrder(habits),
       };
 
       if (habitData.frequency_goal_value) {
@@ -167,7 +178,7 @@ export const useHabits = () => {
         return { data: null, error: insertError.message };
       }
 
-      setHabits((prevHabits) => [data as Habit, ...prevHabits]);
+      setHabits((prevHabits) => [...prevHabits, data]);
       emitHabitsChanged();
 
       return { data, error: null };
@@ -245,6 +256,16 @@ export const useHabits = () => {
     }
   };
 
+  /** Ordem arrastada na tela inicial: vale na hora e é enviada ao banco. */
+  const reorderHabits = useCallback(
+    (orderedIds: string[]) => {
+      if (!user?.id) return;
+      setHabits((prev) => applyOrder(prev, orderedIds));
+      void habitOrderService.save(user.id, orderedIds);
+    },
+    [user]
+  );
+
   const refresh = async () => {
     await fetchHabits();
   };
@@ -257,6 +278,7 @@ export const useHabits = () => {
     createHabit,
     updateHabit,
     deleteHabit,
+    reorderHabits,
     refresh,
   };
 };

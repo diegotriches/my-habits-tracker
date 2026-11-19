@@ -190,6 +190,14 @@ Não há botão flutuante: depois de montar a lista, criar hábito é raro, e o 
 - **"Novo hábito" como última linha da lista** (`AddHabitRow`, rodapé do `DraggableHabitList`, fora do arrastar). No primeiro uso, com a lista vazia, a mesma linha aparece em destaque e no mesmo lugar, para o usuário aprender onde fica.
 - **"+" no cabeçalho**, ao lado das estatísticas, como atalho quando a lista é longa (só aparece com algum hábito criado).
 
+### Ordem dos hábitos
+
+Segurar um card na home e arrastar muda a ordem. Ela fica no banco (`habits.sort_order`, menor = mais acima), então acompanha a conta em outro aparelho, sobrevive à reinstalação e entra no backup.
+
+- As regras ficam em `utils/habitOrder.ts` (com testes): hábitos sem `sort_order` vêm depois dos ordenados, do mais antigo para o mais novo; hábito novo entra no fim, junto do "Novo hábito". O `useHabits` já entrega a lista nessa ordem, para todas as telas.
+- A ordem é gravada inteira numa chamada só (função `set_habit_order` no banco, que numera os ids de 1 em diante). Funciona offline: `services/habitOrderService.ts` guarda a ordem arrastada no aparelho até enviá-la (ao abrir o app, ao voltar para o primeiro plano e ao reconectar), e as buscas a aplicam por cima do banco enquanto ela estiver pendente.
+- Versões antigas guardavam a ordem só no aparelho (chave `habit_order`). Na primeira busca, se nenhum hábito tem ordem no banco, essa ordem local é enviada uma vez e a chave é apagada.
+
 ### Estatísticas do ano
 
 O ícone de gráfico no cabeçalho da home abre `app/stats`: o ano em 12 mini-calendários (cabem na tela sem rolagem lateral), com a cor de cada dia indicando quanto dos hábitos programados foi feito, um filtro por hábito (inclusive arquivados), os totais do ano (conclusões, dias completos, aproveitamento) e o detalhe do dia tocado.

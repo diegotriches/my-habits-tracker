@@ -39,6 +39,8 @@ export interface BackupHabit {
   created_at: string;
   /** Quando foi arquivado (null = na tela inicial). Ausente em backups antigos. */
   archived_at: string | null;
+  /** Posição na tela inicial (null = sem ordem). Ausente em backups antigos. */
+  sort_order: number | null;
   completions: BackupCompletion[];
   reminders: BackupReminder[];
 }
@@ -135,6 +137,7 @@ function sanitizeHabit(raw: unknown): BackupHabit | null {
     frequency_goal_custom_days: numOrNull(raw.frequency_goal_custom_days),
     created_at: validDate(raw.created_at) ? (raw.created_at as string) : new Date().toISOString(),
     archived_at: validDate(raw.archived_at) ? (raw.archived_at as string) : null,
+    sort_order: Number.isInteger(raw.sort_order) ? (raw.sort_order as number) : null,
     completions,
     reminders,
   };
