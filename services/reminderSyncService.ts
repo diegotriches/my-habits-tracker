@@ -1,9 +1,11 @@
 // services/reminderSyncService.ts
 import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { supabase } from './supabase';
 import { exactAlarmService } from './exactAlarmService';
 import { notificationService } from './notificationService';
 import { Habit, Reminder, ReminderUpdate } from '@/types/database';
+import { findOrphanNotificationIds } from '@/utils/orphanNotifications';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -22,9 +24,15 @@ let rerunRequested = false;
  * outro aparelho, outro usuário que usou o app, ids legados
  * `${habitId}_${dia}`).
  *
- * Idempotente: reagendar com o mesmo id substitui o alarme existente. Só
- * Android — no iOS os lembretes ficam no expo-notifications, junto com as
- * notificações de progresso, e um "cancelar tudo" as apagaria.
+ * Idempotente: reagendar com o mesmo id substitui o alarme existente. Os
+ * alarmes nativos são só do Android — no iOS os lembretes ficam no
+ * expo-notifications, junto com as notificações de progresso, e um "cancelar
+ * tudo" as apagaria.
+ *
+ * Em todas as plataformas, também cancela no expo-notifications o que sobrou
+ * de hábitos fora de uso (ex.: notificações de progresso de um hábito
+ * excluído, restauradas pelo backup do Android ao reinstalar) e, no Android,
+ * lembretes legados de antes dos alarmes nativos.
  */
 export const reminderSyncService = {
   /**
@@ -53,12 +61,47 @@ export const reminderSyncService = {
   },
 };
 
-async function runSync(userId: string): Promise<boolean> {
-  // Nada a sincronizar não é falha: não há o que tentar de novo.
-  if (Platform.OS !== 'android') return true;
-
+/**
+ * Lista do que está agendado no expo-notifications, lida ANTES de consultar
+ * os hábitos: uma notificação agendada depois da leitura (ex.: de um hábito
+ * criado enquanto a sincronização roda) não entra na lista e não corre o
+ * risco de ser cancelada por engano.
+ */
+async function readScheduledNotifications() {
   try {
+    return await Notifications.getAllScheduledNotificationsAsync();
+  } catch (error) {
+    console.warn('Erro ao ler as notificações agendadas:', error);
+    return [];
+  }
+}
+
+/** Cancela notificações de hábitos fora de uso e lembretes legados (ver utils). */
+async function cancelOrphanNotifications(
+  scheduled: Notifications.NotificationRequest[],
+  activeHabitIds: Set<string>
+): Promise<void> {
+  const orphanIds = findOrphanNotificationIds(
+    scheduled.map((n) => ({ identifier: n.identifier, data: n.content.data })),
+    activeHabitIds,
+    Platform.OS
+  );
+  for (const id of orphanIds) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    } catch (error) {
+      console.warn('Erro ao cancelar notificação órfã:', id, error);
+    }
+  }
+  if (orphanIds.length > 0) console.log(`Notificações órfãs canceladas: ${orphanIds.length}`);
+}
+
+async function runSync(userId: string): Promise<boolean> {
+  try {
+    // Sem permissão nada toca: nada a sincronizar, e isso não é falha.
     if (!(await notificationService.hasPermission())) return true;
+
+    const scheduledNotifications = await readScheduledNotifications();
 
     const { data: habitsData, error: habitsError } = await supabase
       .from('habits')
@@ -73,6 +116,14 @@ async function runSync(userId: string): Promise<boolean> {
 
     const habits = (habitsData ?? []) as Pick<Habit, 'id' | 'name' | 'has_target'>[];
     const habitsById = new Map(habits.map((h) => [h.id, h]));
+
+    // Todas as plataformas: restos de hábitos excluídos/arquivados (ex.:
+    // notificações de progresso de versões antigas ou restauradas pelo
+    // backup do Android ao reinstalar).
+    await cancelOrphanNotifications(scheduledNotifications, new Set(habitsById.keys()));
+
+    // Os alarmes nativos dos lembretes são só do Android.
+    if (Platform.OS !== 'android') return true;
 
     let reminders: Reminder[] = [];
     if (habits.length > 0) {

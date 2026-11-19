@@ -193,3 +193,11 @@ Pré-requisito: migration `20261112164950_habit_archiving.sql` aplicada.
 - [ ] Marcar algo offline e abrir as estatísticas: a marcação já aparece; abrir offline depois de ter aberto online mostra o último estado (sem erro)
 - [ ] Tema escuro: as cores do mapa continuam legíveis
 - [ ] Com o TalkBack: cada mês anuncia o aproveitamento e os dias completos ("novembro: 75% feito, 5 dias completos")
+
+## 21. Notificações de hábitos excluídos
+
+- [ ] Com a build nova instalada, abrir o app conectado: a notificação de progresso da "Água" excluída (8h, 15h e 21h) **não** dispara mais
+- [ ] Excluir um hábito com meta numérica e notificações de progresso: nenhuma delas dispara depois, inclusive após fechar e abrir o app
+- [ ] Hábito ativo com notificações de progresso: continuam disparando normalmente depois de abrir o app (a limpeza não as remove)
+- [ ] Criar um hábito com notificações de progresso logo depois de abrir o app: elas continuam agendadas
+- [ ] Desinstalar e reinstalar o app (o backup do Android restaura os agendamentos): ao entrar, só tocam lembretes e notificações de hábitos ativos
