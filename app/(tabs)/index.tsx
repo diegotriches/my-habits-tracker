@@ -2,7 +2,9 @@
 import { HabitProgressInput } from '@/components/habits/HabitProgressInput';
 import { HabitWeeklyRow } from '@/components/habits/HabitWeeklyRow';
 import { WeekNavigator } from '@/components/habits/WeekNavigator';
-import { DraggableHabitList } from '@/components/habits/DraggableHabitList';
+import { DraggableHabitList, ReorderAccessibility } from '@/components/habits/DraggableHabitList';
+import { ReorderHint } from '@/components/habits/ReorderHint';
+import { useReorderHint } from '@/hooks/useReorderHint';
 import { HabitListSkeleton } from '@/components/skeletons/HabitListSkeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AddHabitRow } from '@/components/habits/AddHabitRow';
@@ -79,7 +81,7 @@ export default function HomeScreen() {
   const connectivity = useConnectivity();
   const { isVisible: showConfetti, celebrate, closeCelebration } = useCelebration();
 
-  // Ordem arrastável: `habits` já vem na ordem da tela (banco + pendência).
+  // `habits` já vem na ordem da tela (banco + pendência).
   const habitIds = useMemo(() => habits.map((h) => h.id), [habits]);
 
   // Resumo do dia: só na semana atual (a única em que "hoje" está na tela).
@@ -201,8 +203,19 @@ export default function HomeScreen() {
     return () => subscriptions.forEach((s) => s.remove());
   }, [refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
 
+  // Dica única de reordenar; some de vez na primeira reordenação.
+  const reorderHint = useReorderHint(habits.length);
+  const dismissReorderHint = reorderHint.dismiss;
+  const handleOrderChange = useCallback(
+    (ids: string[]) => {
+      reorderHabits(ids);
+      dismissReorderHint();
+    },
+    [reorderHabits, dismissReorderHint]
+  );
+
   const renderHabit = useCallback(
-    (item: Habit) => {
+    (item: Habit, reorder: ReorderAccessibility) => {
       // `today` (useCurrentDay) entra no cálculo: na virada do dia, o
       // renderHabit muda e os cards recalculam o "hoje" e o destaque do dia.
       const isDueToday = shouldHabitAppearOnDate(item, parseISO(today));
@@ -216,6 +229,7 @@ export default function HomeScreen() {
           isDueToday={isDueToday}
           weekStart={selectedWeekStart}
           onWeekChange={handleWeekChange}
+          reorder={reorder}
         />
       );
     },
@@ -370,8 +384,7 @@ export default function HomeScreen() {
       ) : (
         <DraggableHabitList
           habits={habits}
-          orderedIds={habitIds}
-          onOrderChange={reorderHabits}
+          onOrderChange={handleOrderChange}
           renderItem={renderHabit}
           refreshControl={
             <RefreshControl
@@ -392,6 +405,7 @@ export default function HomeScreen() {
                 <TodaySummaryCard due={todaySummary.due} done={todaySummary.done} />
               )}
               <WeekNavigator weekStart={selectedWeekStart} onWeekChange={handleWeekChange} />
+              {reorderHint.visible && <ReorderHint onDismiss={reorderHint.dismiss} />}
             </View>
           }
           ListFooterComponent={<AddHabitRow onPress={handleCreateHabit} />}

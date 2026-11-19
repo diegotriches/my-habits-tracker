@@ -9,6 +9,7 @@ import { addDays, isFuture, isSameDay, startOfWeek, addWeeks, subWeeks } from 'd
 import React, { useRef } from 'react';
 import { Text, TouchableOpacity, View, PanResponder, Animated } from 'react-native';
 import { createWeeklyRowStyles } from './HabitWeeklyRowStyles';
+import type { ReorderAccessibility } from './DraggableHabitList';
 
 interface HabitWeeklyRowProps {
   habit: Habit;
@@ -19,6 +20,8 @@ interface HabitWeeklyRowProps {
   isDueToday?: boolean;
   weekStart?: Date;
   onWeekChange?: (newWeekStart: Date) => void;
+  /** Ações "Mover para cima/baixo" do TalkBack (a lista arrastável fornece). */
+  reorder?: ReorderAccessibility;
 }
 
 export function HabitWeeklyRow({
@@ -30,6 +33,7 @@ export function HabitWeeklyRow({
   isDueToday = true,
   weekStart: weekStartProp,
   onWeekChange,
+  reorder,
 }: HabitWeeklyRowProps) {
   const { colors } = useTheme();
   const isNegative = habit.type === 'negative';
@@ -266,6 +270,8 @@ export function HabitWeeklyRow({
             streak && streak.current_streak > 0 ? `, ${streak.current_streak} dias seguidos` : ''
           }`}
           accessibilityHint="Abre os detalhes do hábito"
+          accessibilityActions={reorder?.accessibilityActions}
+          onAccessibilityAction={reorder?.onAccessibilityAction}
         >
           <View style={styles.habitNameRow}>
             <Text style={[styles.habitName, { color: colors.textPrimary }]} numberOfLines={1}>

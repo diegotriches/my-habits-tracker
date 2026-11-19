@@ -1,37 +1,101 @@
 // components/habits/DraggableHabitList.tsx
-import React, { useCallback, useRef, useState } from 'react';
-import { FlatList, Platform, UIManager, View, StyleSheet } from 'react-native';
+//
+// Lista da home com "segurar e arrastar" para reordenar.
+//
+// O arrasto roda inteiro na thread de UI (Reanimated): o card acompanha o
+// dedo sem passar pelo React a cada quadro, os outros cards deslizam para
+// abrir espaço onde ele vai cair e a lista rola sozinha perto das bordas.
+// O React só é avisado no começo (trava a rolagem manual), a cada troca de
+// posição (vibração) e no fim (grava a ordem nova).
+//
+// Um único gesto por card: Pan com `activateAfterLongPress`, então o mesmo
+// toque que segurou já arrasta. Mexer o dedo antes do tempo cancela o gesto e
+// deixa a lista rolar (ou a semana trocar, no deslize horizontal).
+//
+// Leitores de tela não arrastam: cada card recebe ações de acessibilidade
+// "Mover para cima" / "Mover para baixo" (ver `ReorderAccessibility`).
+//
+// As contas ficam em `utils/dragOrder.ts` (com testes).
+
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityActionEvent,
+  AccessibilityActionInfo,
+  AccessibilityInfo,
+  LayoutChangeEvent,
+  RefreshControlProps,
+  StyleProp,
+  StyleSheet,
+  ViewStyle,
+} from 'react-native';
 import Animated, {
-  useSharedValue,
+  AnimatedRef,
+  SharedValue,
+  measure,
+  runOnJS,
+  scrollTo,
+  useAnimatedRef,
   useAnimatedStyle,
+  useFrameCallback,
+  useScrollViewOffset,
+  useSharedValue,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Habit } from '@/types/database';
-import { useTheme } from '@/contexts/ThemeContext';
 import { hapticFeedback } from '@/utils/haptics';
+import { autoScrollStep, dropIndex, moveItem, offsetToIndex, shiftFor } from '@/utils/dragOrder';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
+/** Tempo segurando o card até o arrasto começar. */
+const LONG_PRESS_MS = 350;
+/** Faixa (px) junto ao topo/fundo da lista em que ela rola sozinha. */
+const AUTO_SCROLL_EDGE = 80;
+/** Velocidade máxima da rolagem automática (px por quadro). */
+const AUTO_SCROLL_MAX_STEP = 12;
+const SHIFT_DURATION = 180;
+const DROP_DURATION = 160;
+const LIFT_SCALE = 0.03;
+
+/** Ações de "mover" para o TalkBack, aplicadas no elemento acessível do card. */
+export interface ReorderAccessibility {
+  accessibilityActions: AccessibilityActionInfo[];
+  onAccessibilityAction: (event: AccessibilityActionEvent) => void;
 }
 
 interface DraggableHabitListProps {
+  /** Já na ordem da tela. */
   habits: Habit[];
-  orderedIds: string[];
   onOrderChange: (newOrder: string[]) => void;
-  renderItem: (habit: Habit) => React.ReactNode;
+  renderItem: (habit: Habit, reorder: ReorderAccessibility) => React.ReactNode;
   ListHeaderComponent?: React.ReactElement;
   /** Fica depois dos hábitos e fora do arrastar (ex.: "Novo hábito"). */
   ListFooterComponent?: React.ReactElement;
-  refreshControl?: React.ReactElement;
-  contentContainerStyle?: object;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}
+
+type Layouts = Record<string, { y: number; h: number }>;
+
+/** Estado do arrasto compartilhado com a thread de UI. */
+interface DragState {
+  order: SharedValue<string[]>;
+  layouts: SharedValue<Layouts>;
+  activeId: SharedValue<string | null>;
+  /** Solto: animando até o destino (a rolagem automática para). */
+  dropping: SharedValue<boolean>;
+  fromIndex: SharedValue<number>;
+  toIndex: SharedValue<number>;
+  dragDy: SharedValue<number>;
+  startScroll: SharedValue<number>;
+  scrollY: SharedValue<number>;
+  lift: SharedValue<number>;
+  fingerY: SharedValue<number>;
+  viewportTop: SharedValue<number>;
 }
 
 export function DraggableHabitList({
   habits,
-  orderedIds,
   onOrderChange,
   renderItem,
   ListHeaderComponent,
@@ -39,272 +103,314 @@ export function DraggableHabitList({
   refreshControl,
   contentContainerStyle,
 }: DraggableHabitListProps) {
-  const { colors } = useTheme();
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollY = useScrollViewOffset(scrollRef);
 
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-  const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
-  const [floatingTop, setFloatingTop] = useState(0);
+  const ids = useMemo(() => habits.map((h) => h.id), [habits]);
 
-  const floatingScale = useSharedValue(1);
-  const floatingOpacity = useSharedValue(0);
+  // Os shared values têm identidade estável; o objeto só os agrupa (o
+  // primeiro fica no ref, para as props dos cards não mudarem a cada render).
+  const drag: DragState = {
+    order: useSharedValue<string[]>(ids),
+    layouts: useSharedValue<Layouts>({}),
+    activeId: useSharedValue<string | null>(null),
+    dropping: useSharedValue(false),
+    fromIndex: useSharedValue(-1),
+    toIndex: useSharedValue(-1),
+    dragDy: useSharedValue(0),
+    startScroll: useSharedValue(0),
+    scrollY,
+    lift: useSharedValue(0),
+    fingerY: useSharedValue(0),
+    viewportTop: useSharedValue(0),
+  };
+  const dragRef = useRef(drag);
+  const d = dragRef.current;
 
-  // Apenas altura de cada item — y é calculado acumulando alturas anteriores
-  const itemHeights = useRef<Record<string, number>>({});
-  const draggingIndexRef = useRef<number | null>(null);
-  const dragTargetIndexRef = useRef<number | null>(null);
-  const scrollOffsetY = useRef(0);
-  const containerRef = useRef<View>(null);
-  const containerPageY = useRef(0);
-  const touchOffsetInCard = useRef(0);
-  // Altura do ListHeaderComponent
-  const headerHeight = useRef(0);
+  const viewportHeight = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
 
-  const sortedHabits = orderedIds
-    .map((id) => habits.find((h) => h.id === id))
-    .filter(Boolean) as Habit[];
+  // Rolagem manual travada durante o arrasto (a automática continua).
+  const [dragging, setDragging] = useState(false);
+  const resetPendingRef = useRef(false);
 
-  // Calcula o Y acumulado de um item somando alturas dos itens anteriores
-  const getItemY = useCallback(
-    (index: number): number => {
-      let y = headerHeight.current;
-      for (let i = 0; i < index; i++) {
-        const id = sortedHabits[i]?.id;
-        y += itemHeights.current[id] ?? 0;
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
+  const onOrderChangeRef = useRef(onOrderChange);
+  onOrderChangeRef.current = onOrderChange;
+
+  const handleTargetChange = useCallback(() => {
+    hapticFeedback.selection();
+  }, []);
+
+  const autoScroll = useFrameCallback(() => {
+    'worklet';
+    if (d.activeId.value === null || d.dropping.value) return;
+    const step = autoScrollStep(
+      d.fingerY.value,
+      viewportHeight.value,
+      AUTO_SCROLL_EDGE,
+      AUTO_SCROLL_MAX_STEP
+    );
+    if (step === 0) return;
+    const maxScroll = Math.max(0, contentHeight.value - viewportHeight.value);
+    const next = Math.min(maxScroll, Math.max(0, d.scrollY.value + step));
+    if (next === d.scrollY.value) return;
+    scrollTo(scrollRef, 0, next, false);
+    // O card acompanha a rolagem (translateY soma scrollY - startScroll), e
+    // o destino muda sem o dedo se mexer.
+    updateTarget(d, handleTargetChange);
+  }, false);
+
+  // Depois que a ordem nova chega renderizada, zera o arrasto — antes disso,
+  // os cards ainda estão na posição antiga e precisam do deslocamento.
+  useLayoutEffect(() => {
+    d.order.value = ids;
+    if (!resetPendingRef.current) return;
+    resetPendingRef.current = false;
+    resetDrag(d);
+    setDragging(false);
+    autoScroll.setActive(false);
+  }, [ids, d, autoScroll]);
+
+  const handleDragStart = useCallback(() => {
+    setDragging(true);
+    autoScroll.setActive(true);
+    hapticFeedback.selection();
+  }, [autoScroll]);
+
+  /** Chamado quando a animação de soltar termina. */
+  const handleDrop = useCallback(
+    (from: number, to: number) => {
+      autoScroll.setActive(false);
+      if (from === to || from < 0) {
+        resetDrag(d);
+        setDragging(false);
+        return;
       }
-      return y;
-    },
-    [sortedHabits]
-  );
-
-  const getIndexFromAbsoluteY = useCallback(
-    (absoluteY: number): number => {
-      const relativeY = absoluteY - containerPageY.current + scrollOffsetY.current;
-      let accumulated = headerHeight.current;
-      for (let i = 0; i < sortedHabits.length; i++) {
-        const id = sortedHabits[i].id;
-        accumulated += itemHeights.current[id] ?? 0;
-        if (relativeY < accumulated) return i;
-      }
-      return sortedHabits.length - 1;
-    },
-    [sortedHabits]
-  );
-
-  const startDrag = useCallback(
-    (index: number, absoluteY: number) => {
-      if (!containerRef.current) return;
-
-      containerRef.current.measure((_x, _y, _w, _h, _px, pageY) => {
-        containerPageY.current = pageY;
-
-        const cardY = getItemY(index);
-
-        // Posição absoluta do topo do card na tela
-        const cardAbsoluteTop = pageY + cardY - scrollOffsetY.current;
-        // Onde dentro do card o dedo tocou
-        touchOffsetInCard.current = absoluteY - cardAbsoluteTop;
-        // Top do card flutuante relativo ao container
-        const cardTopInContainer = cardY - scrollOffsetY.current;
-
-        setFloatingTop(cardTopInContainer);
-        floatingScale.value = withSpring(1.04, { damping: 14, stiffness: 180 });
-        floatingOpacity.value = withTiming(1, { duration: 100 });
-
-        draggingIndexRef.current = index;
-        dragTargetIndexRef.current = index;
-        setDraggingIndex(index);
-        setDragTargetIndex(index);
-        hapticFeedback.selection();
-      });
-    },
-    [floatingScale, floatingOpacity, getItemY]
-  );
-
-  const moveDrag = useCallback(
-    (absoluteY: number) => {
-      if (draggingIndexRef.current === null) return;
-
-      const newTop = absoluteY - containerPageY.current - touchOffsetInCard.current;
-      setFloatingTop(newTop);
-
-      const newTarget = getIndexFromAbsoluteY(absoluteY);
-      if (newTarget !== dragTargetIndexRef.current) {
-        dragTargetIndexRef.current = newTarget;
-        hapticFeedback.selection();
-        setDragTargetIndex(newTarget);
-      }
-    },
-    [getIndexFromAbsoluteY]
-  );
-
-  const endDrag = useCallback(() => {
-    const from = draggingIndexRef.current;
-    const to = dragTargetIndexRef.current;
-
-    floatingScale.value = withSpring(1, { damping: 14, stiffness: 180 });
-    floatingOpacity.value = withTiming(0, { duration: 150 });
-
-    if (from !== null && to !== null && from !== to) {
-      const newOrder = [...orderedIds];
-      const [moved] = newOrder.splice(from, 1);
-      newOrder.splice(to, 0, moved);
-      onOrderChange(newOrder);
+      resetPendingRef.current = true;
       hapticFeedback.success();
-    }
+      onOrderChangeRef.current(moveItem(idsRef.current, from, to));
+      // Salvaguarda: se a lista não mudar (ordem recusada), não fica travada.
+      setTimeout(() => {
+        if (!resetPendingRef.current) return;
+        resetPendingRef.current = false;
+        resetDrag(d);
+        setDragging(false);
+      }, 1000);
+    },
+    [autoScroll, d]
+  );
 
-    draggingIndexRef.current = null;
-    dragTargetIndexRef.current = null;
-    setDraggingIndex(null);
-    setDragTargetIndex(null);
-  }, [floatingScale, floatingOpacity, orderedIds, onOrderChange]);
+  const callbacks = useMemo(
+    () => ({ onStart: handleDragStart, onTarget: handleTargetChange, onDrop: handleDrop }),
+    [handleDragStart, handleTargetChange, handleDrop]
+  );
 
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      'worklet';
-      runOnJS(moveDrag)(e.absoluteY);
-    })
-    .onEnd(() => {
-      'worklet';
-      runOnJS(endDrag)();
-    })
-    .onFinalize(() => {
-      'worklet';
-      runOnJS(endDrag)();
-    })
-    .enabled(draggingIndex !== null);
-
-  const floatingAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: floatingScale.value }],
-    opacity: floatingOpacity.value,
-  }));
-
-  const draggingHabit = draggingIndex !== null ? sortedHabits[draggingIndex] : null;
-  const draggingHeight = draggingHabit ? (itemHeights.current[draggingHabit.id] ?? 0) : 0;
+  const moveBy = useCallback((habit: Habit, delta: number) => {
+    const list = idsRef.current;
+    const from = list.indexOf(habit.id);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= list.length) return;
+    onOrderChangeRef.current(moveItem(list, from, to));
+    AccessibilityInfo.announceForAccessibility(
+      `${habit.name} movido para a posição ${to + 1} de ${list.length}`
+    );
+  }, []);
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <View ref={containerRef} style={{ flex: 1 }}>
-        <FlatList
-          data={sortedHabits}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={draggingIndex === null}
-          refreshControl={refreshControl as React.ReactElement<any>}
-          ListHeaderComponent={
-            ListHeaderComponent ? (
-              <View
-                onLayout={(e) => {
-                  headerHeight.current = e.nativeEvent.layout.height;
-                }}
-              >
-                {ListHeaderComponent}
-              </View>
-            ) : undefined
-          }
-          ListFooterComponent={ListFooterComponent}
-          contentContainerStyle={contentContainerStyle}
-          onScroll={(e) => {
-            scrollOffsetY.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
-          renderItem={({ item, index }) => (
-            <DraggableItem
-              key={item.id}
-              habit={item}
-              index={index}
-              isDragging={draggingIndex === index}
-              isDragTarget={dragTargetIndex === index && draggingIndex !== index}
-              onDragStart={startDrag}
-              renderItem={renderItem}
-              onItemLayout={(id, height) => {
-                itemHeights.current[id] = height;
-              }}
-            />
-          )}
+    <Animated.ScrollView
+      ref={scrollRef}
+      style={styles.flex}
+      scrollEnabled={!dragging}
+      refreshControl={refreshControl}
+      contentContainerStyle={contentContainerStyle}
+      scrollEventThrottle={16}
+      onLayout={(e: LayoutChangeEvent) => {
+        viewportHeight.value = e.nativeEvent.layout.height;
+      }}
+      onContentSizeChange={(_w: number, h: number) => {
+        contentHeight.value = h;
+      }}
+    >
+      {ListHeaderComponent}
+      {habits.map((habit, index) => (
+        <DraggableItem
+          key={habit.id}
+          habit={habit}
+          index={index}
+          count={habits.length}
+          drag={d}
+          scrollRef={scrollRef}
+          callbacks={callbacks}
+          onMove={moveBy}
+          renderItem={renderItem}
         />
-
-        {draggingHabit && draggingHeight > 0 && (
-          <Animated.View
-            style={[
-              styles.floatingCard,
-              {
-                top: floatingTop,
-                height: draggingHeight,
-                shadowColor: colors.textPrimary,
-              },
-              floatingAnimStyle,
-            ]}
-            pointerEvents="none"
-          >
-            {renderItem(draggingHabit)}
-          </Animated.View>
-        )}
-      </View>
-    </GestureDetector>
+      ))}
+      {ListFooterComponent}
+    </Animated.ScrollView>
   );
+}
+
+function resetDrag(d: DragState) {
+  d.activeId.value = null;
+  d.dropping.value = false;
+  d.fromIndex.value = -1;
+  d.toIndex.value = -1;
+  d.dragDy.value = 0;
+  d.lift.value = 0;
+}
+
+/** Recalcula onde o card arrastado cairia; avisa o JS (vibração) se mudou. */
+function updateTarget(d: DragState, onTarget?: () => void) {
+  'worklet';
+  const id = d.activeId.value;
+  if (id === null) return;
+  const layouts = d.layouts.value;
+  const own = layouts[id];
+  if (!own) return;
+  const centers = d.order.value.map((oid) => {
+    const l = layouts[oid];
+    return l ? l.y + l.h / 2 : 0;
+  });
+  const center = own.y + own.h / 2 + d.dragDy.value + (d.scrollY.value - d.startScroll.value);
+  const to = dropIndex(centers, d.fromIndex.value, center);
+  if (to !== d.toIndex.value) {
+    d.toIndex.value = to;
+    if (onTarget) runOnJS(onTarget)();
+  }
+}
+
+interface DragCallbacks {
+  onStart: () => void;
+  onTarget: () => void;
+  onDrop: (from: number, to: number) => void;
 }
 
 interface DraggableItemProps {
   habit: Habit;
   index: number;
-  isDragging: boolean;
-  isDragTarget: boolean;
-  onDragStart: (index: number, absoluteY: number) => void;
-  renderItem: (habit: Habit) => React.ReactNode;
-  onItemLayout: (id: string, height: number) => void;
+  count: number;
+  drag: DragState;
+  scrollRef: AnimatedRef<Animated.ScrollView>;
+  callbacks: DragCallbacks;
+  onMove: (habit: Habit, delta: number) => void;
+  renderItem: (habit: Habit, reorder: ReorderAccessibility) => React.ReactNode;
 }
 
-function DraggableItem({
+const DraggableItem = React.memo(function DraggableItem({
   habit,
   index,
-  isDragging,
-  isDragTarget,
-  onDragStart,
+  count,
+  drag: d,
+  scrollRef,
+  callbacks,
+  onMove,
   renderItem,
-  onItemLayout,
 }: DraggableItemProps) {
-  const scale = useSharedValue(1);
+  const id = habit.id;
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: isDragging ? 0 : isDragTarget ? 0.4 : 1,
-  }));
+  const gesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activateAfterLongPress(LONG_PRESS_MS)
+        .onStart((e) => {
+          'worklet';
+          if (d.activeId.value !== null) return; // outro card já está sendo arrastado
+          const m = measure(scrollRef);
+          d.viewportTop.value = m ? m.pageY : 0;
+          d.fingerY.value = e.absoluteY - d.viewportTop.value;
+          d.startScroll.value = d.scrollY.value;
+          d.dragDy.value = 0;
+          d.fromIndex.value = index;
+          d.toIndex.value = index;
+          d.dropping.value = false;
+          d.activeId.value = id;
+          d.lift.value = withSpring(1, { damping: 15, stiffness: 220 });
+          runOnJS(callbacks.onStart)();
+        })
+        .onUpdate((e) => {
+          'worklet';
+          if (d.activeId.value !== id || d.dropping.value) return;
+          d.dragDy.value = e.translationY;
+          d.fingerY.value = e.absoluteY - d.viewportTop.value;
+          updateTarget(d, callbacks.onTarget);
+        })
+        .onFinalize(() => {
+          'worklet';
+          if (d.activeId.value !== id || d.dropping.value) return;
+          d.dropping.value = true;
+          const from = d.fromIndex.value;
+          const to = d.toIndex.value;
+          const layouts = d.layouts.value;
+          const heights = d.order.value.map((oid) => layouts[oid]?.h ?? 0);
+          // Anima até o lugar exato do destino, descontando a rolagem feita.
+          const target = offsetToIndex(heights, from, to) - (d.scrollY.value - d.startScroll.value);
+          d.lift.value = withTiming(0, { duration: DROP_DURATION });
+          d.dragDy.value = withTiming(target, { duration: DROP_DURATION }, (finished) => {
+            if (finished !== false) runOnJS(callbacks.onDrop)(from, to);
+            else runOnJS(callbacks.onDrop)(from, from);
+          });
+        }),
+    [d, id, index, scrollRef, callbacks]
+  );
 
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(350)
-    .onStart((e) => {
-      'worklet';
-      scale.value = withSpring(1.02, { damping: 14, stiffness: 200 });
-      runOnJS(onDragStart)(index, e.absoluteY);
-    })
-    .onEnd(() => {
-      'worklet';
-      scale.value = withSpring(1, { damping: 14, stiffness: 200 });
-    });
+  const animatedStyle = useAnimatedStyle(() => {
+    const activeId = d.activeId.value;
+    if (activeId === null) {
+      // Sem arrasto (ou logo após gravar a ordem): posição natural, sem animar.
+      return { transform: [{ translateY: 0 }, { scale: 1 }], zIndex: 0, opacity: 1 };
+    }
+    if (activeId === id) {
+      return {
+        transform: [
+          { translateY: d.dragDy.value + (d.scrollY.value - d.startScroll.value) },
+          { scale: 1 + LIFT_SCALE * d.lift.value },
+        ],
+        zIndex: 10,
+        opacity: 0.97,
+      };
+    }
+    const activeHeight = d.layouts.value[activeId]?.h ?? 0;
+    const shift = shiftFor(index, d.fromIndex.value, d.toIndex.value, activeHeight);
+    return {
+      transform: [{ translateY: withTiming(shift, { duration: SHIFT_DURATION }) }, { scale: 1 }],
+      zIndex: 0,
+      opacity: 1,
+    };
+  });
+
+  const onLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { y, height } = e.nativeEvent.layout;
+      d.layouts.value = { ...d.layouts.value, [id]: { y, h: height } };
+    },
+    [d, id]
+  );
+
+  const reorder = useMemo<ReorderAccessibility>(
+    () => ({
+      accessibilityActions: [
+        ...(index > 0 ? [{ name: 'moveUp', label: 'Mover para cima' }] : []),
+        ...(index < count - 1 ? [{ name: 'moveDown', label: 'Mover para baixo' }] : []),
+      ],
+      onAccessibilityAction: (event) => {
+        if (event.nativeEvent.actionName === 'moveUp') onMove(habit, -1);
+        if (event.nativeEvent.actionName === 'moveDown') onMove(habit, 1);
+      },
+    }),
+    [index, count, habit, onMove]
+  );
 
   return (
-    <GestureDetector gesture={longPressGesture}>
-      <Animated.View
-        style={animatedStyle}
-        onLayout={(e) => {
-          onItemLayout(habit.id, e.nativeEvent.layout.height);
-        }}
-      >
-        {renderItem(habit)}
+    <GestureDetector gesture={gesture}>
+      <Animated.View style={animatedStyle} onLayout={onLayout}>
+        {renderItem(habit, reorder)}
       </Animated.View>
     </GestureDetector>
   );
-}
+});
 
 const styles = StyleSheet.create({
-  floatingCard: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
+  flex: { flex: 1 },
 });

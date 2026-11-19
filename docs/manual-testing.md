@@ -242,3 +242,20 @@ Antes de testar, rode a migration `20261119120000_habit_sort_order.sql` no Supab
 - [ ] Arquivar e restaurar um hábito: ele volta para uma posição coerente (a que tinha, ou o fim)
 - [ ] Exportar o backup, importar em outra conta vazia: os hábitos vêm na mesma ordem
 - [ ] Sair e entrar com outra conta no mesmo aparelho: a ordem de uma conta não afeta a outra
+
+## 25. Arrastar para reordenar
+
+Teste com pelo menos uns 8 hábitos (para a lista passar da altura da tela).
+
+- [ ] Segurar um card (~0,4 s): vibra, o card "levanta" e já acompanha o dedo, **sem soltar e tocar de novo**
+- [ ] Ao arrastar, os outros cards deslizam para abrir espaço; cada troca de posição vibra de leve
+- [ ] Soltar: o card desliza até o lugar e a ordem fica (sem "piscar" nem pular para a posição antiga)
+- [ ] Soltar no mesmo lugar: volta suave, nada muda
+- [ ] Levar o card até perto do fundo (ou do topo) da tela: a lista rola sozinha, mais rápido quanto mais perto da borda; dá para levar o primeiro hábito até o último lugar
+- [ ] O arrasto é fluido mesmo com a lista cheia (sem engasgos)
+- [ ] Rolar a lista normalmente, tocar num dia, tocar no nome (abre os detalhes) e deslizar a semana para os lados continuam funcionando — nenhum deles começa um arrasto
+- [ ] Puxar para atualizar continua funcionando (fora do arrasto)
+- [ ] "Novo hábito" e o cabeçalho (data, resumo do dia, semana) não se movem nem podem ser arrastados
+- [ ] Tema escuro: o card arrastado continua legível
+- [ ] TalkBack: no nome de um hábito, o menu de ações (deslizar para cima e depois para a direita, ou toque com três dedos) tem "Mover para cima" / "Mover para baixo"; ao usar, anuncia "… movido para a posição N de M". O primeiro não tem "Mover para cima"; o último não tem "Mover para baixo"
+- [ ] Dica: com 2 hábitos ou mais aparece "Segure um hábito e arraste para mudar a ordem"; some ao tocar "Entendi" ou ao reordenar, e não volta ao reabrir o app. Com 1 hábito não aparece

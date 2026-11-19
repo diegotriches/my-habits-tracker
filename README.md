@@ -192,7 +192,15 @@ Não há botão flutuante: depois de montar a lista, criar hábito é raro, e o 
 
 ### Ordem dos hábitos
 
-Segurar um card na home e arrastar muda a ordem. Ela fica no banco (`habits.sort_order`, menor = mais acima), então acompanha a conta em outro aparelho, sobrevive à reinstalação e entra no backup.
+Segurar um card na home e arrastar muda a ordem (`components/habits/DraggableHabitList.tsx`, contas em `utils/dragOrder.ts`, com testes):
+
+- **O arrasto roda na thread de UI** (Reanimated): o card acompanha o dedo sem passar pelo React a cada quadro, os outros deslizam para abrir espaço onde ele vai cair e a lista rola sozinha perto do topo/fundo. O React só é avisado no começo (trava a rolagem manual), a cada troca de posição (vibração) e no fim (grava a ordem).
+- **Um gesto só por card**: `Gesture.Pan().activateAfterLongPress(350)` — o mesmo toque que segurou já arrasta. Mexer o dedo antes disso cancela o gesto e deixa a lista rolar ou a semana trocar (deslize horizontal).
+- **TalkBack**: o leitor de tela não arrasta, então o card tem as ações "Mover para cima" / "Mover para baixo" (anunciando a posição nova).
+- **Dica única** (`ReorderHint`, `useReorderHint`): com dois hábitos ou mais, um aviso "Segure um hábito e arraste para mudar a ordem" aparece até ser dispensado ou até a primeira reordenação.
+- A lista é um `ScrollView` (não `FlatList`): com poucas dezenas de hábitos, virtualizar não compensa, e todos os cards precisam estar medidos para as contas do arrasto.
+
+A ordem fica no banco (`habits.sort_order`, menor = mais acima), então acompanha a conta em outro aparelho, sobrevive à reinstalação e entra no backup.
 
 - As regras ficam em `utils/habitOrder.ts` (com testes): hábitos sem `sort_order` vêm depois dos ordenados, do mais antigo para o mais novo; hábito novo entra no fim, junto do "Novo hábito". O `useHabits` já entrega a lista nessa ordem, para todas as telas.
 - A ordem é gravada inteira numa chamada só (função `set_habit_order` no banco, que numera os ids de 1 em diante). Funciona offline: `services/habitOrderService.ts` guarda a ordem arrastada no aparelho até enviá-la (ao abrir o app, ao voltar para o primeiro plano e ao reconectar), e as buscas a aplicam por cima do banco enquanto ela estiver pendente.
