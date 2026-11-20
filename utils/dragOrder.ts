@@ -15,6 +15,22 @@ export function moveItem<T>(list: T[], from: number, to: number): T[] {
 }
 
 /**
+ * Centro (y) de cada item, empilhados a partir de `top` na ordem dada.
+ * Calculado das alturas, e não do `y` medido de cada item, que pode estar
+ * velho logo depois de uma reordenação.
+ */
+export function centersFor(heights: number[], top: number): number[] {
+  'worklet';
+  const centers: number[] = [];
+  let y = top;
+  for (const h of heights) {
+    centers.push(y + h / 2);
+    y += h;
+  }
+  return centers;
+}
+
+/**
  * Posição em que o item arrastado cairia: quantos dos outros itens têm o
  * centro acima do centro do item arrastado.
  *

@@ -251,6 +251,7 @@ Teste com pelo menos uns 8 hábitos (para a lista passar da altura da tela).
 - [ ] Ao arrastar, os outros cards deslizam para abrir espaço; cada troca de posição vibra de leve
 - [ ] Soltar: o card desliza até o lugar e a ordem fica (sem "piscar" nem pular para a posição antiga)
 - [ ] Soltar no mesmo lugar: volta suave, nada muda
+- [ ] Várias reordenações seguidas (o mesmo card e cards diferentes, para cima e para baixo, inclusive logo depois de soltar o anterior): cada card fica exatamente onde foi solto, e a ordem continua igual depois de puxar para atualizar e de reabrir o app
 - [ ] Levar o card até perto do fundo (ou do topo) da tela: a lista rola sozinha, mais rápido quanto mais perto da borda; dá para levar o primeiro hábito até o último lugar
 - [ ] O arrasto é fluido mesmo com a lista cheia (sem engasgos)
 - [ ] Rolar a lista normalmente, tocar num dia, tocar no nome (abre os detalhes) e deslizar a semana para os lados continuam funcionando — nenhum deles começa um arrasto

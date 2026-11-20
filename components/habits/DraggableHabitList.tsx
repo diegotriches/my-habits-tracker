@@ -26,6 +26,7 @@ import {
   RefreshControlProps,
   StyleProp,
   StyleSheet,
+  View,
   ViewStyle,
 } from 'react-native';
 import Animated, {
@@ -45,7 +46,14 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Habit } from '@/types/database';
 import { hapticFeedback } from '@/utils/haptics';
-import { autoScrollStep, dropIndex, moveItem, offsetToIndex, shiftFor } from '@/utils/dragOrder';
+import {
+  autoScrollStep,
+  centersFor,
+  dropIndex,
+  moveItem,
+  offsetToIndex,
+  shiftFor,
+} from '@/utils/dragOrder';
 
 /** Tempo segurando o card até o arrasto começar. */
 const LONG_PRESS_MS = 350;
@@ -75,12 +83,22 @@ interface DraggableHabitListProps {
   contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
-type Layouts = Record<string, { y: number; h: number }>;
+type Heights = Record<string, number>;
 
 /** Estado do arrasto compartilhado com a thread de UI. */
 interface DragState {
+  /** Ordem renderizada (atualizada só depois que o React a desenha). */
   order: SharedValue<string[]>;
-  layouts: SharedValue<Layouts>;
+  /** Altura de cada card (com a margem), por id. */
+  heights: SharedValue<Heights>;
+  /**
+   * Topo do primeiro card no conteúdo da lista (logo abaixo do cabeçalho).
+   * As posições saem daqui + alturas na ordem atual, e não do `y` de cada
+   * card: depois de uma reordenação, o `onLayout` dos cards que mudaram de
+   * lugar pode chegar atrasado (ou nem chegar), e um `y` velho fazia o card
+   * cair num lugar diferente do mostrado.
+   */
+  listTop: SharedValue<number>;
   activeId: SharedValue<string | null>;
   /** Solto: animando até o destino (a rolagem automática para). */
   dropping: SharedValue<boolean>;
@@ -112,7 +130,8 @@ export function DraggableHabitList({
   // primeiro fica no ref, para as props dos cards não mudarem a cada render).
   const drag: DragState = {
     order: useSharedValue<string[]>(ids),
-    layouts: useSharedValue<Layouts>({}),
+    heights: useSharedValue<Heights>({}),
+    listTop: useSharedValue(0),
     activeId: useSharedValue<string | null>(null),
     dropping: useSharedValue(false),
     fromIndex: useSharedValue(-1),
@@ -234,6 +253,11 @@ export function DraggableHabitList({
       }}
     >
       {ListHeaderComponent}
+      <View
+        onLayout={(e: LayoutChangeEvent) => {
+          d.listTop.value = e.nativeEvent.layout.y;
+        }}
+      />
       {habits.map((habit, index) => (
         <DraggableItem
           key={habit.id}
@@ -266,15 +290,15 @@ function updateTarget(d: DragState, onTarget?: () => void) {
   'worklet';
   const id = d.activeId.value;
   if (id === null) return;
-  const layouts = d.layouts.value;
-  const own = layouts[id];
-  if (!own) return;
-  const centers = d.order.value.map((oid) => {
-    const l = layouts[oid];
-    return l ? l.y + l.h / 2 : 0;
-  });
-  const center = own.y + own.h / 2 + d.dragDy.value + (d.scrollY.value - d.startScroll.value);
-  const to = dropIndex(centers, d.fromIndex.value, center);
+  const from = d.fromIndex.value;
+  const heights = d.heights.value;
+  const centers = centersFor(
+    d.order.value.map((oid) => heights[oid] ?? 0),
+    d.listTop.value
+  );
+  if (from < 0 || from >= centers.length) return;
+  const center = centers[from] + d.dragDy.value + (d.scrollY.value - d.startScroll.value);
+  const to = dropIndex(centers, from, center);
   if (to !== d.toIndex.value) {
     d.toIndex.value = to;
     if (onTarget) runOnJS(onTarget)();
@@ -317,13 +341,17 @@ const DraggableItem = React.memo(function DraggableItem({
         .onStart((e) => {
           'worklet';
           if (d.activeId.value !== null) return; // outro card já está sendo arrastado
+          // Posição pela ordem desenhada, não pelo `index` da prop: o gesto
+          // pode ainda ser o de antes da última reordenação.
+          const from = d.order.value.indexOf(id);
+          if (from < 0) return;
           const m = measure(scrollRef);
           d.viewportTop.value = m ? m.pageY : 0;
           d.fingerY.value = e.absoluteY - d.viewportTop.value;
           d.startScroll.value = d.scrollY.value;
           d.dragDy.value = 0;
-          d.fromIndex.value = index;
-          d.toIndex.value = index;
+          d.fromIndex.value = from;
+          d.toIndex.value = from;
           d.dropping.value = false;
           d.activeId.value = id;
           d.lift.value = withSpring(1, { damping: 15, stiffness: 220 });
@@ -342,8 +370,8 @@ const DraggableItem = React.memo(function DraggableItem({
           d.dropping.value = true;
           const from = d.fromIndex.value;
           const to = d.toIndex.value;
-          const layouts = d.layouts.value;
-          const heights = d.order.value.map((oid) => layouts[oid]?.h ?? 0);
+          const heightMap = d.heights.value;
+          const heights = d.order.value.map((oid) => heightMap[oid] ?? 0);
           // Anima até o lugar exato do destino, descontando a rolagem feita.
           const target = offsetToIndex(heights, from, to) - (d.scrollY.value - d.startScroll.value);
           d.lift.value = withTiming(0, { duration: DROP_DURATION });
@@ -352,7 +380,7 @@ const DraggableItem = React.memo(function DraggableItem({
             else runOnJS(callbacks.onDrop)(from, from);
           });
         }),
-    [d, id, index, scrollRef, callbacks]
+    [d, id, scrollRef, callbacks]
   );
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -371,8 +399,13 @@ const DraggableItem = React.memo(function DraggableItem({
         opacity: 0.97,
       };
     }
-    const activeHeight = d.layouts.value[activeId]?.h ?? 0;
-    const shift = shiftFor(index, d.fromIndex.value, d.toIndex.value, activeHeight);
+    const activeHeight = d.heights.value[activeId] ?? 0;
+    const shift = shiftFor(
+      d.order.value.indexOf(id),
+      d.fromIndex.value,
+      d.toIndex.value,
+      activeHeight
+    );
     return {
       transform: [{ translateY: withTiming(shift, { duration: SHIFT_DURATION }) }, { scale: 1 }],
       zIndex: 0,
@@ -382,8 +415,9 @@ const DraggableItem = React.memo(function DraggableItem({
 
   const onLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      const { y, height } = e.nativeEvent.layout;
-      d.layouts.value = { ...d.layouts.value, [id]: { y, h: height } };
+      const { height } = e.nativeEvent.layout;
+      if (d.heights.value[id] === height) return;
+      d.heights.value = { ...d.heights.value, [id]: height };
     },
     [d, id]
   );

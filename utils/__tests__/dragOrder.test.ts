@@ -1,4 +1,11 @@
-import { autoScrollStep, dropIndex, moveItem, offsetToIndex, shiftFor } from '../dragOrder';
+import {
+  autoScrollStep,
+  centersFor,
+  dropIndex,
+  moveItem,
+  offsetToIndex,
+  shiftFor,
+} from '../dragOrder';
 
 describe('moveItem', () => {
   it('move para baixo e para cima', () => {
@@ -12,6 +19,13 @@ describe('moveItem', () => {
     expect(moveItem(list, 5, 0)).toEqual(['a', 'b']);
     expect(moveItem(list, 0, 9)).toEqual(['b', 'a']); // destino além do fim vai para o fim
     expect(list).toEqual(['a', 'b']);
+  });
+});
+
+describe('centersFor', () => {
+  it('empilha a partir do topo pelas alturas', () => {
+    expect(centersFor([100, 120, 80], 200)).toEqual([250, 360, 460]);
+    expect(centersFor([], 0)).toEqual([]);
   });
 });
 

@@ -38,6 +38,10 @@ export const useHabits = () => {
   // Só regrava o cache depois de uma busca bem-sucedida: antes disso a lista
   // é a inicial (vazia) ou veio do próprio cache.
   const loadedFromServerRef = useRef(false);
+  // Sobe a cada reordenação: uma busca que começou antes dela traz a ordem
+  // antiga do banco e não pode desfazer a nova (a pendência no aparelho pode
+  // ainda nem ter sido gravada quando a busca a consulta).
+  const reorderSeqRef = useRef(0);
 
   // Cache offline: mantém a última lista conhecida, inclusive depois de
   // criar/editar/excluir (que só acontecem online).
@@ -48,6 +52,7 @@ export const useHabits = () => {
   const fetchHabits = useCallback(async () => {
     if (!user?.id) return;
     const userId = user.id;
+    const reorderSeq = reorderSeqRef.current;
 
     try {
       setLoading(true);
@@ -77,7 +82,17 @@ export const useHabits = () => {
         (await habitOrderService.adoptLegacyOrder(userId, rows));
 
       loadedFromServerRef.current = true;
-      setHabits(pending ? applyOrder(rows, pending) : sortHabits(rows));
+      if (reorderSeqRef.current !== reorderSeq) {
+        // Reordenou durante a busca: vale a ordem que está na tela.
+        setHabits((prev) =>
+          applyOrder(
+            rows,
+            prev.map((h) => h.id)
+          )
+        );
+      } else {
+        setHabits(pending ? applyOrder(rows, pending) : sortHabits(rows));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
     } finally {
@@ -260,6 +275,7 @@ export const useHabits = () => {
   const reorderHabits = useCallback(
     (orderedIds: string[]) => {
       if (!user?.id) return;
+      reorderSeqRef.current++;
       setHabits((prev) => applyOrder(prev, orderedIds));
       void habitOrderService.save(user.id, orderedIds);
     },
