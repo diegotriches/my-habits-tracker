@@ -10,10 +10,10 @@
 // de conexão. Toda marcação passa pela fila de saída (completionOutbox), que
 // chama `onOpEnqueued`; o "Feito" da notificação chama `markDoneToday`.
 //
-// Limitação conhecida: com o app fechado, tocar "Feito" num lembrete não
-// reagenda os outros lembretes do mesmo hábito naquele dia (não há JS rodando)
-// — resolver exige o alarme nativo consultar as conclusões antes de mostrar a
-// notificação (mudança nativa, pendente no README).
+// Com o app fechado não há JS rodando: aí é o próprio AlarmReceiver que, antes
+// de mostrar um lembrete, confere a fila nativa do "Feito"
+// (PendingCompletionStorage.hasCompletionOnDay) e não mostra o lembrete de um
+// hábito já feito no dia.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';

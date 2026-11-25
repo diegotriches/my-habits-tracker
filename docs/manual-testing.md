@@ -223,7 +223,7 @@ Use um hábito com lembrete daqui a alguns minutos (ex.: daqui a 5 min). Com o a
 - [ ] Offline (modo avião): marcar hoje também pula o lembrete de hoje
 - [ ] Hábito com meta numérica: registrar um valor abaixo da meta **não** pula; atingir a meta pula o lembrete e as notificações de progresso do resto do dia
 - [ ] Notificações de progresso (8h/15h/21h): depois de atingir a meta, as de hoje não chegam; amanhã voltam normalmente
-- [ ] Dois lembretes no mesmo dia (ex.: 2 horários): tocar "Feito" no primeiro com o app **aberto ou em segundo plano**: o segundo não toca. Com o app **fechado**, o segundo ainda toca (limitação conhecida, ver README)
+- [ ] Dois lembretes no mesmo dia (ex.: 2 horários): tocar "Feito" no primeiro, com o app **aberto, em segundo plano ou fechado**: o segundo não toca (com o app fechado, isso exige a build com a seção 28)
 - [ ] Marcar hoje e reiniciar o aparelho: o lembrete de hoje continua pulado
 - [ ] Marcar hoje em outro aparelho (ou no banco) e abrir o app: o lembrete de hoje é pulado na ressincronização
 - [ ] Ficar alguns dias sem marcar: lembretes e notificações de progresso continuam tocando todo dia
@@ -284,3 +284,14 @@ Mudança nativa: só vale numa build nova (não chega por `eas update`). Use um 
 - [ ] Tocar "Adiar" perto da meia-noite (ex.: 23:55) e "Feito" na notificação adiada depois da meia-noite: marca o dia do lembrete original
 - [ ] Se o dia do lembrete já estava marcado, o "Feito" não cria uma segunda conclusão
 - [ ] Atualizando de uma build antiga com um "Feito" ainda na fila: ele é enviado no dia do toque (o item antigo não tem o horário do lembrete)
+
+## 28. Lembrete pulado depois de um "Feito" com o app fechado
+
+Mudança nativa: só vale numa build nova. Use um hábito sem meta numérica com dois lembretes no mesmo dia, ex.: daqui a 3 e daqui a 8 minutos.
+
+- [ ] Feche o app (tire dos recentes). Quando o primeiro tocar, toque "Feito" **sem abrir o app**: o segundo **não** aparece
+- [ ] Na semana seguinte (ou conferindo pelo `adb shell dumpsys alarm`), o segundo lembrete continua agendado
+- [ ] Sem "Feito" no primeiro (ignorar ou dispensar a notificação): o segundo toca normalmente
+- [ ] "Feito" na notificação de ontem tocado hoje (seção 27): **não** silencia os lembretes de hoje
+- [ ] "Adiar" no primeiro e "Feito" na notificação adiada: o segundo não aparece
+- [ ] Outro hábito com lembrete no mesmo horário não é afetado

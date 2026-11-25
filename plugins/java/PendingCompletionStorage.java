@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Calendar;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,6 +46,35 @@ public class PendingCompletionStorage {
         } catch (JSONException e) {
             Log.e(TAG, "Erro ao enfileirar conclusao: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Se já há na fila um "Feito" do hábito para o dia (local) de `dayMillis`.
+     * O dia de cada item segue a mesma regra do JS (notificationCompletionTime,
+     * utils/completionOps.ts): o do lembrete, se conhecido e não posterior ao
+     * toque; senão, o do toque.
+     */
+    public static synchronized boolean hasCompletionOnDay(Context context, String habitId, long dayMillis) {
+        if (habitId == null) return false;
+        JSONArray items = read(context);
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject obj = items.optJSONObject(i);
+            if (obj == null || !habitId.equals(obj.optString("habitId"))) continue;
+            long tappedAt = obj.optLong("completedAt", 0);
+            long reminderAt = obj.optLong("reminderAt", 0);
+            long itemDay = (reminderAt > 0 && reminderAt <= tappedAt) ? reminderAt : tappedAt;
+            if (itemDay > 0 && sameLocalDay(itemDay, dayMillis)) return true;
+        }
+        return false;
+    }
+
+    private static boolean sameLocalDay(long a, long b) {
+        Calendar ca = Calendar.getInstance();
+        ca.setTimeInMillis(a);
+        Calendar cb = Calendar.getInstance();
+        cb.setTimeInMillis(b);
+        return ca.get(Calendar.YEAR) == cb.get(Calendar.YEAR)
+            && ca.get(Calendar.DAY_OF_YEAR) == cb.get(Calendar.DAY_OF_YEAR);
     }
 
     public static synchronized JSONArray getAll(Context context) {

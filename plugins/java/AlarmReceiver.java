@@ -93,7 +93,15 @@ public class AlarmReceiver extends BroadcastReceiver {
             long reminderAt = intent.getLongExtra(EXTRA_REMINDER_AT, 0);
             if (reminderAt <= 0) reminderAt = scheduledAt > 0 ? scheduledAt : System.currentTimeMillis();
 
-            showNotification(context, alarmId, habitId, habitName, sound, hasTarget, reminderAt);
+            // Já feito nesse dia pelo "Feito" de outro lembrete, com o app
+            // fechado (sem JS para reagendar os lembretes do dia): não mostra.
+            // Marcações pelo app já tiram os lembretes do dia pelo JS
+            // (todayReminderService); aqui só a fila nativa é conhecida.
+            if (PendingCompletionStorage.hasCompletionOnDay(context, habitId, reminderAt)) {
+                Log.d(TAG, "Habito ja feito no dia, notificacao pulada: " + habitId);
+            } else {
+                showNotification(context, alarmId, habitId, habitName, sound, hasTarget, reminderAt);
+            }
 
             if (isSnooze) {
                 if (alarmId != null) AlarmStorage.remove(context, alarmId);
