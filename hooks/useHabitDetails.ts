@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchAllRows, supabase } from '@/services/supabase';
 import { useAuth } from './useAuth';
 import { Habit, Completion, Streak } from '@/types/database';
-import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { getFrequencyGoal, shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { applyPendingOps, completionOutbox } from '@/services/completionOutbox';
 import { readCache, writeCache } from '@/services/offlineCache';
 import {
@@ -306,12 +306,16 @@ export function useHabitDetails(habitId: string) {
 
 // ========== FUNÇÕES AUXILIARES ==========
 
-function getExpectedDaysForPeriod(habit: any, startDate: Date, endDate: Date): number {
-  const goalValue = habit.frequency_goal_value;
-  const goalPeriod = habit.frequency_goal_period;
-  const goalCustomDays = habit.frequency_goal_custom_days;
+/**
+ * Quantas conclusões se esperam no período. Com meta (inclusive dias
+ * específicos, que contam como "Nx por semana"), proporcional à meta; sem
+ * meta (diário), um por dia.
+ */
+function getExpectedDaysForPeriod(habit: Habit, startDate: Date, endDate: Date): number {
+  const goal = getFrequencyGoal(habit);
 
-  if (goalValue && goalValue > 0) {
+  if (goal) {
+    const { value: goalValue, period: goalPeriod, customDays: goalCustomDays } = goal;
     const totalDaysInPeriod = differenceInDays(endDate, startDate) + 1;
     if (goalPeriod === 'week') {
       const weeks = totalDaysInPeriod / 7;
@@ -383,11 +387,12 @@ function calculateOverallStats(habit: any, completions: any[]): OverallStats {
 /**
  * Gera dados de dias para os gráficos.
  *
- * - frequency_goal (3x/semana): inclui todos os dias do período,
+ * - Com meta (3x/semana, ou dias específicos = Nx/semana): inclui todos os
+ *   dias do período — uma conclusão fora dos dias escolhidos também aparece —,
  *   marcando apenas os completados. Dias não completados ficam como
  *   completed=false mas SEM aparecer como "missed" no calendário
  *   (o componente trata isso via hasFrequencyGoal).
- * - Dias fixos (daily/weekly): filtra por shouldHabitAppearOnDate.
+ * - Sem meta (diário): filtra por shouldHabitAppearOnDate.
  */
 function generateDaysData(
   startDate: Date,
@@ -399,7 +404,7 @@ function generateDaysData(
     completions.map((c: any) => [completionDateKey(c), c.value_achieved])
   );
 
-  const hasFrequencyGoal = habit.frequency_goal_value && habit.frequency_goal_value > 0;
+  const hasFrequencyGoal = getFrequencyGoal(habit) !== null;
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
   if (hasFrequencyGoal) {

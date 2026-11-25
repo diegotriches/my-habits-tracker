@@ -206,11 +206,18 @@ A ordem fica no banco (`habits.sort_order`, menor = mais acima), então acompanh
 - A ordem é gravada inteira numa chamada só (função `set_habit_order` no banco, que numera os ids de 1 em diante). Funciona offline: `services/habitOrderService.ts` guarda a ordem arrastada no aparelho até enviá-la (ao abrir o app, ao voltar para o primeiro plano e ao reconectar), e as buscas a aplicam por cima do banco enquanto ela estiver pendente.
 - Versões antigas guardavam a ordem só no aparelho (chave `habit_order`). Na primeira busca, se nenhum hábito tem ordem no banco, essa ordem local é enviada uma vez e a chave é apagada.
 
+### Frequência dos hábitos
+
+Um hábito é diário, tem uma meta ("3x por semana", "10x por mês", "2x a cada 5 dias") ou tem dias específicos (ex.: segunda e quarta). **Dias específicos contam como meta semanal**: "segunda e quarta" é "2x por semana", e fazer na quinta e na sexta cumpre a semana igual. Os dias escolhidos são a sugestão: destaque no card da home, dias dos lembretes e das notificações de progresso, e quando o hábito aparece como pendente no resumo "Hoje".
+
+- A regra fica num lugar só, `getFrequencyGoal` / `getWeeklyTarget` (`utils/habitHelpers.ts`, com testes), usada pelo heatmap do ano, pelo resumo "Hoje", pelo streak (o de meta semanal: dias feitos em semanas seguidas que bateram a meta) e pelas estatísticas e o calendário dos detalhes. Use essas funções em vez de olhar `frequency_days` ou `frequency_goal_*` direto.
+- `shouldHabitAppearOnDate` diz só se o dia é um dos sugeridos (visual e agenda), não se o hábito "conta" naquele dia.
+
 ### Estatísticas do ano
 
 O ícone de gráfico no cabeçalho da home abre `app/stats`: o ano em 12 mini-calendários (cabem na tela sem rolagem lateral), com a cor de cada dia indicando quanto dos hábitos programados foi feito, um filtro por hábito (inclusive arquivados), os totais do ano (conclusões, dias completos, aproveitamento) e o detalhe do dia tocado.
 
-- As regras ficam em `computeYearHeatmap` (`utils/yearHeatmap.ts`, com testes): o hábito conta a partir do dia em que foi criado e até a véspera do arquivamento, só nos dias da agenda; meta semanal ("3x por semana") conta só nos dias feitos, já que não tem dia fixo; meta numérica só conta como feita ao atingir o valor. Hábitos excluídos ficam de fora.
+- As regras ficam em `computeYearHeatmap` (`utils/yearHeatmap.ts`, com testes): o hábito conta a partir do dia em que foi criado e até a véspera do arquivamento, todo dia nos diários; meta semanal ("3x por semana", ou dias específicos — ver "Frequência dos hábitos") conta só nos dias feitos, já que pode ser feita em qualquer dia; meta numérica só conta como feita ao atingir o valor. Hábitos excluídos ficam de fora.
 - `useYearStats` busca o ano com `fetchAllRows`, guarda no cache offline (`year:<ano>`) e aplica por cima as marcações ainda na fila de saída.
 
 ### Arquivar hábitos

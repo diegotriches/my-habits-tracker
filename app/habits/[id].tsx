@@ -35,6 +35,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getFrequencyGoal } from '@/utils/habitHelpers';
 
 export default function HabitDetailsScreen() {
   const { colors } = useTheme();
@@ -222,6 +223,8 @@ export default function HabitDetailsScreen() {
 
   const isNegative = habit.type === 'negative';
   const themeColor = isNegative ? colors.warning : habit.color;
+  // Dias específicos contam como "Nx por semana" (feito em qualquer dia).
+  const frequencyGoal = getFrequencyGoal(habit);
   const tintBg = themeColor + '20';
   const tintBorder = themeColor + '30';
   const tintBorderLight = themeColor + '18';
@@ -400,10 +403,10 @@ export default function HabitDetailsScreen() {
             hasTarget={habit.has_target}
             targetValue={habit.target_value || 0}
             targetUnit={habit.target_unit || ''}
-            hasFrequencyGoal={!!habit.frequency_goal_value}
-            frequencyGoalValue={habit.frequency_goal_value || 0}
-            frequencyGoalPeriod={habit.frequency_goal_period || null}
-            frequencyGoalCustomDays={habit.frequency_goal_custom_days || null}
+            hasFrequencyGoal={frequencyGoal !== null}
+            frequencyGoalValue={frequencyGoal?.value ?? 0}
+            frequencyGoalPeriod={frequencyGoal?.period ?? null}
+            frequencyGoalCustomDays={frequencyGoal?.customDays ?? null}
             currentMonth={calendarMonth}
             onMonthChange={setCalendarMonth}
             onDayPress={handleCalendarDayPress}

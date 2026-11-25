@@ -260,3 +260,16 @@ Teste com pelo menos uns 8 hábitos (para a lista passar da altura da tela).
 - [ ] Tema escuro: o card arrastado continua legível
 - [ ] TalkBack: no nome de um hábito, o menu de ações (deslizar para cima e depois para a direita, ou toque com três dedos) tem "Mover para cima" / "Mover para baixo"; ao usar, anuncia "… movido para a posição N de M". O primeiro não tem "Mover para cima"; o último não tem "Mover para baixo"
 - [ ] Dica: com 2 hábitos ou mais aparece "Segure um hábito e arraste para mudar a ordem"; some ao tocar "Entendi" ou ao reordenar, e não volta ao reabrir o app. Com 1 hábito não aparece
+
+## 26. Dias específicos contam como meta semanal
+
+Use um hábito com dias específicos, ex.: segunda e quarta (= 2x por semana).
+
+- [ ] Detalhes: a frequência aparece como "Seg, Qua · 2x por semana"; no formulário, a prévia diz "2 vezes por semana, de preferência nos dias escolhidos (feito em outro dia também conta)"
+- [ ] Marcar na quinta e na sexta (dias passados, pela home ou pelo calendário): o card mostra 2/2, e a semana conta como cumprida
+- [ ] Estatísticas do ano: quinta e sexta aparecem como feitas; segunda e quarta não feitas não aparecem como falha
+- [ ] Calendário dos detalhes: quinta e sexta aparecem marcadas (antes, conclusão fora dos dias escolhidos nem aparecia); "x/y vezes" do mês conta essas conclusões
+- [ ] Streak: semanas seguidas com 2 conclusões, em quaisquer dias, mantêm a sequência; uma semana com só 1 quebra
+- [ ] Resumo "Hoje": numa segunda sem nada feito na semana, o hábito conta como pendente; numa terça (fora dos dias), não conta — mas se marcar hoje, conta como feito; com 2 conclusões na semana, não cobra mais na quarta
+- [ ] O card continua destacado só nos dias escolhidos, e os lembretes continuam tocando só neles
+- [ ] Hábito diário e hábito "3x por semana" continuam como antes

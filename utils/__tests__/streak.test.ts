@@ -1,7 +1,6 @@
 import {
   calculateBestDailyStreak,
   calculateDailyStreak,
-  calculateScheduledDaysStreak,
   calculateWeeklyGoalStreak,
   predictStreakAfterMarkingToday,
 } from '../streak';
@@ -70,35 +69,6 @@ describe('calculateBestDailyStreak', () => {
 
   it('lista vazia é zero', () => {
     expect(calculateBestDailyStreak([])).toBe(0);
-  });
-});
-
-describe('calculateScheduledDaysStreak (dias fixos: seg, qua, sex)', () => {
-  const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] });
-
-  it('conta só os dias programados, ignorando os outros', () => {
-    // qua 11/11, seg 9/11, sex 6/11, qua 4/11
-    const completions = [
-      doneAt('2026-11-11'),
-      doneAt('2026-11-09'),
-      doneAt('2026-11-06'),
-      doneAt('2026-11-04'),
-    ];
-    expect(calculateScheduledDaysStreak(completions, habit, NOW).currentStreak).toBe(4);
-  });
-
-  it('hoje (programado) ainda não feito não quebra o streak', () => {
-    const completions = [doneAt('2026-11-09'), doneAt('2026-11-06')];
-    expect(calculateScheduledDaysStreak(completions, habit, NOW).currentStreak).toBe(2);
-  });
-
-  it('um dia programado perdido quebra o streak', () => {
-    // faltou a segunda 9/11
-    const completions = [doneAt('2026-11-06'), doneAt('2026-11-04')];
-    expect(calculateScheduledDaysStreak(completions, habit, NOW)).toEqual({
-      currentStreak: 0,
-      bestStreak: 2,
-    });
   });
 });
 
@@ -171,11 +141,9 @@ describe('predictStreakAfterMarkingToday', () => {
     expect(predictStreakAfterMarkingToday(daily, saved(5, '2026-11-11'), NOW)).toBe(5);
   });
 
-  it('dias fixos: continua a partir do dia programado anterior, não de ontem', () => {
-    // seg, qua, sex — hoje é quarta; o anterior é segunda (9/11)
+  it('dias específicos (meta semanal implícita): não prevê', () => {
     const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] });
-    expect(predictStreakAfterMarkingToday(habit, saved(3, '2026-11-09'), NOW)).toBe(4);
-    expect(predictStreakAfterMarkingToday(habit, saved(3, '2026-11-06'), NOW)).toBe(1);
+    expect(predictStreakAfterMarkingToday(habit, saved(3, '2026-11-09'), NOW)).toBeNull();
   });
 
   it('meta semanal: não prevê (streak contado por semanas)', () => {

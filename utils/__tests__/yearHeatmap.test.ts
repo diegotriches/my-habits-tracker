@@ -45,11 +45,20 @@ describe('computeYearHeatmap', () => {
     expect(dayOf(heatmap, '2026-11-12')).toMatchObject({ due: 0, future: true });
   });
 
-  it('dias específicos: só os dias da agenda contam', () => {
-    const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1] }); // segunda
-    const heatmap = computeYearHeatmap([habit], [], 2026, NOW);
-    expect(dayOf(heatmap, '2026-11-09').due).toBe(1); // segunda
-    expect(dayOf(heatmap, '2026-11-10').due).toBe(0); // terça
+  it('dias específicos contam como meta semanal: feito em outro dia também vale', () => {
+    // Segunda e quarta = 2x por semana; feito na quinta e na sexta.
+    const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3] });
+    const heatmap = computeYearHeatmap(
+      [habit],
+      [done('habit-1', '2026-11-05'), done('habit-1', '2026-11-06')],
+      2026,
+      NOW
+    );
+    expect(dayOf(heatmap, '2026-11-05')).toMatchObject({ due: 1, done: 1, level: 4 }); // quinta
+    expect(dayOf(heatmap, '2026-11-06')).toMatchObject({ due: 1, done: 1, level: 4 }); // sexta
+    // Segunda e quarta sem fazer não aparecem como falha.
+    expect(dayOf(heatmap, '2026-11-02').due).toBe(0);
+    expect(dayOf(heatmap, '2026-11-04').due).toBe(0);
   });
 
   it('meta semanal: conta só nos dias feitos (sem dia fixo, não há falha)', () => {

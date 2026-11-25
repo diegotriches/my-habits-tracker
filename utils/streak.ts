@@ -8,7 +8,6 @@ import {
   startOfWeek,
   endOfWeek,
   format,
-  eachDayOfInterval,
   subWeeks,
   subDays,
   isAfter,
@@ -16,7 +15,7 @@ import {
   differenceInCalendarWeeks,
 } from 'date-fns';
 import { Habit } from '@/types/database';
-import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { getWeeklyTarget } from '@/utils/habitHelpers';
 
 export interface StreakCompletion {
   completed_at: string;
@@ -97,65 +96,6 @@ export function calculateBestDailyStreak(sortedDatesDesc: string[]): number {
   }
 
   return best;
-}
-
-/**
- * Streak por dias programados (weekly com dias fixos).
- * Conta dias programados consecutivos com completion, ignorando dias não programados.
- */
-export function calculateScheduledDaysStreak(
-  completions: StreakCompletion[],
-  habit: Habit,
-  now: Date = new Date()
-): StreakResult {
-  const completedDates = new Set(
-    completions.map((c) => format(startOfDay(new Date(c.completed_at)), 'yyyy-MM-dd'))
-  );
-
-  // Gerar todos os dias programados desde a criação até hoje
-  const createdAt = startOfDay(new Date(habit.created_at));
-  const today = startOfDay(now);
-  const allDays = eachDayOfInterval({ start: createdAt, end: today });
-  const scheduledDays = allDays
-    .filter((d) => shouldHabitAppearOnDate(habit, d))
-    .map((d) => format(d, 'yyyy-MM-dd'))
-    .reverse(); // mais recente primeiro
-
-  // Current streak: dias programados consecutivos completados
-  let currentStreak = 0;
-  let startedCounting = false;
-
-  for (const dateStr of scheduledDays) {
-    if (completedDates.has(dateStr)) {
-      currentStreak++;
-      startedCounting = true;
-    } else {
-      // Tolerância: se o dia é hoje e ainda não completou, pular
-      if (!startedCounting && dateStr === format(today, 'yyyy-MM-dd')) {
-        continue;
-      }
-      break;
-    }
-  }
-
-  // Best streak
-  let bestStreak = 0;
-  let tempStreak = 0;
-  const scheduledAsc = [...scheduledDays].reverse();
-
-  for (const dateStr of scheduledAsc) {
-    if (completedDates.has(dateStr)) {
-      tempStreak++;
-      bestStreak = Math.max(bestStreak, tempStreak);
-    } else {
-      tempStreak = 0;
-    }
-  }
-
-  return {
-    currentStreak,
-    bestStreak: Math.max(currentStreak, bestStreak),
-  };
 }
 
 /**
@@ -262,31 +202,23 @@ export const STREAK_MILESTONES = [7, 30, 100, 365];
 /**
  * Prevê o streak depois de marcar hoje, a partir do streak salvo — o oficial
  * só é recalculado depois do envio (e, offline, nem isso). Devolve null
- * quando não dá para prever com segurança: hábitos com meta semanal, cujo
- * streak é contado por semanas.
+ * quando não dá para prever com segurança: hábitos com meta semanal (inclusive
+ * dias específicos), cujo streak depende das semanas que bateram a meta.
  */
 export function predictStreakAfterMarkingToday(
   habit: Habit,
   saved: { current_streak: number; last_completion_date: string | null } | undefined,
   now: Date = new Date()
 ): number | null {
-  if (habit.frequency_goal_period === 'week' && (habit.frequency_goal_value ?? 0) > 0) return null;
+  if (getWeeklyTarget(habit) !== null) return null;
 
   const today = format(now, 'yyyy-MM-dd');
   const last = saved?.last_completion_date ?? null;
   const current = saved?.current_streak ?? 0;
   if (last === today) return Math.max(current, 1);
 
-  // Dia programado anterior: ontem, para diários; para dias fixos, o último
-  // dia da agenda antes de hoje (procura até uma semana para trás).
-  let previous: string | null = null;
-  for (let back = 1; back <= 7; back++) {
-    const day = subDays(startOfDay(now), back);
-    if (shouldHabitAppearOnDate(habit, day)) {
-      previous = format(day, 'yyyy-MM-dd');
-      break;
-    }
-  }
+  // Diário: continua se o último dia feito foi ontem.
+  const previous = format(subDays(startOfDay(now), 1), 'yyyy-MM-dd');
 
   return last !== null && last === previous ? current + 1 : 1;
 }

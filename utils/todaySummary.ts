@@ -3,7 +3,7 @@
 // Resumo do dia da home ("3 de 5 hoje") — lógica pura, coberta por testes.
 import { endOfWeek, format, isSameDay, isWithinInterval, startOfWeek } from 'date-fns';
 import { Completion, Habit } from '@/types/database';
-import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { getWeeklyTarget, shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 import { countsAsDone } from '@/utils/reminderSchedule';
 
 export interface TodaySummary {
@@ -17,16 +17,16 @@ export interface TodaySummary {
 
 type SummaryCompletion = Pick<Completion, 'habit_id' | 'completed_at' | 'value_achieved'>;
 
-const hasWeeklyGoal = (h: Habit) =>
-  h.frequency_goal_period === 'week' && !!h.frequency_goal_value && h.frequency_goal_value > 0;
-
 /**
  * Conta os hábitos de hoje e quantos já foram feitos.
  *
- * - Diário / dias específicos: conta nos dias programados.
+ * - Diário: conta todo dia.
  * - Meta semanal (ex.: 3x por semana): conta só enquanto a meta da semana não
  *   foi batida — ou se já foi feito hoje. Senão, "2 de 5" seria injusto com
  *   quem já cumpriu a semana.
+ * - Dias específicos (ex.: seg e qua = 2x por semana): como a meta semanal,
+ *   mas só aparece como pendente nos dias escolhidos; feito em outro dia,
+ *   conta como feito hoje.
  * - Meta numérica: feito quando o valor de hoje atinge a meta.
  *
  * `completions` deve incluir pelo menos a semana atual (domingo a sábado).
@@ -48,14 +48,17 @@ export function computeTodaySummary(
     const today = mine.find((c) => isSameDay(new Date(c.completed_at), now));
     const doneToday = !!today && countsAsDone(habit, today.value_achieved);
 
+    const weeklyTarget = getWeeklyTarget(habit);
     let countsToday: boolean;
-    if (hasWeeklyGoal(habit)) {
+    if (weeklyTarget !== null) {
       const daysThisWeek = new Set(
         mine
           .filter((c) => isWithinInterval(new Date(c.completed_at), week))
           .map((c) => format(new Date(c.completed_at), 'yyyy-MM-dd'))
       ).size;
-      countsToday = doneToday || daysThisWeek < (habit.frequency_goal_value ?? 0);
+      // Sem dias escolhidos (meta "3x por semana"), todo dia é sugerido.
+      countsToday =
+        doneToday || (daysThisWeek < weeklyTarget && shouldHabitAppearOnDate(habit, now));
     } else {
       countsToday = shouldHabitAppearOnDate(habit, now);
     }

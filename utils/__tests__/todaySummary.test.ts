@@ -19,12 +19,33 @@ describe('computeTodaySummary', () => {
     expect(summary).toEqual({ due: 3, done: 1, allDone: false });
   });
 
-  it('dias específicos: só conta se hoje é um dos dias', () => {
+  it('dias específicos: pendente só nos dias escolhidos', () => {
     const habits = [
       makeHabit({ id: 'qua', frequency_type: 'weekly', frequency_days: [3] }), // quarta
       makeHabit({ id: 'seg', frequency_type: 'weekly', frequency_days: [1] }), // segunda
     ];
     expect(computeTodaySummary(habits, [], NOW)).toEqual({ due: 1, done: 0, allDone: false });
+  });
+
+  it('dias específicos: feito hoje fora dos dias escolhidos conta como feito', () => {
+    // Segunda (hoje é quarta), feito hoje.
+    const habit = makeHabit({ id: 'seg', frequency_type: 'weekly', frequency_days: [1] });
+    expect(computeTodaySummary([habit], [done('seg', '2026-11-11')], NOW)).toEqual({
+      due: 1,
+      done: 1,
+      allDone: true,
+    });
+  });
+
+  it('dias específicos: meta da semana já batida em outros dias não cobra hoje', () => {
+    // Segunda e quarta = 2x; já feito no domingo e na terça.
+    const habit = makeHabit({ id: 'sq', frequency_type: 'weekly', frequency_days: [1, 3] });
+    const completions = [done('sq', '2026-11-08'), done('sq', '2026-11-10')];
+    expect(computeTodaySummary([habit], completions, NOW)).toEqual({
+      due: 0,
+      done: 0,
+      allDone: false,
+    });
   });
 
   it('meta semanal ainda não batida conta para hoje', () => {

@@ -2,11 +2,8 @@
 import { fetchAllRows, supabase } from './supabase';
 import { Habit } from '@/types/database';
 import { startOfDay, format } from 'date-fns';
-import {
-  calculateDailyStreak,
-  calculateScheduledDaysStreak,
-  calculateWeeklyGoalStreak,
-} from '@/utils/streak';
+import { calculateDailyStreak, calculateWeeklyGoalStreak } from '@/utils/streak';
+import { getWeeklyTarget } from '@/utils/habitHelpers';
 
 /**
  * Cálculo de streaks a partir do histórico de conclusões. (As marcações em
@@ -17,9 +14,10 @@ export const streakService = {
    * Recalcular streak após mudanças.
    *
    * Estratégias:
-   * 1. Meta semanal (frequency_goal_value + period=week): conta semanas consecutivas
-   * 2. Dias fixos (frequency_type=weekly + frequency_days): conta dias programados consecutivos
-   * 3. Diário (fallback): conta dias consecutivos
+   * 1. Meta semanal ("3x por semana", ou dias específicos — "seg e qua" =
+   *    2x por semana, feito em qualquer dia): dias feitos em semanas seguidas
+   *    que bateram a meta (`getWeeklyTarget`)
+   * 2. Diário (e metas que não são semanais): dias consecutivos
    */
   async recalculateStreak(habitId: string): Promise<void> {
     try {
@@ -88,26 +86,14 @@ export const streakService = {
         return;
       }
 
-      const goalValue = habitData.frequency_goal_value;
-      const goalPeriod = habitData.frequency_goal_period;
+      const weeklyTarget = getWeeklyTarget(habitData);
 
       let currentStreak: number;
       let bestStreak: number;
 
       // 3. Escolher estratégia de cálculo
-      if (goalValue && goalValue > 0 && goalPeriod === 'week') {
-        // Meta semanal: streak por semanas (ex: 3x/semana)
-        const result = calculateWeeklyGoalStreak(completions, goalValue);
-        currentStreak = result.currentStreak;
-        bestStreak = result.bestStreak;
-      } else if (
-        habitData.frequency_type === 'weekly' &&
-        habitData.frequency_days &&
-        habitData.frequency_days.length > 0 &&
-        habitData.frequency_days.length < 7
-      ) {
-        // Dias específicos: streak por dias programados
-        const result = calculateScheduledDaysStreak(completions, habitData);
+      if (weeklyTarget !== null) {
+        const result = calculateWeeklyGoalStreak(completions, weeklyTarget);
         currentStreak = result.currentStreak;
         bestStreak = result.bestStreak;
       } else {

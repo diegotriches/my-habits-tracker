@@ -422,7 +422,7 @@ export function FrequencySelector({
               ? 'Todos os dias'
               : selectedDays.length === 0
                 ? 'Nenhum dia selecionado'
-                : `${selectedDays.length} ${selectedDays.length === 1 ? 'dia' : 'dias'} por semana`)}
+                : `${selectedDays.length} ${selectedDays.length === 1 ? 'vez' : 'vezes'} por semana, de preferência nos dias escolhidos (feito em outro dia também conta)`)}
           {activeMode === 'goal' &&
             (isGoalValid
               ? `${frequencyGoalValue} ${frequencyGoalValue === 1 ? 'vez' : 'vezes'} por ${getGoalPeriodLabel()}`

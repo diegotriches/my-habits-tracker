@@ -1,7 +1,9 @@
 import {
   formatSelectedDays,
   getDaysPerWeek,
+  getFrequencyGoal,
   getScheduledWeekDays,
+  getWeeklyTarget,
   shouldHabitAppearOnDate,
 } from '../habitHelpers';
 import { local, makeHabit } from './testHelpers';
@@ -30,6 +32,42 @@ describe('getDaysPerWeek', () => {
     expect(getDaysPerWeek(makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3, 5] }))).toBe(
       3
     );
+  });
+});
+
+describe('getFrequencyGoal / getWeeklyTarget', () => {
+  it('dias específicos viram meta semanal com a quantidade de dias', () => {
+    const habit = makeHabit({ frequency_type: 'weekly', frequency_days: [1, 3] });
+    expect(getFrequencyGoal(habit)).toEqual({ value: 2, period: 'week', customDays: null });
+    expect(getWeeklyTarget(habit)).toBe(2);
+  });
+
+  it('a meta explícita vale mais que os dias escolhidos', () => {
+    const habit = makeHabit({
+      frequency_type: 'weekly',
+      frequency_days: [1, 3],
+      frequency_goal_value: 3,
+      frequency_goal_period: 'week',
+    });
+    expect(getWeeklyTarget(habit)).toBe(3);
+  });
+
+  it('meta mensal não é semanal', () => {
+    const habit = makeHabit({ frequency_goal_value: 10, frequency_goal_period: 'month' });
+    expect(getFrequencyGoal(habit)?.period).toBe('month');
+    expect(getWeeklyTarget(habit)).toBeNull();
+  });
+
+  it('diário, os 7 dias ou nenhum dia: sem meta (todo dia conta)', () => {
+    expect(getFrequencyGoal(makeHabit())).toBeNull();
+    expect(
+      getFrequencyGoal(
+        makeHabit({ frequency_type: 'weekly', frequency_days: [0, 1, 2, 3, 4, 5, 6] })
+      )
+    ).toBeNull();
+    expect(
+      getFrequencyGoal(makeHabit({ frequency_type: 'weekly', frequency_days: [] }))
+    ).toBeNull();
   });
 });
 

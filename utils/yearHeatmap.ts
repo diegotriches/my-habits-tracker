@@ -4,7 +4,7 @@
 // testes. Para cada dia: quantos hábitos contavam e quantos foram feitos.
 import { eachDayOfInterval, endOfMonth, format, isAfter, startOfDay, startOfMonth } from 'date-fns';
 import { Completion, Habit } from '@/types/database';
-import { shouldHabitAppearOnDate } from '@/utils/habitHelpers';
+import { getWeeklyTarget, shouldHabitAppearOnDate } from '@/utils/habitHelpers';
 
 /** 0 = nada feito (ou nada programado); 1–4 = quanto do dia foi feito. */
 export type HeatLevel = 0 | 1 | 2 | 3 | 4;
@@ -51,9 +51,6 @@ type HeatmapCompletion = Pick<Completion, 'habit_id' | 'completed_at' | 'value_a
 
 const dayKey = (d: Date) => format(d, 'yyyy-MM-dd');
 
-const hasWeeklyGoal = (h: Habit) =>
-  h.frequency_goal_period === 'week' && !!h.frequency_goal_value && h.frequency_goal_value > 0;
-
 export function heatLevel(due: number, done: number): HeatLevel {
   if (due === 0 || done === 0) return 0;
   const ratio = done / due;
@@ -68,8 +65,9 @@ export function heatLevel(due: number, done: number): HeatLevel {
  *
  * Um hábito conta num dia quando já existia (criado até aquele dia), ainda não
  * tinha sido arquivado e o dia é da agenda dele. Hábitos com meta semanal
- * ("3x por semana") não têm dias fixos: contam só nos dias em que foram feitos
- * — senão todo dia sem eles pareceria falha. Meta numérica só conta como feita
+ * ("3x por semana", ou dias específicos — "seg e qua" = 2x por semana, feito
+ * em qualquer dia) contam só nos dias em que foram feitos — senão todo dia
+ * sem eles pareceria falha. Meta numérica só conta como feita
  * ao atingir o valor. Dias futuros ficam de fora.
  *
  * Passe só os hábitos que devem entrar (todos, ou um, no filtro da tela).
@@ -103,7 +101,7 @@ export function computeYearHeatmap(
     from: dayKey(new Date(h.created_at)),
     // Arquivado: conta até o dia anterior ao arquivamento.
     until: h.archived_at ? dayKey(new Date(h.archived_at)) : null,
-    weeklyGoal: hasWeeklyGoal(h),
+    weeklyGoal: getWeeklyTarget(h) !== null,
   }));
 
   const stats: YearStats = { completions: 0, perfectDays: 0, dueDays: 0, rate: null };

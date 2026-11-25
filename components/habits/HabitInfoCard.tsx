@@ -38,7 +38,9 @@ export const HabitInfoCard = React.memo(function HabitInfoCard({
     if (habit.frequency_type === 'daily') return 'Todos os dias';
     if (habit.frequency_type === 'weekly' && habit.frequency_days) {
       if (habit.frequency_days.length === 7) return 'Todos os dias';
-      return formatSelectedDays(habit.frequency_days);
+      // Os dias são a sugestão; a conta é "Nx por semana", em qualquer dia.
+      const n = habit.frequency_days.length;
+      return `${formatSelectedDays(habit.frequency_days)} · ${n}x por semana`;
     }
     return 'Personalizado';
   }, [habit]);
