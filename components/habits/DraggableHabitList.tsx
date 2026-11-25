@@ -226,6 +226,22 @@ export function DraggableHabitList({
     [handleDragStart, handleTargetChange, handleDrop]
   );
 
+  // As alturas ficam num ref (no JS) e vão inteiras para o shared value. Ler
+  // `d.heights.value` no JS, juntar a altura nova e gravar perdia medidas:
+  // a gravação do JS chega à thread de UI depois, então dois cards medidos em
+  // seguida liam o mesmo mapa antigo e um apagava o outro. Com uma altura
+  // zerada, dois centros ficavam colados e uma posição não dava para alcançar
+  // (ex.: o 3º card pulava direto para o 1º lugar).
+  const heightsRef = useRef<Heights>({});
+  const handleItemHeight = useCallback(
+    (id: string, height: number) => {
+      if (heightsRef.current[id] === height) return;
+      heightsRef.current = { ...heightsRef.current, [id]: height };
+      d.heights.value = heightsRef.current;
+    },
+    [d]
+  );
+
   const moveBy = useCallback((habit: Habit, delta: number) => {
     const list = idsRef.current;
     const from = list.indexOf(habit.id);
@@ -268,6 +284,7 @@ export function DraggableHabitList({
           scrollRef={scrollRef}
           callbacks={callbacks}
           onMove={moveBy}
+          onItemHeight={handleItemHeight}
           renderItem={renderItem}
         />
       ))}
@@ -291,11 +308,11 @@ function updateTarget(d: DragState, onTarget?: () => void) {
   const id = d.activeId.value;
   if (id === null) return;
   const from = d.fromIndex.value;
-  const heights = d.heights.value;
-  const centers = centersFor(
-    d.order.value.map((oid) => heights[oid] ?? 0),
-    d.listTop.value
-  );
+  const heightMap = d.heights.value;
+  const heights = d.order.value.map((oid) => heightMap[oid] ?? 0);
+  // Algum card ainda sem medida: as contas sairiam erradas; fica onde está.
+  if (heights.some((h) => h <= 0)) return;
+  const centers = centersFor(heights, d.listTop.value);
   if (from < 0 || from >= centers.length) return;
   const center = centers[from] + d.dragDy.value + (d.scrollY.value - d.startScroll.value);
   const to = dropIndex(centers, from, center);
@@ -319,6 +336,7 @@ interface DraggableItemProps {
   scrollRef: AnimatedRef<Animated.ScrollView>;
   callbacks: DragCallbacks;
   onMove: (habit: Habit, delta: number) => void;
+  onItemHeight: (id: string, height: number) => void;
   renderItem: (habit: Habit, reorder: ReorderAccessibility) => React.ReactNode;
 }
 
@@ -330,6 +348,7 @@ const DraggableItem = React.memo(function DraggableItem({
   scrollRef,
   callbacks,
   onMove,
+  onItemHeight,
   renderItem,
 }: DraggableItemProps) {
   const id = habit.id;
@@ -414,12 +433,8 @@ const DraggableItem = React.memo(function DraggableItem({
   });
 
   const onLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      const { height } = e.nativeEvent.layout;
-      if (d.heights.value[id] === height) return;
-      d.heights.value = { ...d.heights.value, [id]: height };
-    },
-    [d, id]
+    (e: LayoutChangeEvent) => onItemHeight(id, e.nativeEvent.layout.height),
+    [onItemHeight, id]
   );
 
   const reorder = useMemo<ReorderAccessibility>(
