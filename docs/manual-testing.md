@@ -273,3 +273,14 @@ Use um hábito com dias específicos, ex.: segunda e quarta (= 2x por semana).
 - [ ] Resumo "Hoje": numa segunda sem nada feito na semana, o hábito conta como pendente; numa terça (fora dos dias), não conta — mas se marcar hoje, conta como feito; com 2 conclusões na semana, não cobra mais na quarta
 - [ ] O card continua destacado só nos dias escolhidos, e os lembretes continuam tocando só neles
 - [ ] Hábito diário e hábito "3x por semana" continuam como antes
+
+## 27. "Feito" marca o dia do lembrete
+
+Mudança nativa: só vale numa build nova (não chega por `eas update`). Use um hábito sem meta numérica, com lembrete.
+
+- [ ] Lembrete de hoje, tocar "Feito" hoje (app fechado): marca hoje, com a hora do toque
+- [ ] Deixar o lembrete na tela e tocar "Feito" **no dia seguinte** (app fechado): marca o dia do lembrete (ontem), e **não** hoje; o lembrete de hoje continua tocando normalmente
+- [ ] Mesmo teste com o app aberto ou em segundo plano
+- [ ] Tocar "Adiar" perto da meia-noite (ex.: 23:55) e "Feito" na notificação adiada depois da meia-noite: marca o dia do lembrete original
+- [ ] Se o dia do lembrete já estava marcado, o "Feito" não cria uma segunda conclusão
+- [ ] Atualizando de uma build antiga com um "Feito" ainda na fila: ele é enviado no dia do toque (o item antigo não tem o horário do lembrete)

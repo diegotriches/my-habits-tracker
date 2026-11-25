@@ -7,6 +7,7 @@ import { streakService } from './streakService';
 import { completionOutbox } from './completionOutbox';
 import { todayReminderService } from './todayReminderService';
 import { CompletionInsert, Habit } from '@/types/database';
+import { notificationCompletionTime } from '@/utils/completionOps';
 
 /** Emitido quando conclusões vindas da notificação foram gravadas no banco. */
 export const COMPLETIONS_SYNCED_EVENT = 'HabitCompletionsSynced';
@@ -20,8 +21,8 @@ export const COMPLETIONS_SYNCED_EVENT = 'HabitCompletionsSynced';
 export type NotificationCompletionResult = 'completed' | 'skipped' | 'retry';
 
 /**
- * Registra a conclusão de um hábito feita pela notificação, no dia local do
- * toque. Idempotente: se o dia já está concluído, não insere de novo — então
+ * Registra a conclusão de um hábito feita pela notificação, no dia local de
+ * `completedAt` (o dia do lembrete — ver `notificationCompletionTime`). Idempotente: se o dia já está concluído, não insere de novo — então
  * reprocessar um item da fila (ex.: o app morreu antes de removê-lo) é seguro.
  */
 export async function completeHabitFromNotification(
@@ -106,7 +107,11 @@ async function drainNativeQueue(): Promise<void> {
     const doneToday = new Set<string>();
 
     for (const item of pending) {
-      const completedAt = new Date(item.completedAt);
+      // Dia do lembrete, não do toque (notificação de ontem tocada hoje marca ontem).
+      const completedAt = notificationCompletionTime(
+        new Date(item.completedAt),
+        item.reminderAt ? new Date(item.reminderAt) : null
+      );
       const result = await completeHabitFromNotification(item.habitId, completedAt);
       if (result === 'retry') continue;
       processed.push(item.id);

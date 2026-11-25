@@ -31,6 +31,12 @@ public class AlarmReceiver extends BroadcastReceiver {
     // Actions para os botões da notificação
     public static final String ACTION_SNOOZE = "com.dtriches.myhabitstracker.ACTION_SNOOZE";
     public static final String ACTION_COMPLETE = "com.dtriches.myhabitstracker.ACTION_COMPLETE";
+    /**
+     * Horário do lembrete original (ms). Vai junto com o "Feito" para a
+     * conclusão cair no dia do lembrete, mesmo que o toque seja no dia
+     * seguinte; o "Adiar" o repassa, para valer o lembrete original.
+     */
+    static final String EXTRA_REMINDER_AT = "reminderAt";
 
     private static final String EXTRA_IS_SNOOZE = "isSnooze";
     private static final String SNOOZE_SUFFIX = "_snooze";
@@ -83,7 +89,11 @@ public class AlarmReceiver extends BroadcastReceiver {
             boolean isSnooze = intent.getBooleanExtra(EXTRA_IS_SNOOZE, false)
                 || (alarmId != null && alarmId.endsWith(SNOOZE_SUFFIX));
 
-            showNotification(context, alarmId, habitId, habitName, sound, hasTarget);
+            // Adiado: o lembrete original veio no extra; senão, é este disparo.
+            long reminderAt = intent.getLongExtra(EXTRA_REMINDER_AT, 0);
+            if (reminderAt <= 0) reminderAt = scheduledAt > 0 ? scheduledAt : System.currentTimeMillis();
+
+            showNotification(context, alarmId, habitId, habitName, sound, hasTarget, reminderAt);
 
             if (isSnooze) {
                 if (alarmId != null) AlarmStorage.remove(context, alarmId);
@@ -105,7 +115,8 @@ public class AlarmReceiver extends BroadcastReceiver {
         String habitId,
         String habitName,
         String sound,
-        boolean hasTarget
+        boolean hasTarget,
+        long reminderAt
     ) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
@@ -133,6 +144,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         snoozeIntent.putExtra("sound", sound);
         snoozeIntent.putExtra("hasTarget", hasTarget);
         snoozeIntent.putExtra("notifId", notifId);
+        snoozeIntent.putExtra(EXTRA_REMINDER_AT, reminderAt);
         PendingIntent snoozePending = PendingIntent.getBroadcast(
             context, notifId + 1, snoozeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -167,6 +179,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             completeIntent.setAction(ACTION_COMPLETE);
             completeIntent.putExtra("habitId", habitId);
             completeIntent.putExtra("notifId", notifId);
+            completeIntent.putExtra(EXTRA_REMINDER_AT, reminderAt);
             PendingIntent completePending = PendingIntent.getBroadcast(
                 context, notifId + 2, completeIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -323,6 +336,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             String sound      = intent.getStringExtra("sound");
             boolean hasTarget = intent.getBooleanExtra("hasTarget", false);
             int    notifId    = intent.getIntExtra("notifId", 0);
+            long   reminderAt = intent.getLongExtra(EXTRA_REMINDER_AT, 0);
 
             // Cancelar notificação atual
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -344,6 +358,7 @@ public class AlarmReceiver extends BroadcastReceiver {
             snoozeAlarm.putExtra("hasTarget", hasTarget);
             snoozeAlarm.putExtra("timestamp", snoozeTime);
             snoozeAlarm.putExtra(EXTRA_IS_SNOOZE, true);
+            if (reminderAt > 0) snoozeAlarm.putExtra(EXTRA_REMINDER_AT, reminderAt);
 
             PendingIntent pending = PendingIntent.getBroadcast(
                 context, snoozeAlarmId.hashCode(), snoozeAlarm,
@@ -375,6 +390,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         try {
             String habitId = intent.getStringExtra("habitId");
             int    notifId = intent.getIntExtra("notifId", 0);
+            long   reminderAt = intent.getLongExtra(EXTRA_REMINDER_AT, 0);
 
             NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(notifId);
@@ -382,10 +398,12 @@ public class AlarmReceiver extends BroadcastReceiver {
             if (habitId == null) return;
 
             // Com o app fechado não há React Native para gravar no banco: a
-            // conclusão fica na fila, com o horário do toque, e o JS a envia
-            // ao abrir. Com o app aberto, o broadcast faz o JS esvaziar a
-            // fila na hora (o ExactAlarmModule o repassa como evento JS).
-            PendingCompletionStorage.add(context, habitId, System.currentTimeMillis());
+            // conclusão fica na fila, com o horário do toque e o do lembrete,
+            // e o JS a envia ao abrir (no dia do lembrete — ver
+            // notificationCompletionTime em utils/completionOps.ts). Com o
+            // app aberto, o broadcast faz o JS esvaziar a fila na hora (o
+            // ExactAlarmModule o repassa como evento JS).
+            PendingCompletionStorage.add(context, habitId, System.currentTimeMillis(), reminderAt);
             LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(PENDING_COMPLETIONS_CHANGED));
 
             Log.d(TAG, "Conclusao enfileirada para: " + habitId);

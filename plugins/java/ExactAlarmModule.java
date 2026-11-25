@@ -93,6 +93,9 @@ public class ExactAlarmModule extends ReactContextBaseJavaModule {
                 map.putString("id", obj.optString("id"));
                 map.putString("habitId", obj.optString("habitId"));
                 map.putDouble("completedAt", (double) obj.optLong("completedAt"));
+                long reminderAt = obj.optLong("reminderAt", 0);
+                // Itens de versões antigas não têm o horário do lembrete.
+                if (reminderAt > 0) map.putDouble("reminderAt", (double) reminderAt);
                 result.pushMap(map);
             }
             promise.resolve(result);

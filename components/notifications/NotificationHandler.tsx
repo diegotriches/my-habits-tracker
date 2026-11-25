@@ -61,7 +61,11 @@ export function NotificationHandler() {
         }
 
         if (actionId === 'complete') {
-          await notificationService.handleQuickComplete(data.habitId);
+          // Marca o dia em que a notificação apareceu, não o do toque.
+          // (`date` vem em ms; o "< 1e12" cobre uma plataforma que mande segundos.)
+          const raw = response.notification.date;
+          const notifiedAt = raw ? new Date(raw < 1e12 ? raw * 1000 : raw) : undefined;
+          await notificationService.handleQuickComplete(data.habitId, notifiedAt);
           return;
         }
 

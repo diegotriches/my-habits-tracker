@@ -24,6 +24,8 @@ export interface PendingCompletion {
   habitId: string;
   /** Horário do toque, em ms desde a epoch. */
   completedAt: number;
+  /** Horário do lembrete que mostrou o botão (ausente em itens de versões antigas). */
+  reminderAt?: number;
 }
 
 export interface ScheduleReminderOptions {

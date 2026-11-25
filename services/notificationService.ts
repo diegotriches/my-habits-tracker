@@ -11,6 +11,7 @@ import { exactAlarmService } from './exactAlarmService';
 import { completeHabitFromNotification } from './pendingCompletionService';
 import { streakService } from './streakService';
 import { Habit } from '@/types/database';
+import { notificationCompletionTime } from '@/utils/completionOps';
 
 // Configurar handler padrão
 Notifications.setNotificationHandler({
@@ -259,7 +260,8 @@ class NotificationService {
    * Android o botão "Feito" é nativo e passa pela fila local
    * (services/pendingCompletionService.ts).
    */
-  async handleQuickComplete(habitId: string): Promise<void> {
+  /** @param notifiedAt quando a notificação foi exibida (o dia que ela marca). */
+  async handleQuickComplete(habitId: string, notifiedAt?: Date): Promise<void> {
     try {
       const habit = await this.getHabitData(habitId);
 
@@ -280,13 +282,16 @@ class NotificationService {
         return;
       }
 
-      const result = await completeHabitFromNotification(habitId, new Date());
+      const result = await completeHabitFromNotification(
+        habitId,
+        notificationCompletionTime(new Date(), notifiedAt ?? null)
+      );
 
       if (result === 'skipped') {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: 'Ja completado!',
-            body: 'Voce ja completou este habito hoje.',
+            body: 'Voce ja completou este habito nesse dia.',
             sound: 'default',
           },
           trigger: null,

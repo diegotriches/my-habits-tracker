@@ -1,4 +1,9 @@
-import { applyPendingOps, completionDayFields, CompletionOp } from '../completionOps';
+import {
+  applyPendingOps,
+  completionDayFields,
+  CompletionOp,
+  notificationCompletionTime,
+} from '../completionOps';
 import { Completion } from '@/types/database';
 import { NOW, local } from './testHelpers';
 
@@ -101,5 +106,31 @@ describe('completionDayFields', () => {
       day: '2026-11-09',
       completedAt: local('2026-11-09', '00:00').toISOString(),
     });
+  });
+});
+
+describe('notificationCompletionTime', () => {
+  it('tocado no mesmo dia do lembrete: hora do toque', () => {
+    const tapped = local('2026-11-11', '08:30');
+    expect(notificationCompletionTime(tapped, local('2026-11-11', '07:00'))).toEqual(tapped);
+  });
+
+  it('lembrete de ontem tocado hoje: marca ontem, no início do dia', () => {
+    expect(
+      notificationCompletionTime(local('2026-11-11', '07:11'), local('2026-11-10', '21:30'))
+    ).toEqual(local('2026-11-10', '00:00'));
+  });
+
+  it('adiado e tocado depois da meia-noite: vale o dia do lembrete original', () => {
+    expect(
+      notificationCompletionTime(local('2026-11-11', '00:05'), local('2026-11-10', '23:55'))
+    ).toEqual(local('2026-11-10', '00:00'));
+  });
+
+  it('sem horário do lembrete (versão antiga) ou inválido: hora do toque', () => {
+    const tapped = local('2026-11-11', '08:30');
+    expect(notificationCompletionTime(tapped, null)).toEqual(tapped);
+    expect(notificationCompletionTime(tapped, new Date(NaN))).toEqual(tapped);
+    expect(notificationCompletionTime(tapped, local('2026-11-12', '07:00'))).toEqual(tapped);
   });
 });

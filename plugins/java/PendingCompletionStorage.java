@@ -16,8 +16,8 @@ import java.util.UUID;
  *
  * O AlarmReceiver roda sem o React Native (com o app fechado, que é o caso
  * mais comum), então não consegue gravar no Supabase. Ele registra a
- * conclusão aqui, com o horário do toque, e o JS esvazia a fila assim que
- * puder: na hora, se o app estiver aberto (via broadcast local), ou na
+ * conclusão aqui, com o horário do toque e o do lembrete, e o JS esvazia a
+ * fila assim que puder: na hora, se o app estiver aberto (via broadcast local), ou na
  * próxima vez que o app abrir.
  */
 public class PendingCompletionStorage {
@@ -25,13 +25,18 @@ public class PendingCompletionStorage {
     private static final String PREFS_NAME = "pending_completions_storage";
     private static final String KEY_ITEMS = "items";
 
-    public static synchronized void add(Context context, String habitId, long completedAt) {
+    /**
+     * @param completedAt horário do toque
+     * @param reminderAt  horário do lembrete que mostrou o botão (0 = desconhecido)
+     */
+    public static synchronized void add(Context context, String habitId, long completedAt, long reminderAt) {
         try {
             JSONArray items = read(context);
             JSONObject obj = new JSONObject();
             obj.put("id", UUID.randomUUID().toString());
             obj.put("habitId", habitId);
             obj.put("completedAt", completedAt);
+            if (reminderAt > 0) obj.put("reminderAt", reminderAt);
             items.put(obj);
             // commit() em vez de apply(): o processo pode morrer logo após o
             // broadcast, e a conclusão não pode se perder.

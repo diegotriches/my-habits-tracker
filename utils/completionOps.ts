@@ -70,3 +70,18 @@ export function completionDayFields(date: Date): Pick<CompletionOp, 'day' | 'com
     completedAt: (isSameDay(date, now) ? now : startOfDay(date)).toISOString(),
   };
 }
+
+/**
+ * Horário a gravar para um "Feito" tocado na notificação.
+ *
+ * A conclusão é do dia do lembrete, não do toque: a notificação de ontem,
+ * deixada na tela e tocada hoje, marca ontem. No mesmo dia, vale a hora do
+ * toque; num dia posterior, o início do dia do lembrete (como as marcações de
+ * dias passados feitas pela home). Sem o horário do lembrete (itens de
+ * versões antigas) ou com um horário inválido, vale o toque.
+ */
+export function notificationCompletionTime(tappedAt: Date, reminderAt: Date | null): Date {
+  if (!reminderAt || Number.isNaN(reminderAt.getTime())) return tappedAt;
+  if (reminderAt.getTime() > tappedAt.getTime()) return tappedAt; // relógio estranho
+  return isSameDay(reminderAt, tappedAt) ? tappedAt : startOfDay(reminderAt);
+}
