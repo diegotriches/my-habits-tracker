@@ -32,7 +32,10 @@ components/
 hooks/                  # Toda a lógica de negócio (ver "Padrão de arquitetura" abaixo)
 services/               # Chamadas ao Supabase e serviços de domínio
   completionOutbox.ts   # fila de saída das marcações (funciona offline)
+  pendingCompletionService.ts # envia a fila do botão "Feito" da notificação
+  habitOrderService.ts  # envia a ordem dos hábitos (funciona offline)
   streakService.ts      # cálculo de streak
+  reminderSyncService.ts, todayReminderService.ts # alarmes a partir do banco; pular o dia já feito
   notificationService.ts, exactAlarmService.ts
 utils/                  # Lógica pura e testada (streak, resumo do dia, mapa de calor, backup...)
   __tests__/            # Testes (Jest)
@@ -65,6 +68,10 @@ docs/                   # Roteiro de testes manuais (manual-testing.md)
 ⚠️ **No Windows, o caminho também precisa ser curto** — no máximo ~17 caracteres, como `C:\dev\habits`. A compilação C++ do React Native (New Architecture) gera arquivos cujo caminho relativo embute o caminho completo do projeto, e o `ninja` do Android SDK falha acima de 260 caracteres (`Filename longer than 260 characters`). Mapear a pasta com `subst` não resolve: o autolinking do Expo não encontra o `package.json` quando o projeto fica na raiz de um drive, e mapeando a pasta pai o caminho ainda passa do limite. Builds no EAS (Linux) não têm essa limitação.
 
 Se a build local falhar com `OutOfMemoryError: Metaspace`, aumente a memória do Gradle em `android/gradle.properties` (ex.: `org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m`). Esse arquivo é regenerado pelo `expo prebuild --clean`, então o ajuste precisa ser refeito a cada prebuild.
+
+O Java da build local é o que vem com o Android Studio (`JAVA_HOME` apontando para `...\Android Studio\jbr`). Para desinstalar o Android Studio, instale antes um JDK 17 avulso e aponte o `JAVA_HOME` para ele; o Android SDK (`%LOCALAPPDATA%\Android\Sdk`, de onde vem o `adb`) fica numa pasta separada e deve ser mantido.
+
+**Espaço em disco**: cada build local compila o C++ de pacotes nativos dentro do próprio `node_modules` (`<pacote>/android/build` e `.cxx`) — chegou a 10,7 GB, com `react-native-reanimated` e `react-native-worklets` à frente —, e o Gradle guarda mais alguns GB em `%USERPROFILE%\.gradle\caches`. Nada disso se apaga sozinho, e tudo é regenerado quando preciso: para limpar, apague o `node_modules` (e rode `npm install`), o `android/` (o `prebuild --clean` recria) e o `.gradle\caches`. No Windows, alguns caminhos passam de 260 caracteres e o `Remove-Item` falha; o `robocopy <pasta-vazia> <alvo> /MIR` apaga mesmo assim. Builds no EAS não usam nada disso.
 
 ## Configuração do ambiente
 
@@ -258,7 +265,8 @@ npx supabase functions deploy delete-account --project-ref <ref> --use-api
 
 ## Pendências conhecidas
 
-- Validação manual das correções de 11–12/11/2026 no aparelho (inclui avatar e perfil): ver [docs/manual-testing.md](docs/manual-testing.md)
+- **Validação manual no aparelho** das seções pendentes do [docs/manual-testing.md](docs/manual-testing.md) — em especial as de 19 a 29/11/2026 (seções 21–29), que dependem da build de produção de 27/11 (mudanças nativas do "Feito"): até ela estar instalada, nenhum `eas update` posterior chega ao aparelho
+- **Atualizar o Expo SDK** (hoje 54): o `npm audit` ainda aponta 25 alertas (5 altos, nenhum crítico) que só saem com um SDK novo — quase todos em ferramentas de desenvolvimento; no app, só o parse de deep links do `expo-router` (`query-string`/`decode-uri-component`, negação de serviço com link malformado). Não use `npm audit fix --force`: ele troca o `expo` pela versão 52. Atualizar o SDK exige build nova e o roteiro de testes completo
 - **Widget na tela inicial (Android)**, para marcar sem abrir o app: ficou de fora do roteiro de melhorias de 12/11/2026 por decisão. É nativo (exige build nova, não sai por OTA) e precisaria gravar na mesma fila local do botão "Feito" (`PendingCompletionStorage`).
 
 ## Antes de publicar na Play Store

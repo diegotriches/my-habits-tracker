@@ -1,6 +1,6 @@
 # Roteiro de testes manuais pendentes
 
-Testes que ainda precisam ser feitos no aparelho para as correções de 11–12/11/2026 (não há testes automatizados). Marque cada item ao concluir e remova a seção quando estiver toda validada.
+Testes que ainda precisam ser feitos no aparelho (não há testes automatizados de interface, notificações nem código nativo). As seções 1–20 são das correções de 11–12/11/2026; as 21–29, das mudanças de 19 a 27/11/2026, e precisam da build de produção de 27/11 (as seções 27 e 28 são nativas; as outras chegam por `eas update`, mas só a essa build). Marque cada item ao concluir e remova a seção quando estiver toda validada.
 
 Já validado no Galaxy S23 nessa época: alarmes (desativar/editar/excluir lembrete, vários lembretes por hábito, frequência, "Adiar"), ressincronização ao reinstalar/offline/lembrete iminente, ícone, toque na notificação, "Feito" com o app fechado e aberto, "Registrar", sons Sino e Gota d'água, horário sem deriva, reboot e nome atualizado após editar.
 
