@@ -18,6 +18,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useHabitCompletionActions } from '@/hooks/useHabitCompletionActions';
 import { useCurrentDay } from '@/hooks/useCurrentDay';
+import { useForegroundRefresh } from '@/hooks/useForegroundRefresh';
 import { capitalizeFirst } from '@/utils/text';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { OfflineStatusBanner } from '@/components/ui/OfflineStatusBanner';
@@ -48,7 +49,13 @@ import { useAuth } from '@/hooks/useAuth';
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { habits, loading: habitsLoading, refresh: refetchHabits, reorderHabits } = useHabits();
+  const {
+    habits,
+    loading: habitsLoading,
+    refresh: refetchHabits,
+    refreshSilently: refetchHabitsSilently,
+    reorderHabits,
+  } = useHabits();
 
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(
     startOfWeek(new Date(), { weekStartsOn: 0 })
@@ -202,6 +209,18 @@ export default function HomeScreen() {
     ];
     return () => subscriptions.forEach((s) => s.remove());
   }, [refetchWeeklyCompletions, selectedWeekStart, fetchStreaks, habitIds]);
+
+  // Voltou para o app depois de um tempo (ou num outro dia): busca de novo, em
+  // silêncio, o que pode ter mudado — marcações de outro aparelho, streaks.
+  // Num dia novo, refaz também a conferência dos streaks vencidos (senão o
+  // card mostraria "5 dias seguidos" depois de um dia perdido). As marcações
+  // ainda na fila continuam valendo: a busca da semana as reaplica.
+  useForegroundRefresh(({ dayChanged }) => {
+    void refetchHabitsSilently();
+    refetchWeeklyCompletions(selectedWeekStart);
+    if (dayChanged) void checkExpiredStreaks(habits, { force: true });
+    else fetchStreaks(habitIds);
+  });
 
   // Dica única de reordenar; some de vez na primeira reordenação.
   const reorderHint = useReorderHint(habits.length);

@@ -51,8 +51,12 @@ export const useStreaks = () => {
     [streaks]
   );
 
-  const checkExpiredStreaks = useCallback(async (habits: Habit[]) => {
-    if (hasRecalculated.current || habits.length === 0) return;
+  /**
+   * Recalcula os streaks (zera os vencidos). Uma vez por sessão, ao abrir a
+   * home; `force` refaz — ex.: o app voltou do segundo plano num outro dia.
+   */
+  const checkExpiredStreaks = useCallback(async (habits: Habit[], { force = false } = {}) => {
+    if ((hasRecalculated.current && !force) || habits.length === 0) return;
     hasRecalculated.current = true;
 
     try {

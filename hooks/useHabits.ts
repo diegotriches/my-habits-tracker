@@ -49,56 +49,66 @@ export const useHabits = () => {
     if (user?.id && loadedFromServerRef.current) void writeCache('habits', user.id, habits);
   }, [habits, user?.id]);
 
-  const fetchHabits = useCallback(async () => {
-    if (!user?.id) return;
-    const userId = user.id;
-    const reorderSeq = reorderSeqRef.current;
+  /**
+   * `silent`: busca em segundo plano (ex.: ao voltar para o app) — sem o
+   * indicador de carregamento e sem virar erro se falhar (a lista na tela
+   * continua valendo).
+   */
+  const fetchHabits = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      if (!user?.id) return;
+      const userId = user.id;
+      const reorderSeq = reorderSeqRef.current;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        if (!silent) {
+          setLoading(true);
+          setError(null);
+        }
 
-      // Mostra o cache na hora (abre offline); a busca abaixo atualiza.
-      const cached = await readCache<Habit[]>('habits', userId);
-      if (cached) {
-        setHabits((prev) => (prev.length > 0 ? prev : cached));
-        setLoading(false);
+        // Mostra o cache na hora (abre offline); a busca abaixo atualiza.
+        const cached = await readCache<Habit[]>('habits', userId);
+        if (cached) {
+          setHabits((prev) => (prev.length > 0 ? prev : cached));
+          setLoading(false);
+        }
+
+        const { data, error: fetchError } = await habitsTable()
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .is('archived_at', null); // arquivados ficam em settings/archived
+
+        if (fetchError) throw fetchError;
+
+        // Ordem da tela inicial: a do banco, ou a arrastada que ainda não foi
+        // enviada (sem conexão), ou — uma vez — a que a versão antiga guardava
+        // só no aparelho.
+        const rows = data ?? [];
+        const pending =
+          (await habitOrderService.pendingOrder(userId)) ??
+          (await habitOrderService.adoptLegacyOrder(userId, rows));
+
+        loadedFromServerRef.current = true;
+        if (reorderSeqRef.current !== reorderSeq) {
+          // Reordenou durante a busca: vale a ordem que está na tela.
+          setHabits((prev) =>
+            applyOrder(
+              rows,
+              prev.map((h) => h.id)
+            )
+          );
+        } else {
+          setHabits(pending ? applyOrder(rows, pending) : sortHabits(rows));
+        }
+      } catch (err) {
+        if (!silent) setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
+      } finally {
+        if (!silent) setLoading(false);
       }
-
-      const { data, error: fetchError } = await habitsTable()
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .is('archived_at', null); // arquivados ficam em settings/archived
-
-      if (fetchError) throw fetchError;
-
-      // Ordem da tela inicial: a do banco, ou a arrastada que ainda não foi
-      // enviada (sem conexão), ou — uma vez — a que a versão antiga guardava
-      // só no aparelho.
-      const rows = data ?? [];
-      const pending =
-        (await habitOrderService.pendingOrder(userId)) ??
-        (await habitOrderService.adoptLegacyOrder(userId, rows));
-
-      loadedFromServerRef.current = true;
-      if (reorderSeqRef.current !== reorderSeq) {
-        // Reordenou durante a busca: vale a ordem que está na tela.
-        setHabits((prev) =>
-          applyOrder(
-            rows,
-            prev.map((h) => h.id)
-          )
-        );
-      } else {
-        setHabits(pending ? applyOrder(rows, pending) : sortHabits(rows));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao buscar hábitos');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   // Busca de novo quando o objeto `user` muda — inclusive na renovação do
   // token, o que atualiza a tela ao reconectar depois de abrir offline.
@@ -282,9 +292,9 @@ export const useHabits = () => {
     [user]
   );
 
-  const refresh = async () => {
-    await fetchHabits();
-  };
+  const refresh = useCallback(() => fetchHabits(), [fetchHabits]);
+  /** Busca sem indicador de carregamento (ver `useForegroundRefresh`). */
+  const refreshSilently = useCallback(() => fetchHabits({ silent: true }), [fetchHabits]);
 
   return {
     habits,
@@ -296,5 +306,6 @@ export const useHabits = () => {
     deleteHabit,
     reorderHabits,
     refresh,
+    refreshSilently,
   };
 };

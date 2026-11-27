@@ -295,3 +295,11 @@ Mudança nativa: só vale numa build nova. Use um hábito sem meta numérica com
 - [ ] "Feito" na notificação de ontem tocado hoje (seção 27): **não** silencia os lembretes de hoje
 - [ ] "Adiar" no primeiro e "Feito" na notificação adiada: o segundo não aparece
 - [ ] Outro hábito com lembrete no mesmo horário não é afetado
+
+## 29. Atualização ao voltar para o app
+
+- [ ] Com o app em segundo plano, marque um hábito em outro aparelho (ou no banco). Volte ao app **depois de 5 min**: a marcação aparece sozinha, sem puxar para atualizar e sem indicador de carregamento
+- [ ] Voltar ao app **antes de 5 min**: nada é buscado (a tela fica como estava)
+- [ ] Deixar o app em segundo plano de um dia para o outro, com um hábito diário não feito no dia anterior: ao voltar, o streak dele zera e o "hoje" é o dia novo
+- [ ] Offline (modo avião), voltar depois de 5 min: a tela continua com os dados, sem mensagem de erro; marcações feitas offline continuam marcadas
+- [ ] Marcar um dia e, logo depois, sair e voltar ao app (após 5 min): a marcação não "some"
